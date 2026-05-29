@@ -13,6 +13,7 @@ export default function AdminDashboard() {
   const [isDemo, setIsDemo] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState('Admin');
 
   // Form state User
   const [newUser, setNewUser] = useState({
@@ -34,6 +35,11 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
+    const storedUser = localStorage.getItem('mst_user');
+    if (storedUser) {
+      const u = JSON.parse(storedUser);
+      if (u.role === 'Viewer') setUserRole('Viewer');
+    }
     fetchData();
   }, []);
 
@@ -172,38 +178,42 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 md:p-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Master Tiket (Admin)</h1>
-          <p className="text-slate-500 mt-1">Kelola seluruh tugas dan sprint startup.</p>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Master Tiket {userRole === 'Viewer' ? '(Mode Tamu)' : '(Admin)'}</h1>
+          <p className="text-sm md:text-base text-slate-500 mt-1">
+            {userRole === 'Viewer' ? 'Lihat seluruh daftar tugas dan progress sprint startup.' : 'Kelola seluruh tugas dan sprint startup.'}
+          </p>
         </div>
-        <div className="flex space-x-3">
-          <button 
-            onClick={() => setShowUserModal(true)}
-            className="flex items-center px-4 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm font-medium"
-          >
-            <PlusCircle className="w-5 h-5 mr-2" />
-            Tambah Anggota
-          </button>
-          <button 
-            onClick={openCreateModal}
-            className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
-          >
-            <PlusCircle className="w-5 h-5 mr-2" />
-            Tambah Tugas
-          </button>
-        </div>
+        {userRole !== 'Viewer' && (
+          <div className="flex flex-row space-x-2 md:space-x-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+            <button 
+              onClick={() => setShowUserModal(true)}
+              className="flex items-center px-3 md:px-4 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
+            >
+              <PlusCircle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" />
+              Tambah Anggota
+            </button>
+            <button 
+              onClick={openCreateModal}
+              className="flex items-center px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
+            >
+              <PlusCircle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" />
+              Tambah Tugas
+            </button>
+          </div>
+        )}
       </div>
 
       {isDemo && (
-         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+         <div className="mb-4 md:mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs md:text-sm">
            <strong>Mode Demo Aktif.</strong> Supabase belum terkoneksi (kredensial kosong di .env.local). Data yang ditambahkan tidak akan tersimpan permanen.
          </div>
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         {[
           { label: 'Total Tugas', value: tasks.length, color: 'text-indigo-600' },
           { label: 'Selesai', value: tasks.filter(t => t.status === 'Selesai').length, color: 'text-green-600' },
@@ -240,7 +250,7 @@ export default function AdminDashboard() {
                 <th className="p-4 font-medium">Tenggat</th>
                 <th className="p-4 font-medium">Prioritas</th>
                 <th className="p-4 font-medium">Status</th>
-                <th className="p-4 font-medium">Aksi</th>
+                {userRole !== 'Viewer' && <th className="p-4 font-medium">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
@@ -271,11 +281,13 @@ export default function AdminDashboard() {
                         {task.status}
                       </span>
                     </td>
-                    <td className="p-4">
-                      <button onClick={() => openEditModal(task)} className="text-slate-400 hover:text-indigo-600 transition-colors">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    </td>
+                    {userRole !== 'Viewer' && (
+                      <td className="p-4">
+                        <button onClick={() => openEditModal(task)} className="text-slate-400 hover:text-indigo-600 transition-colors">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

@@ -78,14 +78,14 @@ export default function BoardPage() {
   if (!user) return null;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Halo, {user.name}!</h1>
-        <p className="text-slate-500 mt-1">Berikut adalah daftar tugas yang dipercayakan kepada Anda.</p>
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900">Halo, {user.name}!</h1>
+        <p className="text-sm md:text-base text-slate-500 mt-1">Berikut adalah daftar tugas yang dipercayakan kepada Anda.</p>
       </div>
 
       {isDemo && (
-         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+         <div className="mb-4 md:mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs md:text-sm">
            <strong>Mode Demo.</strong> Tidak terhubung ke database. Perubahan status hanya tersimpan di memori (sementara).
          </div>
       )}
@@ -94,49 +94,50 @@ export default function BoardPage() {
         {loading ? (
           <div className="p-12 text-center text-slate-500">Memuat tugas Anda...</div>
         ) : tasks.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 border-dashed">
-            <CheckCircle2 className="w-12 h-12 text-green-300 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-slate-700">Tidak ada tugas!</h3>
-            <p className="text-slate-500 mt-1">Bagus, Anda sudah menyelesaikan semua pekerjaan (Atau belum diberi tugas).</p>
+          <div className="p-8 md:p-12 text-center bg-white rounded-2xl border border-slate-200 border-dashed">
+            <CheckCircle2 className="w-10 h-10 md:w-12 md:h-12 text-green-300 mx-auto mb-2 md:mb-3" />
+            <h3 className="text-base md:text-lg font-medium text-slate-700">Tidak ada tugas!</h3>
+            <p className="text-sm md:text-base text-slate-500 mt-1">Bagus, Anda sudah menyelesaikan semua pekerjaan (Atau belum diberi tugas).</p>
           </div>
         ) : (
           tasks.map(task => (
             <div key={task.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-              <div className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4">
-                    <div className="mt-1">
+              <div className="p-4 md:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="flex items-start space-x-3 md:space-x-4">
+                    <div className="mt-1 flex-shrink-0">
                       {getStatusIcon(task.status)}
                     </div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{task.task_id}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span className="text-[10px] md:text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{task.task_id}</span>
                         {task.end_date && (
-                          <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded flex items-center">
+                          <span className="text-[10px] md:text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded flex items-center">
                             <Clock className="w-3 h-3 mr-1" /> {new Date(task.end_date).toLocaleDateString('id-ID')}
                           </span>
                         )}
                         {(task.priority === 'Tinggi' || task.priority === 'Kritis') && (
-                          <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded flex items-center">
+                          <span className="text-[10px] md:text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded flex items-center">
                             <AlertTriangle className="w-3 h-3 mr-1" /> Prioritas {task.priority}
                           </span>
                         )}
                       </div>
-                      <h3 className={`text-lg font-semibold ${task.status === 'Selesai' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+                      <h3 className={`text-base md:text-lg font-semibold leading-tight ${task.status === 'Selesai' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
                         {task.title}
                       </h3>
                     </div>
                   </div>
                   
                   {/* Status Dropdown */}
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
                     <select 
                       value={task.status}
+                      disabled={user.role === 'Viewer'}
                       onChange={(e) => updateStatus(task.id, e.target.value)}
-                      className={`text-sm font-medium rounded-lg px-3 py-1.5 border appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500
+                      className={`w-full sm:w-auto text-sm font-medium rounded-lg px-3 py-2 sm:py-1.5 border appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500
                         ${task.status === 'Belum Mulai' ? 'bg-slate-50 border-slate-200 text-slate-700' : 
                           task.status === 'Sedang Dikerjakan' ? 'bg-blue-50 border-blue-200 text-blue-700' : 
-                          'bg-green-50 border-green-200 text-green-700'}`}
+                          'bg-green-50 border-green-200 text-green-700'} ${user.role === 'Viewer' ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
                       <option value="Belum Mulai">Belum Mulai</option>
                       <option value="Sedang Dikerjakan">Sedang Dikerjakan</option>

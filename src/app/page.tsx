@@ -67,6 +67,11 @@ export default function LoginPage() {
     }
   };
 
+  const handleGuestLogin = () => {
+    localStorage.setItem('mst_user', JSON.stringify({ name: 'Tamu (Guest)', role: 'Viewer', pin: '' }));
+    router.push('/admin');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-900 to-black relative overflow-hidden">
       {/* Decorative background elements */}
@@ -130,6 +135,14 @@ export default function LoginPage() {
             className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 transition-all transform hover:scale-[1.02] active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Masuk ke Workspace
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleGuestLogin}
+            className="w-full mt-3 py-3 px-4 bg-white/5 hover:bg-white/10 text-slate-300 font-medium rounded-xl border border-white/10 transition-all focus:outline-none"
+          >
+            Masuk sebagai Tamu (Hanya Lihat)
           </button>
         </form>
       </div>
