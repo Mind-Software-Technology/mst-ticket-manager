@@ -1,150 +1,221 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/utils/supabase';
-import { LockKeyhole, UserRound } from 'lucide-react';
+// =====================================================
+// Login Page — Email + Password (Supabase Auth)
+// Sprint 1 / Foundation
+//
+// Menggantikan login PIN-based.
+// Setelah login, redirect ke /admin (admin) atau /board.
+// =====================================================
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabase";
+import { LockKeyhole, Mail, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<any[]>([]);
-  const [selectedUser, setSelectedUser] = useState('');
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [dbError, setDbError] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
+  // Kalau sudah login, langsung redirect (tidak boleh stay di login page).
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const { data, error } = await supabase.from('users').select('*');
-        if (error) throw error;
-        if (data && data.length > 0) {
-            setUsers(data);
-        } else {
-            // Mock data jika database kosong (hanya untuk tampilan visual MVP)
-            setUsers([
-                { id: '1', name: 'Nashwa', role: 'Co-Founder & Project Lead', pin: '1234' },
-                { id: '2', name: 'Gema', role: 'Co-Founder & Business Lead', pin: '1234' },
-                { id: '3', name: 'Haura', role: 'Co-Founder & Marketing Lead', pin: '1234' },
-            ]);
-        }
-      } catch (err) {
-        console.error("Error fetching users:", err);
-        setDbError(true);
-        // Fallback mockup
-        setUsers([
-            { id: '1', name: 'Nashwa', role: 'Co-Founder & Project Lead', pin: '1234' },
-            { id: '2', name: 'Gema', role: 'Co-Founder & Business Lead', pin: '1234' },
-        ]);
-      } finally {
-        setLoading(false);
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (cancelled) return;
+      if (session?.user) {
+        await routeAfterLogin(session.user.id, session.user.email ?? null);
+      } else {
+        setCheckingSession(false);
       }
-    }
-    fetchUsers();
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!selectedUser) {
-      setError('Pilih nama Anda terlebih dahulu');
-      return;
-    }
+  /**
+   * Lookup profile public.users → tentukan target route.
+   * Fallback by email kalau auth_user_id belum di-link.
+   */
+  async function routeAfterLogin(authUserId: string, email: string | null) {
+    let isAdmin = false;
+    let profileFound = false;
 
-    const user = users.find(u => u.name === selectedUser);
-    if (user && user.pin === pin) {
-      // Simpan session sederhana
-      localStorage.setItem('mst_user', JSON.stringify(user));
-      if (user.name === 'Nashwa') {
-        router.push('/admin');
-      } else {
-        router.push('/board');
+    const byAuthId = await supabase
+      .from("users")
+      .select("is_admin")
+      .eq("auth_user_id", authUserId)
+      .maybeSingle();
+
+    if (byAuthId.data) {
+      isAdmin = Boolean(byAuthId.data.is_admin);
+      profileFound = true;
+    } else if (email) {
+      const byEmail = await supabase
+        .from("users")
+        .select("is_admin")
+        .ilike("email", email)
+        .maybeSingle();
+      if (byEmail.data) {
+        isAdmin = Boolean(byEmail.data.is_admin);
+        profileFound = true;
       }
-    } else {
-      setError('PIN tidak valid');
     }
-  };
 
-  const handleGuestLogin = () => {
-    localStorage.setItem('mst_user', JSON.stringify({ name: 'Tamu (Guest)', role: 'Viewer', pin: '' }));
-    router.push('/admin');
-  };
+    if (!profileFound) {
+      console.warn(
+        "[LoginPage] profile not found; routing to dashboard so error UI can guide repair.",
+      );
+    }
+
+    if (isAdmin) {
+      router.push("/admin");
+    } else {
+      router.push("/board");
+    }
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (authError) {
+        setError(
+          authError.message === "Invalid login credentials"
+            ? "Email atau password salah"
+            : authError.message,
+        );
+        return;
+      }
+
+      if (!data.user) {
+        setError("Login gagal: user tidak ditemukan");
+        return;
+      }
+
+      await routeAfterLogin(data.user.id, data.user.email ?? null);
+    } catch (err) {
+      console.error("[LoginPage] unexpected error:", err);
+      setError("Terjadi kesalahan. Coba lagi.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-900 to-black">
+        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-slate-900 to-black relative overflow-hidden">
       {/* Decorative background elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-      <div className="absolute top-[20%] right-[-10%] w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-      <div className="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20" />
+      <div className="absolute top-[20%] right-[-10%] w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20" />
+      <div className="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20" />
 
       <div className="relative z-10 w-full max-w-md p-8 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 mb-4 shadow-lg shadow-indigo-500/30">
-            <UserRound className="w-8 h-8 text-white" />
+            <Mail className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">MST Workspace</h1>
-          <p className="text-slate-300 mt-2 text-sm">Sistem Manajemen Tugas Tim Internal</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">
+            MST Ticket Manager
+          </h1>
+          <p className="text-slate-300 mt-2 text-sm">
+            Sistem Work Tracking ERP-Style
+          </p>
         </div>
 
-        {dbError && (
-          <div className="mb-6 p-3 bg-amber-500/20 border border-amber-500/50 rounded-lg text-amber-200 text-xs text-center">
-            Database belum terhubung. Menggunakan mode Demo (Mock Data).
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-2">Masuk Sebagai</label>
-            <div className="relative">
-              <select
-                value={selectedUser}
-                onChange={(e) => setSelectedUser(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 bg-black/20 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                disabled={loading}
-              >
-                <option value="" disabled className="text-slate-500">Pilih Nama Anggota...</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.name} className="text-black">{u.name} - {u.role}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-200 mb-2">PIN Keamanan</label>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-slate-200 mb-2"
+            >
+              Email
+            </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <LockKeyhole className="h-5 w-5 text-slate-400" />
+                <Mail className="h-5 w-5 text-slate-400" />
               </div>
               <input
-                type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="Masukkan PIN (Demo: 1234)"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                placeholder="nama@mst.id"
                 className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
             </div>
           </div>
 
-          {error && <p className="text-red-400 text-sm text-center animate-pulse">{error}</p>}
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-slate-200 mb-2"
+            >
+              Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <LockKeyhole className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                placeholder="Masukkan password"
+                className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-red-400 text-sm text-center" role="alert">
+              {error}
+            </p>
+          )}
 
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 transition-all transform hover:scale-[1.02] active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            disabled={loading}
+            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 transition-all transform hover:scale-[1.02] active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center"
           >
-            Masuk ke Workspace
-          </button>
-          
-          <button
-            type="button"
-            onClick={handleGuestLogin}
-            className="w-full mt-3 py-3 px-4 bg-white/5 hover:bg-white/10 text-slate-300 font-medium rounded-xl border border-white/10 transition-all focus:outline-none"
-          >
-            Masuk sebagai Tamu (Hanya Lihat)
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Memproses...
+              </>
+            ) : (
+              "Masuk ke Workspace"
+            )}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-xs text-slate-400">
+          Hubungi admin untuk reset password
+        </p>
       </div>
     </div>
   );
