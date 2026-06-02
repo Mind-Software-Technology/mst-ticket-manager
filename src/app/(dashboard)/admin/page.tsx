@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
-import { PlusCircle, Search, Edit2 } from "lucide-react";
+import { PlusCircle, Search, Edit2, Trash2 } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 
 interface LegacyTask {
@@ -244,6 +244,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    if (!window.confirm("Apakah kamu yakin ingin menghapus tugas ini?")) return;
+
+    if (isDemo) {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+      if (error) throw error;
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    } catch (err) {
+      console.error("[admin] delete task failed", err);
+      alert("Gagal menghapus tugas. Cek koneksi Supabase.");
+    }
+  };
+
   const openEditModal = (task: LegacyTask) => {
     setNewTask({
       task_id: task.task_id,
@@ -421,14 +439,26 @@ export default function AdminDashboard() {
                     </td>
                     {userRole !== "Viewer" && (
                       <td className="p-4">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(task)}
-                          className="text-slate-400 hover:text-indigo-600 transition-colors"
-                          aria-label="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(task)}
+                            className="text-slate-400 hover:text-indigo-600 transition-colors"
+                            aria-label="Edit"
+                            title="Edit Tugas"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="text-slate-400 hover:text-red-600 transition-colors"
+                            aria-label="Hapus"
+                            title="Hapus Tugas"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
