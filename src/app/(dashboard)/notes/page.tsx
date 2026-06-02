@@ -59,7 +59,7 @@ export default function NotesPage() {
     try {
       const { data, error } = await supabase
         .from("user_notes")
-        .insert([{ user_id: session.user.id, content: newNote.trim() }])
+        .insert([{ user_id: session.authId, content: newNote.trim() }])
         .select();
         
       if (error) throw error;
