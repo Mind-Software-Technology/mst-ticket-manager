@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Loader2,
   LogOut,
+  Lightbulb,
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { useSession } from "@/hooks/useSession";
@@ -140,6 +141,15 @@ export default function DashboardLayout({
               <CheckSquare className="w-5 h-5 mr-2 md:mr-3 text-slate-400" />
               Tugas Saya
             </Link>
+            {profile.name === "Nashwa" && (
+              <Link
+                href="/notes"
+                className="whitespace-nowrap flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-slate-700 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+              >
+                <Lightbulb className="w-5 h-5 mr-2 md:mr-3 text-amber-500" />
+                Catatan Ide
+              </Link>
+            )}
           </nav>
         </div>
 

@@ -50,3 +50,19 @@ ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all actions on sprints" ON sprints FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all actions on users" ON users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all actions on tasks" ON tasks FOR ALL USING (true) WITH CHECK (true);
+
+-- Buat tabel User Notes (Untuk Catatan Ide Pribadi)
+CREATE TABLE user_notes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Mengaktifkan RLS agar aman (Hanya user pembuat yang bisa melihat/mengelola)
+ALTER TABLE user_notes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own notes" 
+ON user_notes FOR ALL 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
