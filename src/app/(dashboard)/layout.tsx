@@ -1,8 +1,8 @@
 "use client";
 
 // =====================================================
-// Dashboard Layout — Supabase Auth + role-based nav
-// Sprint 1 / Foundation
+// Dashboard Layout — TopBar + auth guard
+// Sprint 2 / Modul Gawean (top-nav redesign)
 // =====================================================
 
 import { useEffect } from "react";
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { useSession } from "@/hooks/useSession";
+import { TopBar } from "@/components/layout/TopBar";
 
 export default function DashboardLayout({
   children,
@@ -28,8 +29,6 @@ export default function DashboardLayout({
   const { session, loading, profileStatus, profileError, authEmail, signOut } =
     useSession();
 
-  // Redirect ke login HANYA kalau benar-benar tidak ada auth session
-  // (bukan karena profile gak ketemu — biar error UI yg handle).
   useEffect(() => {
     if (loading) return;
     if (session === null && profileStatus === null) {
@@ -37,7 +36,6 @@ export default function DashboardLayout({
     }
   }, [loading, session, profileStatus, router]);
 
-  // 1. Loading initial session
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -46,12 +44,10 @@ export default function DashboardLayout({
     );
   }
 
-  // 2. Tidak ada auth session — useEffect lagi redirect ke /
   if (session === null && profileStatus === null) {
     return null;
   }
 
-  // 3. Ada auth session tapi profile tidak ditemukan / error
   if (session === null && profileStatus !== null) {
     return (
       <ProfileErrorScreen
@@ -66,9 +62,7 @@ export default function DashboardLayout({
     );
   }
 
-  // 4. Session OK
   if (!session) return null; // type guard
-  const { profile } = session;
 
   const handleLogout = async () => {
     await signOut();
@@ -76,7 +70,7 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {profileStatus === "linked_by_email" && (
         <div className="fixed top-2 left-1/2 -translate-x-1/2 z-50 bg-amber-100 border border-amber-300 text-amber-900 text-xs px-3 py-1.5 rounded-full shadow">
           ⚠️ Profile belum di-link sempurna.{" "}

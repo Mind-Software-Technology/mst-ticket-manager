@@ -1,13 +1,11 @@
 "use client";
 
 // =====================================================
-// Legacy Admin Dashboard
+// Legacy /admin → redirect ke /gawean
+// Sprint 2 / Modul Gawean
 //
-// Halaman ini masih beroperasi pada tabel `tasks` (skema lama).
-// Akan dirombak / di-replace di Sprint 2 (modul Gawean).
-// Sprint 1 hanya melakukan:
-//   - Migrasi auth dari localStorage → useSession (Supabase Auth)
-//   - Cleanup type `any` & lint error supaya build pass.
+// Halaman lama beralih sepenuhnya ke modul Gawean.
+// Tabel `tasks` di DB tetap dipertahankan sebagai backup.
 // =====================================================
 
 import { useCallback, useEffect, useState } from "react";
@@ -78,7 +76,7 @@ function generateTaskId(division: string, allTasks: LegacyTask[]) {
   };
   const code = divisionCodeMap[division] || "GEN";
   const prefix = `SPT1-${code}`;
-  
+
   let maxNum = 0;
   for (const t of allTasks) {
     if (t.task_id && t.task_id.startsWith(prefix)) {
@@ -145,16 +143,16 @@ export default function AdminDashboard() {
       ]);
       setUsers([
         { id: "1", name: "Nashwa", role: "Co-Founder & Project Lead", pin: "1234" },
-        { id: "2", name: "Gema",   role: "Co-Founder & Business Lead", pin: "1234" },
-        { id: "3", name: "Haura",  role: "Co-Founder & Marketing Lead", pin: "1234" },
-        { id: "4", name: "Zira",   role: "Co-Founder & Design Lead", pin: "1234" },
-        { id: "5", name: "Arhab",  role: "Co-Founder & Lead Developer", pin: "1234" },
-        { id: "6", name: "Jack",   role: "Co-Founder & Lead Developer", pin: "1234" },
+        { id: "2", name: "Gema", role: "Co-Founder & Business Lead", pin: "1234" },
+        { id: "3", name: "Haura", role: "Co-Founder & Marketing Lead", pin: "1234" },
+        { id: "4", name: "Zira", role: "Co-Founder & Design Lead", pin: "1234" },
+        { id: "5", name: "Arhab", role: "Co-Founder & Lead Developer", pin: "1234" },
+        { id: "6", name: "Jack", role: "Co-Founder & Lead Developer", pin: "1234" },
       ]);
       setTasks([
-        { id: "1", task_id: "SPT1-MKT1", title: "Pembuatan naskah teks deskripsi profil", division: "Marketing",   pic_name: "Haura", status: "Belum Mulai",       priority: "Tinggi" },
-        { id: "2", task_id: "SPT1-DSN1", title: "Pembuatan aset logo, pemilihan font",     division: "Design",      pic_name: "Zira",  status: "Sedang Dikerjakan", priority: "Tinggi" },
-        { id: "3", task_id: "SPT1-DEV1", title: "Setup repositori kerja & Hosting",        division: "Development", pic_name: "Arhab", status: "Selesai",           priority: "Kritis" },
+        { id: "1", task_id: "SPT1-MKT1", title: "Pembuatan naskah teks deskripsi profil", division: "Marketing", pic_name: "Haura", status: "Belum Mulai", priority: "Tinggi" },
+        { id: "2", task_id: "SPT1-DSN1", title: "Pembuatan aset logo, pemilihan font", division: "Design", pic_name: "Zira", status: "Sedang Dikerjakan", priority: "Tinggi" },
+        { id: "3", task_id: "SPT1-DEV1", title: "Setup repositori kerja & Hosting", division: "Development", pic_name: "Arhab", status: "Selesai", priority: "Kritis" },
       ]);
     } finally {
       setLoading(false);
@@ -351,8 +349,8 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         {[
           { label: "Total Tugas", value: tasks.length, color: "text-indigo-600" },
-          { label: "Selesai",     value: tasks.filter((t) => t.status === "Selesai").length, color: "text-green-600" },
-          { label: "Progres",     value: tasks.filter((t) => t.status === "Sedang Dikerjakan").length, color: "text-blue-600" },
+          { label: "Selesai", value: tasks.filter((t) => t.status === "Selesai").length, color: "text-green-600" },
+          { label: "Progres", value: tasks.filter((t) => t.status === "Sedang Dikerjakan").length, color: "text-blue-600" },
           { label: "Sprint Aktif", value: sprints.filter((s) => s.status === "Aktif").length, color: "text-purple-600" },
         ].map((stat) => (
           <div
@@ -421,18 +419,16 @@ export default function AdminDashboard() {
                     </td>
                     <td className="p-4">
                       <span
-                        className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${
-                          priorityColors[task.priority] || priorityColors["Normal"]
-                        }`}
+                        className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${priorityColors[task.priority] || priorityColors["Normal"]
+                          }`}
                       >
                         {task.priority}
                       </span>
                     </td>
                     <td className="p-4">
                       <span
-                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                          statusColors[task.status] || statusColors["Belum Mulai"]
-                        }`}
+                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[task.status] || statusColors["Belum Mulai"]
+                          }`}
                       >
                         {task.status}
                       </span>

@@ -74,11 +74,11 @@ export default function LoginPage() {
       );
     }
 
-    if (isAdmin) {
-      router.push("/admin");
-    } else {
-      router.push("/board");
-    }
+    // Sprint 2: semua user ke /gawean. Filter "Tugas Saya" otomatis ON
+    // untuk non-admin. Variabel isAdmin tetap dipakai untuk side-effect
+    // di console kalau di masa depan kita mau split entry point.
+    void isAdmin;
+    router.push("/gawean");
   }
 
   async function handleLogin(e: React.FormEvent) {
