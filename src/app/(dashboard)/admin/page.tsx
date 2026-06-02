@@ -67,6 +67,31 @@ const INITIAL_TASK_FORM: TaskFormState = {
   end_date: "",
 };
 
+const DIVISIONS = ["Marketing", "Design", "Development", "Business"];
+
+function generateTaskId(division: string, allTasks: LegacyTask[]) {
+  const divisionCodeMap: Record<string, string> = {
+    Marketing: "MKT",
+    Design: "DSN",
+    Development: "DEV",
+    Business: "BIZ",
+  };
+  const code = divisionCodeMap[division] || "GEN";
+  const prefix = `SPT1-${code}`;
+  
+  let maxNum = 0;
+  for (const t of allTasks) {
+    if (t.task_id && t.task_id.startsWith(prefix)) {
+      const numPart = t.task_id.slice(prefix.length);
+      const parsedNum = parseInt(numPart, 10);
+      if (!isNaN(parsedNum) && parsedNum > maxNum) {
+        maxNum = parsedNum;
+      }
+    }
+  }
+  return `${prefix}${maxNum + 1}`;
+}
+
 export default function AdminDashboard() {
   const { session } = useSession();
   const [tasks, setTasks] = useState<LegacyTask[]>([]);
@@ -235,7 +260,10 @@ export default function AdminDashboard() {
   };
 
   const openCreateModal = () => {
-    setNewTask(INITIAL_TASK_FORM);
+    setNewTask({
+      ...INITIAL_TASK_FORM,
+      task_id: generateTaskId(INITIAL_TASK_FORM.division, tasks),
+    });
     setEditingTaskId(null);
     setShowModal(true);
   };
@@ -421,26 +449,44 @@ export default function AdminDashboard() {
               </h2>
             </div>
             <form onSubmit={handleCreateTask} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  ID Tugas
-                </label>
-                <input
-                  required
-                  type="text"
-                  value={newTask.task_id}
-                  onChange={(e) =>
-                    setNewTask({ ...newTask, task_id: e.target.value })
-                  }
-                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="Contoh: SPT1-DSN1"
-                />
-                <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
-                  <strong>Format:</strong> SPT[No]-[DIVISI][No]
-                  <br />• Marketing: <code>SPT1-MKT1</code>
-                  <br />• Design: <code>SPT1-DSN1</code>
-                  <br />• Development: <code>SPT1-DEV1</code>
-                </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    ID Tugas
+                  </label>
+                  <input
+                    required
+                    readOnly
+                    type="text"
+                    value={newTask.task_id}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:outline-none bg-slate-50 text-slate-500 font-semibold cursor-not-allowed"
+                    title="ID Tugas dibuat otomatis"
+                  />
+                  <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
+                    Dibuat otomatis dari Divisi
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Divisi
+                  </label>
+                  <select
+                    value={newTask.division}
+                    onChange={(e) => {
+                      const newDiv = e.target.value;
+                      setNewTask({
+                        ...newTask,
+                        division: newDiv,
+                        task_id: editingTaskId ? newTask.task_id : generateTaskId(newDiv, tasks),
+                      });
+                    }}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                  >
+                    {DIVISIONS.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
