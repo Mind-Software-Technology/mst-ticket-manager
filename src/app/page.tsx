@@ -5,12 +5,12 @@
 // Sprint 1 / Foundation
 //
 // Menggantikan login PIN-based.
-// Setelah login, redirect ke /admin (admin) atau /board.
+// Setelah login, redirect ke /admin (admin) atau /gawean.
 // =====================================================
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase/client";
 import { LockKeyhole, Mail, Loader2, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
@@ -25,14 +25,43 @@ export default function LoginPage() {
   // Kalau sudah login, langsung redirect (tidak boleh stay di login page).
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (cancelled) return;
-      if (session?.user) {
-        await routeAfterLogin(session.user.id, session.user.email ?? null);
-      } else {
+    const supabase = createClient();
+    
+    supabase.auth.getSession()
+      .then(async ({ data: { session }, error: sessionError }) => {
+        if (cancelled) return;
+        
+        if (sessionError) {
+          console.warn("[LoginPage] Session error, clearing stale session:", sessionError.message);
+          // Clear invalid/stale session dari localStorage
+          await supabase.auth.signOut();
+          setCheckingSession(false);
+          return;
+        }
+
+        if (session?.user) {
+          try {
+            await routeAfterLogin(session.user.id, session.user.email ?? null);
+          } catch (err) {
+            console.error("[LoginPage] routeAfterLogin error:", err);
+            setCheckingSession(false);
+          }
+        } else {
+          setCheckingSession(false);
+        }
+      })
+      .catch(async (err) => {
+        if (cancelled) return;
+        console.warn("[LoginPage] getSession failed, clearing session:", err);
+        // Jika getSession gagal total, bersihkan session
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // ignore signOut errors
+        }
         setCheckingSession(false);
-      }
-    });
+      });
+
     return () => {
       cancelled = true;
     };
@@ -44,6 +73,7 @@ export default function LoginPage() {
    * Fallback by email kalau auth_user_id belum di-link.
    */
   async function routeAfterLogin(authUserId: string, email: string | null) {
+    const supabase = createClient();
     let isAdmin = false;
     let profileFound = false;
 
@@ -77,7 +107,7 @@ export default function LoginPage() {
     if (isAdmin) {
       router.push("/admin");
     } else {
-      router.push("/board");
+      router.push("/gawean");
     }
   }
 
@@ -87,6 +117,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      const supabase = createClient();
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,

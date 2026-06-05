@@ -15,8 +15,9 @@ import {
   Loader2,
   LogOut,
   Lightbulb,
+  Settings,
 } from "lucide-react";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase/client";
 import { useSession } from "@/hooks/useSession";
 
 export default function DashboardLayout({
@@ -135,11 +136,18 @@ export default function DashboardLayout({
               </Link>
             )}
             <Link
-              href="/board"
+              href="/gawean"
               className="whitespace-nowrap flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
             >
               <CheckSquare className="w-5 h-5 mr-2 md:mr-3 text-slate-400" />
-              Tugas Saya
+              Gawean (Tickets)
+            </Link>
+            <Link
+              href="/config"
+              className="whitespace-nowrap flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
+            >
+              <Settings className="w-5 h-5 mr-2 md:mr-3 text-slate-400" />
+              Configuration
             </Link>
             {profile.name === "Nashwa" && (
               <Link
@@ -256,6 +264,7 @@ function ProfileErrorScreen({
           <button
             type="button"
             onClick={async () => {
+              const supabase = createClient();
               await supabase.auth.signOut();
               window.location.reload();
             }}
