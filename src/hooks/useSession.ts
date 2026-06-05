@@ -132,16 +132,35 @@ export function useSession(): UseSessionResult {
     }
 
     // Initial check
-    supabase.auth.getSession().then(({ data: { session: authSession } }) => {
-      if (cancelled) return;
-      if (!authSession?.user) {
+    supabase.auth.getSession()
+      .then(async ({ data: { session: authSession }, error: sessionError }) => {
+        if (cancelled) return;
+        
+        if (sessionError) {
+          console.warn("[useSession] Session error, clearing:", sessionError.message);
+          try { await supabase.auth.signOut(); } catch { /* ignore */ }
+          setSession(null);
+          setProfileStatus(null);
+          setAuthEmail(null);
+          return;
+        }
+        
+        if (!authSession?.user) {
+          setSession(null);
+          setProfileStatus(null);
+          setAuthEmail(null);
+          return;
+        }
+        void loadProfile(authSession.user.id, authSession.user.email ?? "");
+      })
+      .catch(async (err) => {
+        if (cancelled) return;
+        console.warn("[useSession] getSession failed:", err);
+        try { await supabase.auth.signOut(); } catch { /* ignore */ }
         setSession(null);
         setProfileStatus(null);
         setAuthEmail(null);
-        return;
-      }
-      void loadProfile(authSession.user.id, authSession.user.email ?? "");
-    });
+      });
 
     // Subscribe to changes
     const { data: subscription } = supabase.auth.onAuthStateChange(
