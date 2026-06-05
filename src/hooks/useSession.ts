@@ -14,7 +14,7 @@
 // =====================================================
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase/client";
 import type { SessionUser, User } from "@/types";
 
 export type ProfileStatus =
@@ -48,6 +48,7 @@ export function useSession(): UseSessionResult {
 
   useEffect(() => {
     let cancelled = false;
+    const supabase = createClient();
 
     async function loadProfile(authId: string, email: string) {
       setAuthEmail(email);
@@ -163,6 +164,7 @@ export function useSession(): UseSessionResult {
   }, []);
 
   async function signOut() {
+    const supabase = createClient();
     await supabase.auth.signOut();
     setSession(null);
     setProfileStatus(null);

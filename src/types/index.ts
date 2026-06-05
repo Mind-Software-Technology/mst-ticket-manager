@@ -58,6 +58,7 @@ export interface User {
   is_active: boolean;
   is_admin: boolean;
   auth_user_id: string | null;
+  telegram_chat_id: number | null;
   created_at: string;
 }
 
