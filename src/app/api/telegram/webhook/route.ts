@@ -141,21 +141,45 @@ async function handleLinkAccount(
   }
 
   // Cari user yang ID-nya dimulai dengan prefix tersebut
+  // PostgreSQL `like` tidak bisa langsung pada kolom UUID,
+  // jadi kita cast ke text via raw filter.
   const { data: users, error } = await supabase
     .from("users")
     .select("id, name")
-    .like("id", `${userIdPrefix}%`)
+    .filter("id::text", "like", `${userIdPrefix}%`)
     .limit(1);
 
+  // Fallback: jika filter cast gagal, coba fetch semua dan match di JS
+  let matchedUser: { id: string; name: string } | null = null;
+
   if (error || !users || users.length === 0) {
-    await sendTelegramMessage(
-      chatId,
-      `❌ Kode link tidak ditemukan. Pastikan kode yang kamu kirim benar.\n\nBuka MST Ticket Manager → Config → Users untuk mendapatkan kode baru.`
-    );
-    return;
+    // Fallback approach: fetch semua users, match prefix di JS
+    const { data: allUsers, error: allError } = await supabase
+      .from("users")
+      .select("id, name");
+
+    if (allError || !allUsers) {
+      await sendTelegramMessage(
+        chatId,
+        `❌ Kode link tidak ditemukan. Pastikan kode yang kamu kirim benar.\n\nBuka MST Ticket Manager → Config → Users untuk mendapatkan kode baru.`
+      );
+      return;
+    }
+
+    matchedUser = allUsers.find((u) => u.id.startsWith(userIdPrefix)) ?? null;
+
+    if (!matchedUser) {
+      await sendTelegramMessage(
+        chatId,
+        `❌ Kode link tidak ditemukan. Pastikan kode yang kamu kirim benar.\n\nBuka MST Ticket Manager → Config → Users untuk mendapatkan kode baru.`
+      );
+      return;
+    }
+  } else {
+    matchedUser = users[0];
   }
 
-  const user = users[0];
+  const user = matchedUser;
 
   // Update telegram_chat_id
   const { error: updateError } = await supabase
