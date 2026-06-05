@@ -131,47 +131,30 @@ export function useSession(): UseSessionResult {
       setSession(null);
     }
 
-    // Initial check
-    supabase.auth.getSession()
-      .then(async ({ data: { session: authSession }, error: sessionError }) => {
+    // Gunakan onAuthStateChange saja — dia sudah fire INITIAL_SESSION
+    // pada mount pertama. Tidak perlu getSession() terpisah yang
+    // menyebabkan race condition / double-load / UI flicker.
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      async (event, authSession) => {
         if (cancelled) return;
-        
-        if (sessionError) {
-          console.warn("[useSession] Session error, clearing:", sessionError.message);
+
+        // Handle token error (stale session)
+        if (event === "TOKEN_REFRESHED" && !authSession) {
+          console.warn("[useSession] Token refresh failed, clearing session");
           try { await supabase.auth.signOut(); } catch { /* ignore */ }
           setSession(null);
           setProfileStatus(null);
           setAuthEmail(null);
           return;
         }
-        
-        if (!authSession?.user) {
-          setSession(null);
-          setProfileStatus(null);
-          setAuthEmail(null);
-          return;
-        }
-        void loadProfile(authSession.user.id, authSession.user.email ?? "");
-      })
-      .catch(async (err) => {
-        if (cancelled) return;
-        console.warn("[useSession] getSession failed:", err);
-        try { await supabase.auth.signOut(); } catch { /* ignore */ }
-        setSession(null);
-        setProfileStatus(null);
-        setAuthEmail(null);
-      });
 
-    // Subscribe to changes
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, authSession) => {
-        if (cancelled) return;
         if (!authSession?.user) {
           setSession(null);
           setProfileStatus(null);
           setAuthEmail(null);
           return;
         }
+
         void loadProfile(authSession.user.id, authSession.user.email ?? "");
       },
     );
