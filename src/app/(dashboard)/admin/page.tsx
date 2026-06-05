@@ -1,88 +1,111 @@
 "use client";
 
 // =====================================================
-// Legacy Admin Dashboard
+// Admin Dashboard — Ticket Management (Refactored)
 //
-// Halaman ini masih beroperasi pada tabel `tasks` (skema lama).
-// Akan dirombak / di-replace di Sprint 2 (modul Gawean).
-// Sprint 1 hanya melakukan:
-//   - Migrasi auth dari localStorage → useSession (Supabase Auth)
-//   - Cleanup type `any` & lint error supaya build pass.
+// Sebelumnya menggunakan tabel `tasks` (legacy Sprint 1).
+// Sekarang refactored untuk menggunakan tabel `tickets`
+// (sama dengan modul Gawean) agar data konsisten.
 // =====================================================
 
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/utils/supabase";
-import { PlusCircle, Search, Edit2, Trash2 } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
+import { PlusCircle, Search, Edit2, Trash2, Loader2 } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
+import { useUsers } from "@/hooks/useUsers";
+import { useSprints } from "@/hooks/useSprints";
+import { useProducts } from "@/hooks/useProducts";
+import type { Ticket, User, Sprint } from "@/types";
 
-interface LegacyTask {
-  id: string;
-  task_id: string;
-  title: string;
+// ─── Constants ────────────────────────────────────────
+
+const DIVISIONS = ["Marketing", "Design", "Development", "Business", "Project"];
+
+const STATE_OPTIONS: Array<{ value: string; label: string; color: string }> = [
+  { value: "backlog", label: "Backlog", color: "bg-slate-100 text-slate-700" },
+  { value: "todo", label: "ToDo", color: "bg-indigo-100 text-indigo-700" },
+  { value: "on_progress", label: "Sedang Dikerjakan", color: "bg-blue-100 text-blue-700" },
+  { value: "need_fix", label: "Need Fix", color: "bg-amber-100 text-amber-700" },
+  { value: "code_review", label: "Code Review", color: "bg-purple-100 text-purple-700" },
+  { value: "ready_for_qa", label: "Ready for QA", color: "bg-cyan-100 text-cyan-700" },
+  { value: "in_qa", label: "In QA", color: "bg-teal-100 text-teal-700" },
+  { value: "ready_to_deploy", label: "Ready to Deploy", color: "bg-emerald-100 text-emerald-700" },
+  { value: "done", label: "Selesai", color: "bg-green-100 text-green-700" },
+  { value: "cancel", label: "Cancel", color: "bg-red-100 text-red-700" },
+];
+
+const PRIORITY_OPTIONS: Array<{ value: string; label: string; color: string }> = [
+  { value: "low", label: "Rendah", color: "bg-slate-100 text-slate-600" },
+  { value: "normal", label: "Normal", color: "bg-indigo-100 text-indigo-700" },
+  { value: "high", label: "Tinggi", color: "bg-orange-100 text-orange-700" },
+  { value: "critical", label: "Kritis", color: "bg-red-100 text-red-700" },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: "development", label: "Development" },
+  { value: "design_ui_ux", label: "Design / UI-UX" },
+  { value: "service_support", label: "Service Support" },
+  { value: "finance_sales", label: "Finance & Sales" },
+  { value: "infrastructure_operations", label: "Infrastructure & Ops" },
+  { value: "qa_testing", label: "QA & Testing" },
+  { value: "coordination_management", label: "Coordination & Management" },
+  { value: "internal_learning", label: "Internal Learning" },
+];
+
+// ─── Task Form State ──────────────────────────────────
+
+interface TicketFormState {
+  ticket_id: string;
+  subject: string;
+  description: string;
   division: string;
-  pic_name: string;
-  status: string;
+  assigned_to: string;
   priority: string;
-  start_date?: string | null;
-  end_date?: string | null;
-  sprint_id?: string | null;
-  report_link?: string | null;
-  blocker?: string | null;
-}
-
-interface LegacySprint {
-  id: string;
-  name: string;
+  state: string;
+  category: string;
   start_date: string;
-  end_date: string;
-  status: string;
+  due_date: string;
+  manhours_estimate: number;
+  sprint_id: string;
+  product_id: string;
 }
 
-interface LegacyUserRow {
-  id: string;
-  name: string;
-  role: string;
-  pin: string;
-}
-
-type TaskFormState = {
-  task_id: string;
-  title: string;
-  division: string;
-  pic_name: string;
-  status: string;
-  priority: string;
-  start_date: string;
-  end_date: string;
-};
-
-const INITIAL_TASK_FORM: TaskFormState = {
-  task_id: "",
-  title: "",
-  division: "Marketing",
-  pic_name: "Haura",
-  status: "Belum Mulai",
-  priority: "Normal",
+const INITIAL_FORM: TicketFormState = {
+  ticket_id: "",
+  subject: "",
+  description: "",
+  division: "Development",
+  assigned_to: "",
+  priority: "normal",
+  state: "backlog",
+  category: "development",
   start_date: "",
-  end_date: "",
+  due_date: "",
+  manhours_estimate: 0,
+  sprint_id: "",
+  product_id: "",
 };
 
-const DIVISIONS = ["Marketing", "Design", "Development", "Business"];
+// ─── Helper: Generate Ticket ID ──────────────────────
 
-function generateTaskId(division: string, allTasks: LegacyTask[]) {
+function generateTicketId(
+  division: string,
+  existingTickets: Array<{ ticket_id: string }>
+): string {
   const divisionCodeMap: Record<string, string> = {
     Marketing: "MKT",
     Design: "DSN",
     Development: "DEV",
     Business: "BIZ",
+    Project: "PRJ",
   };
   const code = divisionCodeMap[division] || "GEN";
   const prefix = `SPT1-${code}`;
-  
+
   let maxNum = 0;
-  for (const t of allTasks) {
-    if (t.task_id && t.task_id.startsWith(prefix)) {
-      const numPart = t.task_id.slice(prefix.length);
+  for (const t of existingTickets) {
+    if (t.ticket_id && t.ticket_id.startsWith(prefix)) {
+      const numPart = t.ticket_id.slice(prefix.length);
       const parsedNum = parseInt(numPart, 10);
       if (!isNaN(parsedNum) && parsedNum > maxNum) {
         maxNum = parsedNum;
@@ -92,18 +115,23 @@ function generateTaskId(division: string, allTasks: LegacyTask[]) {
   return `${prefix}${maxNum + 1}`;
 }
 
+// ═══════════════════════════════════════════════════════
+// ADMIN DASHBOARD COMPONENT
+// ═══════════════════════════════════════════════════════
+
 export default function AdminDashboard() {
   const { session } = useSession();
-  const [tasks, setTasks] = useState<LegacyTask[]>([]);
-  const [sprints, setSprints] = useState<LegacySprint[]>([]);
-  const [users, setUsers] = useState<LegacyUserRow[]>([]);
+  const { users } = useUsers();
+  const { sprints } = useSprints();
+  const { products } = useProducts();
+
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Sprint 1: role dari profile.is_admin (Supabase Auth) — bukan localStorage.
   const userRole = session?.profile.is_admin ? "Admin" : "Viewer";
 
   const [newUser, setNewUser] = useState({
@@ -112,200 +140,214 @@ export default function AdminDashboard() {
     pin: "1234",
   });
 
-  const [newTask, setNewTask] = useState<TaskFormState>(INITIAL_TASK_FORM);
+  const [formData, setFormData] = useState<TicketFormState>(INITIAL_FORM);
 
-  const fetchData = useCallback(async () => {
+  // ─── Fetch Tickets ────────────────────────────────
+
+  const fetchTickets = useCallback(async () => {
     setLoading(true);
     try {
-      const [sprintsRes, tasksRes, usersRes] = await Promise.all([
-        supabase.from("sprints").select("*"),
-        supabase.from("tasks").select("*"),
-        supabase.from("users").select("*"),
-      ]);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("tickets")
+        .select(`
+          *,
+          assignee:users!tickets_assigned_to_fkey(id, name, email),
+          sprint:sprints(id, name)
+        `)
+        .order("created_at", { ascending: false });
 
-      if (sprintsRes.error || tasksRes.error || usersRes.error) {
-        throw new Error("DB Connection Error");
-      }
-
-      setSprints((sprintsRes.data ?? []) as LegacySprint[]);
-      setTasks((tasksRes.data ?? []) as LegacyTask[]);
-      setUsers((usersRes.data ?? []) as LegacyUserRow[]);
-      setIsDemo(false);
+      if (error) throw error;
+      setTickets((data as Ticket[]) || []);
     } catch (err) {
-      console.warn("[admin] using demo data", err);
-      setIsDemo(true);
-      setSprints([
-        {
-          id: "1",
-          name: "Sprint 1",
-          start_date: "2026-05-29",
-          end_date: "2026-06-12",
-          status: "Aktif",
-        },
-      ]);
-      setUsers([
-        { id: "1", name: "Nashwa", role: "Co-Founder & Project Lead", pin: "1234" },
-        { id: "2", name: "Gema",   role: "Co-Founder & Business Lead", pin: "1234" },
-        { id: "3", name: "Haura",  role: "Co-Founder & Marketing Lead", pin: "1234" },
-        { id: "4", name: "Zira",   role: "Co-Founder & Design Lead", pin: "1234" },
-        { id: "5", name: "Arhab",  role: "Co-Founder & Lead Developer", pin: "1234" },
-        { id: "6", name: "Jack",   role: "Co-Founder & Lead Developer", pin: "1234" },
-      ]);
-      setTasks([
-        { id: "1", task_id: "SPT1-MKT1", title: "Pembuatan naskah teks deskripsi profil", division: "Marketing",   pic_name: "Haura", status: "Belum Mulai",       priority: "Tinggi" },
-        { id: "2", task_id: "SPT1-DSN1", title: "Pembuatan aset logo, pemilihan font",     division: "Design",      pic_name: "Zira",  status: "Sedang Dikerjakan", priority: "Tinggi" },
-        { id: "3", task_id: "SPT1-DEV1", title: "Setup repositori kerja & Hosting",        division: "Development", pic_name: "Arhab", status: "Selesai",           priority: "Kritis" },
-      ]);
+      console.error("[admin] fetch tickets error:", err);
+      setTickets([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Legacy page: akan di-replace di Sprint 2 dengan modul Gawean.
-    // Pattern fetch+setState di sini sengaja dipertahankan supaya scope Sprint 1 fokus auth.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchData();
-  }, [fetchData]);
+    void fetchTickets();
+  }, [fetchTickets]);
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  // ─── Filter tickets by search ─────────────────────
+
+  const filteredTickets = tickets.filter((t) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      t.ticket_id.toLowerCase().includes(q) ||
+      t.subject.toLowerCase().includes(q) ||
+      (t.assignee?.name || "").toLowerCase().includes(q)
+    );
+  });
+
+  // ─── Stats ────────────────────────────────────────
+
+  const stats = [
+    { label: "Total Tugas", value: tickets.length, color: "text-indigo-600" },
+    {
+      label: "Selesai",
+      value: tickets.filter((t) => t.state === "done").length,
+      color: "text-green-600",
+    },
+    {
+      label: "Progres",
+      value: tickets.filter((t) =>
+        ["on_progress", "code_review", "in_qa"].includes(t.state)
+      ).length,
+      color: "text-blue-600",
+    },
+    {
+      label: "Sprint Aktif",
+      value: sprints.filter((s) => s.status === "Aktif").length,
+      color: "text-purple-600",
+    },
+  ];
+
+  // ─── Create / Update Ticket ───────────────────────
+
+  const handleSaveTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isDemo) {
-      const addedUser: LegacyUserRow = {
-        id: crypto.randomUUID(),
-        ...newUser,
+
+    try {
+      const supabase = createClient();
+
+      const ticketData: Record<string, unknown> = {
+        ticket_id: formData.ticket_id,
+        subject: formData.subject,
+        description: formData.description || null,
+        division: formData.division,
+        assigned_to: formData.assigned_to || null,
+        priority: formData.priority,
+        state: formData.state,
+        category: formData.category,
+        start_date: formData.start_date || null,
+        due_date: formData.due_date || null,
+        manhours_estimate: formData.manhours_estimate || 0,
+        sprint_id: formData.sprint_id || null,
+        product_id: formData.product_id || null,
+        updated_at: new Date().toISOString(),
       };
-      setUsers((prev) => [...prev, addedUser]);
-      setShowUserModal(false);
-      alert("Berhasil menambah anggota di Mode Demo");
-      return;
-    }
 
-    try {
-      const { data, error } = await supabase
-        .from("users")
-        .insert([newUser])
-        .select();
-      if (error) throw error;
-      if (data) {
-        setUsers((prev) => [...prev, ...(data as LegacyUserRow[])]);
-        setShowUserModal(false);
-        alert("Berhasil menambah anggota");
-      }
-    } catch (err) {
-      console.error("[admin] create user failed", err);
-      alert("Gagal menambah anggota. Cek koneksi Supabase.");
-    }
-  };
-
-  const handleCreateTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isDemo) {
-      if (editingTaskId) {
-        setTasks((prev) =>
-          prev.map((t) => (t.id === editingTaskId ? { ...t, ...newTask } : t)),
-        );
-      } else {
-        const newRow: LegacyTask = { id: crypto.randomUUID(), ...newTask };
-        setTasks((prev) => [...prev, newRow]);
-      }
-      closeModal();
-      return;
-    }
-
-    try {
-      if (editingTaskId) {
-        const { data, error } = await supabase
-          .from("tasks")
-          .update(newTask)
-          .eq("id", editingTaskId)
-          .select();
+      if (editingTicketId) {
+        // Update
+        const { error } = await supabase
+          .from("tickets")
+          .update(ticketData)
+          .eq("id", editingTicketId);
         if (error) throw error;
-        if (data) {
-          const updated = data[0] as LegacyTask;
-          setTasks((prev) =>
-            prev.map((t) => (t.id === editingTaskId ? updated : t)),
-          );
-        }
       } else {
-        const { data, error } = await supabase
-          .from("tasks")
-          .insert([newTask])
-          .select();
+        // Create
+        ticketData.created_at = new Date().toISOString();
+        ticketData.created_by = session?.profile?.id || null;
+        const { error } = await supabase.from("tickets").insert([ticketData]);
         if (error) throw error;
-        if (data) {
-          setTasks((prev) => [...prev, ...(data as LegacyTask[])]);
-        }
       }
+
       closeModal();
+      await fetchTickets();
     } catch (err) {
-      console.error("[admin] save task failed", err);
+      console.error("[admin] save ticket failed:", err);
       alert("Gagal menyimpan tugas. Cek koneksi Supabase.");
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  // ─── Delete Ticket ────────────────────────────────
+
+  const handleDeleteTicket = async (ticketId: string) => {
     if (!window.confirm("Apakah kamu yakin ingin menghapus tugas ini?")) return;
 
-    if (isDemo) {
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
-      return;
-    }
-
     try {
-      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("tickets")
+        .delete()
+        .eq("id", ticketId);
       if (error) throw error;
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setTickets((prev) => prev.filter((t) => t.id !== ticketId));
     } catch (err) {
-      console.error("[admin] delete task failed", err);
+      console.error("[admin] delete ticket failed:", err);
       alert("Gagal menghapus tugas. Cek koneksi Supabase.");
     }
   };
 
-  const openEditModal = (task: LegacyTask) => {
-    setNewTask({
-      task_id: task.task_id,
-      title: task.title,
-      division: task.division,
-      pic_name: task.pic_name,
-      status: task.status,
-      priority: task.priority,
-      start_date: task.start_date ?? "",
-      end_date: task.end_date ?? "",
+  // ─── Modal Helpers ────────────────────────────────
+
+  const openCreateModal = () => {
+    const defaultAssignee = users.length > 0 ? users[0].id : "";
+    setFormData({
+      ...INITIAL_FORM,
+      ticket_id: generateTicketId(INITIAL_FORM.division, tickets),
+      assigned_to: defaultAssignee,
+      sprint_id: sprints.find((s) => s.status === "Aktif")?.id || "",
     });
-    setEditingTaskId(task.id);
+    setEditingTicketId(null);
     setShowModal(true);
   };
 
-  const openCreateModal = () => {
-    setNewTask({
-      ...INITIAL_TASK_FORM,
-      task_id: generateTaskId(INITIAL_TASK_FORM.division, tasks),
+  const openEditModal = (ticket: Ticket) => {
+    setFormData({
+      ticket_id: ticket.ticket_id,
+      subject: ticket.subject,
+      description: ticket.description || "",
+      division: ticket.division || "Development",
+      assigned_to: ticket.assigned_to || "",
+      priority: ticket.priority,
+      state: ticket.state,
+      category: ticket.category,
+      start_date: ticket.start_date || "",
+      due_date: ticket.due_date || "",
+      manhours_estimate: ticket.manhours_estimate || 0,
+      sprint_id: ticket.sprint_id || "",
+      product_id: ticket.product_id || "",
     });
-    setEditingTaskId(null);
+    setEditingTicketId(ticket.id);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
-    setEditingTaskId(null);
+    setEditingTicketId(null);
   };
 
-  const statusColors: Record<string, string> = {
-    "Belum Mulai": "bg-slate-100 text-slate-800",
-    "Sedang Dikerjakan": "bg-blue-100 text-blue-800",
-    Selesai: "bg-green-100 text-green-800",
+  // ─── Create User ──────────────────────────────────
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("users").insert([newUser]);
+      if (error) throw error;
+      setShowUserModal(false);
+      setNewUser({ name: "", role: "Anggota Baru", pin: "1234" });
+      alert("Berhasil menambah anggota");
+    } catch (err) {
+      console.error("[admin] create user failed:", err);
+      alert("Gagal menambah anggota. Cek koneksi Supabase.");
+    }
   };
 
-  const priorityColors: Record<string, string> = {
-    Rendah: "bg-slate-100 text-slate-600",
-    Normal: "bg-indigo-100 text-indigo-700",
-    Tinggi: "bg-orange-100 text-orange-700",
-    Kritis: "bg-red-100 text-red-700",
+  // ─── Lookup Helpers ───────────────────────────────
+
+  const getStateDisplay = (state: string) => {
+    const s = STATE_OPTIONS.find((o) => o.value === state);
+    return s || { label: state, color: "bg-slate-100 text-slate-700" };
   };
+
+  const getPriorityDisplay = (priority: string) => {
+    const p = PRIORITY_OPTIONS.find((o) => o.value === priority);
+    return p || { label: priority, color: "bg-slate-100 text-slate-600" };
+  };
+
+  // ═══════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════
 
   return (
     <div className="p-4 md:p-8">
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">
@@ -339,33 +381,22 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {isDemo && (
-        <div className="mb-4 md:mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs md:text-sm">
-          <strong>Mode Demo Aktif.</strong> Supabase belum terkoneksi (kredensial
-          kosong di .env.local). Data yang ditambahkan tidak akan tersimpan
-          permanen.
-        </div>
-      )}
-
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-        {[
-          { label: "Total Tugas", value: tasks.length, color: "text-indigo-600" },
-          { label: "Selesai",     value: tasks.filter((t) => t.status === "Selesai").length, color: "text-green-600" },
-          { label: "Progres",     value: tasks.filter((t) => t.status === "Sedang Dikerjakan").length, color: "text-blue-600" },
-          { label: "Sprint Aktif", value: sprints.filter((s) => s.status === "Aktif").length, color: "text-purple-600" },
-        ].map((stat) => (
+        {stats.map((stat) => (
           <div
             key={stat.label}
             className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
           >
-            <p className="text-sm font-medium text-slate-500 mb-1">{stat.label}</p>
+            <p className="text-sm font-medium text-slate-500 mb-1">
+              {stat.label}
+            </p>
             <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
           </div>
         ))}
       </div>
 
-      {/* Task Table */}
+      {/* Ticket Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
           <h3 className="font-semibold text-slate-800">Daftar Tugas Aktif</h3>
@@ -373,6 +404,8 @@ export default function AdminDashboard() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari tugas..."
               className="pl-9 pr-4 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
             />
@@ -388,97 +421,113 @@ export default function AdminDashboard() {
                 <th className="p-4 font-medium">Tenggat</th>
                 <th className="p-4 font-medium">Prioritas</th>
                 <th className="p-4 font-medium">Status</th>
-                {userRole !== "Viewer" && <th className="p-4 font-medium">Aksi</th>}
+                {userRole !== "Viewer" && (
+                  <th className="p-4 font-medium">Aksi</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-slate-500">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-500" />
                     Memuat data...
                   </td>
                 </tr>
-              ) : tasks.length === 0 ? (
+              ) : filteredTickets.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-slate-500">
-                    Belum ada tugas.
+                    {searchQuery
+                      ? "Tidak ada tugas yang cocok dengan pencarian."
+                      : "Belum ada tugas."}
                   </td>
                 </tr>
               ) : (
-                tasks.map((task) => (
-                  <tr key={task.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 font-medium text-slate-900">{task.task_id}</td>
-                    <td className="p-4 text-slate-700 max-w-xs truncate">{task.title}</td>
-                    <td className="p-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
-                        {task.pic_name}
-                      </span>
-                    </td>
-                    <td className="p-4 text-xs text-slate-500">
-                      {task.end_date
-                        ? new Date(task.end_date).toLocaleDateString("id-ID")
-                        : "-"}
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${
-                          priorityColors[task.priority] || priorityColors["Normal"]
-                        }`}
-                      >
-                        {task.priority}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                          statusColors[task.status] || statusColors["Belum Mulai"]
-                        }`}
-                      >
-                        {task.status}
-                      </span>
-                    </td>
-                    {userRole !== "Viewer" && (
-                      <td className="p-4">
-                        <div className="flex items-center space-x-3">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(task)}
-                            className="text-slate-400 hover:text-indigo-600 transition-colors"
-                            aria-label="Edit"
-                            title="Edit Tugas"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="text-slate-400 hover:text-red-600 transition-colors"
-                            aria-label="Hapus"
-                            title="Hapus Tugas"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                filteredTickets.map((ticket) => {
+                  const stateDisplay = getStateDisplay(ticket.state);
+                  const priorityDisplay = getPriorityDisplay(ticket.priority);
+
+                  return (
+                    <tr
+                      key={ticket.id}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="p-4 font-medium text-slate-900">
+                        {ticket.ticket_id}
                       </td>
-                    )}
-                  </tr>
-                ))
+                      <td className="p-4 text-slate-700 max-w-xs truncate">
+                        {ticket.subject}
+                      </td>
+                      <td className="p-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                          {ticket.assignee?.name || "-"}
+                        </span>
+                      </td>
+                      <td className="p-4 text-xs text-slate-500">
+                        {ticket.due_date
+                          ? new Date(ticket.due_date).toLocaleDateString(
+                              "id-ID"
+                            )
+                          : "-"}
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${priorityDisplay.color}`}
+                        >
+                          {priorityDisplay.label}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${stateDisplay.color}`}
+                        >
+                          {stateDisplay.label}
+                        </span>
+                      </td>
+                      {userRole !== "Viewer" && (
+                        <td className="p-4">
+                          <div className="flex items-center space-x-3">
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(ticket)}
+                              className="text-slate-400 hover:text-indigo-600 transition-colors"
+                              aria-label="Edit"
+                              title="Edit Tugas"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTicket(ticket.id)}
+                              className="text-slate-400 hover:text-red-600 transition-colors"
+                              aria-label="Hapus"
+                              title="Hapus Tugas"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal Tambah Tugas */}
+      {/* ─── Modal Tambah/Edit Tugas ─────────────────── */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-100">
               <h2 className="text-xl font-bold text-slate-900">
-                {editingTaskId ? "Edit Tugas" : "Tambah Tugas Baru"}
+                {editingTicketId ? "Edit Tugas" : "Tambah Tugas Baru"}
               </h2>
             </div>
-            <form onSubmit={handleCreateTask} className="p-6 space-y-4">
+            <form onSubmit={handleSaveTicket} className="p-6 space-y-4">
+              {/* Row 1: ID & Division */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -488,11 +537,11 @@ export default function AdminDashboard() {
                     required
                     readOnly
                     type="text"
-                    value={newTask.task_id}
-                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:outline-none bg-slate-50 text-slate-500 font-semibold cursor-not-allowed"
+                    value={formData.ticket_id}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-500 font-semibold cursor-not-allowed"
                     title="ID Tugas dibuat otomatis"
                   />
-                  <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
+                  <p className="mt-1 text-xs text-slate-500">
                     Dibuat otomatis dari Divisi
                   </p>
                 </div>
@@ -501,49 +550,60 @@ export default function AdminDashboard() {
                     Divisi
                   </label>
                   <select
-                    value={newTask.division}
+                    value={formData.division}
                     onChange={(e) => {
                       const newDiv = e.target.value;
-                      setNewTask({
-                        ...newTask,
+                      setFormData({
+                        ...formData,
                         division: newDiv,
-                        task_id: editingTaskId ? newTask.task_id : generateTaskId(newDiv, tasks),
+                        ticket_id: editingTicketId
+                          ? formData.ticket_id
+                          : generateTicketId(newDiv, tickets),
                       });
                     }}
                     className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
                   >
-                    {DIVISIONS.map(d => (
-                      <option key={d} value={d}>{d}</option>
+                    {DIVISIONS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
+
+              {/* Subject */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Judul Tugas
                 </label>
                 <textarea
                   required
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  value={formData.subject}
+                  onChange={(e) =>
+                    setFormData({ ...formData, subject: e.target.value })
+                  }
                   className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  rows={3}
+                  rows={2}
                 />
               </div>
+
+              {/* Row 2: PIC & Priority */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     PIC (Penanggung Jawab)
                   </label>
                   <select
-                    value={newTask.pic_name}
+                    value={formData.assigned_to}
                     onChange={(e) =>
-                      setNewTask({ ...newTask, pic_name: e.target.value })
+                      setFormData({ ...formData, assigned_to: e.target.value })
                     }
                     className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
                   >
+                    <option value="">-- Belum di-assign --</option>
                     {users.map((u) => (
-                      <option key={u.id} value={u.name}>
+                      <option key={u.id} value={u.id}>
                         {u.name}
                       </option>
                     ))}
@@ -554,19 +614,102 @@ export default function AdminDashboard() {
                     Prioritas
                   </label>
                   <select
-                    value={newTask.priority}
+                    value={formData.priority}
                     onChange={(e) =>
-                      setNewTask({ ...newTask, priority: e.target.value })
+                      setFormData({ ...formData, priority: e.target.value })
                     }
                     className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
                   >
-                    <option value="Rendah">Rendah</option>
-                    <option value="Normal">Normal</option>
-                    <option value="Tinggi">Tinggi</option>
-                    <option value="Kritis">Kritis</option>
+                    {PRIORITY_OPTIONS.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
+
+              {/* Row 3: Status & Category */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={formData.state}
+                    onChange={(e) =>
+                      setFormData({ ...formData, state: e.target.value })
+                    }
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                  >
+                    {STATE_OPTIONS.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Kategori
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                  >
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 4: Sprint & Product */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Sprint
+                  </label>
+                  <select
+                    value={formData.sprint_id}
+                    onChange={(e) =>
+                      setFormData({ ...formData, sprint_id: e.target.value })
+                    }
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                  >
+                    <option value="">-- Tanpa Sprint --</option>
+                    {sprints.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} {s.status === "Aktif" ? "✅" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Manhours Estimasi
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={formData.manhours_estimate}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        manhours_estimate: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Row 5: Dates */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -574,9 +717,9 @@ export default function AdminDashboard() {
                   </label>
                   <input
                     type="date"
-                    value={newTask.start_date}
+                    value={formData.start_date}
                     onChange={(e) =>
-                      setNewTask({ ...newTask, start_date: e.target.value })
+                      setFormData({ ...formData, start_date: e.target.value })
                     }
                     className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
                   />
@@ -587,14 +730,16 @@ export default function AdminDashboard() {
                   </label>
                   <input
                     type="date"
-                    value={newTask.end_date}
+                    value={formData.due_date}
                     onChange={(e) =>
-                      setNewTask({ ...newTask, end_date: e.target.value })
+                      setFormData({ ...formData, due_date: e.target.value })
                     }
                     className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
                   />
                 </div>
               </div>
+
+              {/* Actions */}
               <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
@@ -615,12 +760,14 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Modal Tambah Anggota */}
+      {/* ─── Modal Tambah Anggota ─────────────────────── */}
       {showUserModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900">Tambah Anggota Tim</h2>
+              <h2 className="text-xl font-bold text-slate-900">
+                Tambah Anggota Tim
+              </h2>
             </div>
             <form onSubmit={handleCreateUser} className="p-6 space-y-4">
               <div>
@@ -631,7 +778,9 @@ export default function AdminDashboard() {
                   required
                   type="text"
                   value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, name: e.target.value })
+                  }
                   className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   placeholder="Masukkan nama panggilan"
                 />
@@ -644,22 +793,11 @@ export default function AdminDashboard() {
                   required
                   type="text"
                   value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, role: e.target.value })
+                  }
                   className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   placeholder="Contoh: Frontend Developer"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  PIN Keamanan (Untuk Login Lama)
-                </label>
-                <input
-                  required
-                  type="text"
-                  value={newUser.pin}
-                  onChange={(e) => setNewUser({ ...newUser, pin: e.target.value })}
-                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="Contoh: 1234"
                 />
               </div>
               <div className="pt-4 flex justify-end space-x-3">
