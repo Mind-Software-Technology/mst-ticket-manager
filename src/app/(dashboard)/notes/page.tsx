@@ -25,7 +25,7 @@ export default function NotesPage() {
     
     // Protect route: Only Nashwa
     if (session.profile.name !== "Nashwa") {
-      router.replace("/board");
+      router.replace("/gawean");
       return;
     }
 
