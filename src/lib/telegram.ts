@@ -141,6 +141,55 @@ export function formatSprintSummary(
   ].join("\n");
 }
 
+// ─── Maintenance Templates ───────────────────────────
+
+/**
+ * Format pesan notifikasi maintenance DIMULAI.
+ * Dikirim ke semua user saat website masuk mode maintenance.
+ */
+export function formatMaintenanceStart(
+  userName: string,
+  customMessage?: string
+): string {
+  const lines = [
+    `🔧 <b>Pemberitahuan Maintenance</b>`,
+    ``,
+    `Halo <b>${escapeHtml(userName)}</b>,`,
+    ``,
+    `Website <b>MST Ticket Manager</b> sedang dalam proses perbaikan/pembaruan untuk memberikan pengalaman yang lebih baik.`,
+  ];
+
+  if (customMessage) {
+    lines.push(``);
+    lines.push(`⏰ <b>Info:</b> ${escapeHtml(customMessage)}`);
+  }
+
+  lines.push(
+    ``,
+    `Mohon maaf atas ketidaknyamanannya. 🙏`,
+    `Kami akan mengirimkan notifikasi saat website kembali aktif.`
+  );
+
+  return lines.join("\n");
+}
+
+/**
+ * Format pesan notifikasi maintenance SELESAI.
+ * Dikirim ke semua user saat website kembali aktif.
+ */
+export function formatMaintenanceEnd(userName: string): string {
+  return [
+    `✅ <b>Website Kembali Aktif!</b>`,
+    ``,
+    `Halo <b>${escapeHtml(userName)}</b>,`,
+    ``,
+    `<b>MST Ticket Manager</b> sudah kembali aktif dan siap digunakan. 🎉`,
+    ``,
+    `Silakan akses kembali website untuk melanjutkan pekerjaanmu.`,
+    `Terima kasih atas kesabarannya! 🙏`,
+  ].join("\n");
+}
+
 /**
  * Escape special HTML characters untuk Telegram HTML parse mode.
  */

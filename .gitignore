@@ -41,3 +41,4 @@ yarn-error.log*
 next-env.d.ts
 images
 migrations
+migrate-tasks-to-tickets.js
