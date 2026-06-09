@@ -1,21 +1,22 @@
 "use client";
 
 // =====================================================
-// Dashboard Layout — Supabase Auth + role-based nav
-// Sprint 1 / Foundation
+// Dashboard Layout — Supabase Auth + ERP-style top navbar
 // =====================================================
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   AlertTriangle,
+  CalendarCheck,
   CheckSquare,
   LayoutDashboard,
   Loader2,
   LogOut,
   Lightbulb,
   Settings,
+  ChevronDown,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -26,11 +27,12 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { session, loading, profileStatus, profileError, authEmail, signOut } =
     useSession();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Redirect ke login HANYA kalau benar-benar tidak ada auth session
-  // (bukan karena profile gak ketemu — biar error UI yg handle).
   useEffect(() => {
     if (loading) return;
     if (session === null && profileStatus === null) {
@@ -76,8 +78,23 @@ export default function DashboardLayout({
     router.replace("/");
   };
 
+  const navItems = [
+    ...(profile.is_admin
+      ? [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }]
+      : []),
+    { href: "/gawean", label: "Gawean", icon: CheckSquare },
+    { href: "/checkin", label: "Check In", icon: CalendarCheck },
+    { href: "/config", label: "Config", icon: Settings },
+    ...(profile.name === "Nashwa"
+      ? [{ href: "/notes", label: "Catatan Ide", icon: Lightbulb }]
+      : []),
+  ];
+
+  const isActive = (href: string) =>
+    pathname === href || pathname?.startsWith(href + "/");
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {profileStatus === "linked_by_email" && (
         <div className="fixed top-2 left-1/2 -translate-x-1/2 z-50 bg-amber-100 border border-amber-300 text-amber-900 text-xs px-3 py-1.5 rounded-full shadow">
           ⚠️ Profile belum di-link sempurna.{" "}
@@ -87,91 +104,111 @@ export default function DashboardLayout({
         </div>
       )}
 
-      {/* Sidebar / Topbar */}
-      <aside className="w-full md:w-64 bg-white border-b md:border-r md:border-b-0 border-slate-200 flex flex-col shadow-sm flex-shrink-0">
-        <div className="p-4 md:p-6 border-b border-slate-200 flex justify-between items-center md:block">
-          <div>
-            <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-              MST Workspace
-            </h2>
-            <p className="text-xs text-slate-500 mt-1 hidden md:block">
-              Ticket & Work Tracking
-            </p>
-          </div>
-          <div className="md:hidden flex items-center space-x-3">
-            <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded">
-              {profile.name}
-            </span>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="text-red-500 p-2"
-              aria-label="Keluar"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="p-4 flex-1 flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-2 md:gap-0">
-          <div className="hidden md:block mb-4 px-2 py-3 bg-indigo-50 rounded-lg border border-indigo-100">
-            <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-1">
-              Logged in as
-            </p>
-            <p className="font-medium text-slate-900">{profile.name}</p>
-            <p className="text-xs text-slate-600 truncate">{profile.role}</p>
-            <p className="text-[11px] text-slate-500 truncate mt-0.5">
-              {session.email}
-            </p>
-          </div>
-
-          <nav className="flex md:flex-col space-x-2 md:space-x-0 md:space-y-1 w-full">
-            {profile.is_admin && (
-              <Link
-                href="/admin"
-                className="whitespace-nowrap flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
-              >
-                <LayoutDashboard className="w-5 h-5 mr-2 md:mr-3 text-slate-400" />
-                Admin Dashboard
+      {/* Top Navbar */}
+      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
+        <div className="px-4 md:px-6">
+          <div className="flex items-center justify-between h-14">
+            {/* Brand + Nav */}
+            <div className="flex items-center gap-6 min-w-0">
+              <Link href="/gawean" className="flex-shrink-0">
+                <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+                  MST Workspace
+                </span>
               </Link>
-            )}
-            <Link
-              href="/gawean"
-              className="whitespace-nowrap flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
-            >
-              <CheckSquare className="w-5 h-5 mr-2 md:mr-3 text-slate-400" />
-              Gawean (Tickets)
-            </Link>
-            <Link
-              href="/config"
-              className="whitespace-nowrap flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
-            >
-              <Settings className="w-5 h-5 mr-2 md:mr-3 text-slate-400" />
-              Configuration
-            </Link>
-            {profile.name === "Nashwa" && (
-              <Link
-                href="/notes"
-                className="whitespace-nowrap flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-slate-700 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+
+              <nav className="hidden md:flex items-center gap-1">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        isActive(item.href)
+                          ? "bg-indigo-50 text-indigo-700"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-indigo-600"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 mr-2" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* User menu */}
+            <div className="relative flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
               >
-                <Lightbulb className="w-5 h-5 mr-2 md:mr-3 text-amber-500" />
-                Catatan Ide
-              </Link>
-            )}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
+                  {profile.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="hidden sm:block text-left">
+                  <p className="text-sm font-medium text-slate-900 leading-tight">
+                    {profile.name}
+                  </p>
+                  <p className="text-[11px] text-slate-500 leading-tight truncate max-w-[140px]">
+                    {profile.role}
+                  </p>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {userMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setUserMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-slate-200 shadow-lg z-20 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <p className="text-sm font-medium text-slate-900">
+                        {profile.name}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {session.email}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Keluar
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile nav */}
+          <nav className="md:hidden flex items-center gap-1 overflow-x-auto pb-2 -mt-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                    isActive(item.href)
+                      ? "bg-indigo-50 text-indigo-700"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <Icon className="w-4 h-4 mr-1.5" />
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
-
-        <div className="hidden md:block p-4 border-t border-slate-200">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <LogOut className="w-5 h-5 mr-3" />
-            Keluar
-          </button>
-        </div>
-      </aside>
+      </header>
 
       <main className="flex-1 overflow-auto">{children}</main>
     </div>

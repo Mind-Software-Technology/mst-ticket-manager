@@ -22,14 +22,15 @@ export default function GaweanPage() {
   const router = useRouter();
   const { session } = useSession();
   const currentUserId = session?.profile?.id;
+  const isAdmin = Boolean(session?.profile?.is_admin);
 
-  // Filters state
+  // Filters state — default "Assign To Me" aktif saat halaman dibuka (gaya ERP)
   const [filters, setFilters] = useState<TicketFilters>({
     search: "",
     state: [],
     priority: [],
     category: [],
-    assign_to_me: false,
+    assign_to_me: true,
   });
 
   // Pagination state
@@ -98,13 +99,15 @@ export default function GaweanPage() {
             Kelola semua tiket pekerjaan tim
           </p>
         </div>
-        <Button
-          variant="primary"
-          icon={<PlusCircle className="w-4 h-4" />}
-          onClick={() => router.push("/gawean/new")}
-        >
-          Buat Tiket Baru
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="primary"
+            icon={<PlusCircle className="w-4 h-4" />}
+            onClick={() => router.push("/gawean/new")}
+          >
+            Buat Tiket Baru
+          </Button>
+        )}
       </div>
 
       {/* Toolbar: Search + Quick Filters */}
@@ -270,6 +273,14 @@ export default function GaweanPage() {
                     ID Tiket
                   </button>
                 </th>
+                <th className="p-4 font-medium">
+                  <button
+                    onClick={() => handleSort("created_at")}
+                    className="hover:text-indigo-600"
+                  >
+                    Created on
+                  </button>
+                </th>
                 <th className="p-4 font-medium">Subject</th>
                 <th className="p-4 font-medium">Client</th>
                 <th className="p-4 font-medium">
@@ -280,6 +291,7 @@ export default function GaweanPage() {
                     Priority
                   </button>
                 </th>
+                <th className="p-4 font-medium">Reported To</th>
                 <th className="p-4 font-medium">Assignee</th>
                 <th className="p-4 font-medium">
                   <button
@@ -296,13 +308,13 @@ export default function GaweanPage() {
             <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-500">
+                  <td colSpan={10} className="p-8 text-center text-slate-500">
                     Memuat tiket...
                   </td>
                 </tr>
               ) : tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={10}>
                     <EmptyState
                       title="Tidak ada tiket"
                       description="Belum ada tiket yang sesuai dengan filter. Coba ubah filter atau buat tiket baru."
@@ -329,6 +341,9 @@ export default function GaweanPage() {
                         {ticket.ticket_id}
                       </span>
                     </td>
+                    <td className="p-4 text-slate-600 whitespace-nowrap">
+                      {formatDate(ticket.created_at)}
+                    </td>
                     <td className="p-4 text-slate-700 max-w-md">
                       <div className="truncate">{ticket.subject}</div>
                     </td>
@@ -339,6 +354,11 @@ export default function GaweanPage() {
                     </td>
                     <td className="p-4">
                       <Badge variant="priority" priority={ticket.priority} />
+                    </td>
+                    <td className="p-4">
+                      <span className="text-slate-700">
+                        {ticket.reporter?.name || "-"}
+                      </span>
                     </td>
                     <td className="p-4">
                       <span className="text-slate-700">

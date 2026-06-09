@@ -1,24 +1,30 @@
 "use client";
 
 // =====================================================
-// Ticket Detail Page — View & Edit Ticket
-// Sprint 2 / Gawean Module
+// Ticket Detail Page — View & Inline Edit
 //
-// Detail lengkap ticket dengan edit form, state transitions,
-// dan activity log sidebar.
+// Gaya ERP "Gawean": field bisa di-edit langsung (inline) tanpa
+// mode toggle. State dropdown bebas (any → any). Reported To &
+// Assignee bisa diubah. Tombol Progress untuk reply yang masuk
+// ke activity log (chatter) di sisi kanan.
 // =====================================================
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Edit2, Save, X, Calendar, User, Clock } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquarePlus } from "lucide-react";
 import { useTicketDetail } from "@/hooks/useTicketDetail";
+import { useUsers } from "@/hooks/useUsers";
+import { useClients } from "@/hooks/useClients";
+import { useProducts } from "@/hooks/useProducts";
+import { useProjects } from "@/hooks/useProjects";
+import { useSession } from "@/hooks/useSession";
+import { createClient } from "@/utils/supabase/client";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
-import { Badge, Button, Input, Textarea, Select } from "@/components/ui";
+import { Badge, Button, Modal } from "@/components/ui";
 import {
   TICKET_STATES,
   TICKET_PRIORITIES,
   TICKET_CATEGORIES,
-  STATE_TRANSITIONS,
 } from "@/lib/constants";
 
 export default function TicketDetailPage() {
@@ -26,93 +32,31 @@ export default function TicketDetailPage() {
   const params = useParams();
   const ticketId = params?.id as string;
 
-  const { ticket, loading, error, updateTicket } = useTicketDetail(ticketId);
-  const [isEditing, setIsEditing] = useState(false);
+  const { session } = useSession();
+  const { ticket, loading, error, updateTicket } =
+    useTicketDetail(ticketId);
+  const { users } = useUsers(true);
+  const { clients } = useClients();
+  const { products } = useProducts();
+  const { projects } = useProjects();
+
   const [saving, setSaving] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
+  const [progressText, setProgressText] = useState("");
+  const [sendingProgress, setSendingProgress] = useState(false);
+  // Bump untuk memaksa ActivityTimeline reload setelah ada reply baru
+  const [timelineKey, setTimelineKey] = useState(0);
 
-  // Form state for editing
-  const [formData, setFormData] = useState({
-    subject: "",
-    description: "",
-    priority: "normal" as any,
-    category: "development" as any,
-    manhours_estimate: 0,
-    actual_manhours: 0,
-    need_qa: false,
-    due_date: "",
-  });
+  // Local description editing
+  const [description, setDescription] = useState("");
+  const [subject, setSubject] = useState("");
 
-  // Initialize form when ticket loads
-  useState(() => {
-    if (ticket && !isEditing) {
-      setFormData({
-        subject: ticket.subject || "",
-        description: ticket.description || "",
-        priority: ticket.priority,
-        category: ticket.category,
-        manhours_estimate: ticket.manhours_estimate || 0,
-        actual_manhours: ticket.actual_manhours || 0,
-        need_qa: ticket.need_qa,
-        due_date: ticket.due_date || "",
-      });
-    }
-  });
-
-  const handleEdit = () => {
+  useEffect(() => {
     if (ticket) {
-      setFormData({
-        subject: ticket.subject || "",
-        description: ticket.description || "",
-        priority: ticket.priority,
-        category: ticket.category,
-        manhours_estimate: ticket.manhours_estimate || 0,
-        actual_manhours: ticket.actual_manhours || 0,
-        need_qa: ticket.need_qa,
-        due_date: ticket.due_date || "",
-      });
-      setIsEditing(true);
+      setDescription(ticket.description || "");
+      setSubject(ticket.subject || "");
     }
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-  };
-
-  const handleSave = async () => {
-    if (!ticket) return;
-
-    setSaving(true);
-    try {
-      await updateTicket(formData);
-      setIsEditing(false);
-    } catch (err) {
-      console.error("Failed to update ticket:", err);
-      alert("Failed to update ticket. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleStateChange = async (newState: string) => {
-    if (!ticket) return;
-
-    // Validate transition
-    const allowedStates = STATE_TRANSITIONS[ticket.state];
-    if (!allowedStates.includes(newState as any)) {
-      alert(`Cannot transition from ${ticket.state} to ${newState}`);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await updateTicket({ state: newState as any });
-    } catch (err) {
-      console.error("Failed to change state:", err);
-      alert("Failed to change state. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
+  }, [ticket?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return "-";
@@ -123,9 +67,58 @@ export default function TicketDetailPage() {
     });
   };
 
+  // Inline auto-save helper
+  const saveField = async (updates: Record<string, any>) => {
+    setSaving(true);
+    try {
+      await updateTicket(updates);
+    } catch (err) {
+      console.error("Failed to update ticket:", err);
+      alert("Gagal menyimpan perubahan. Coba lagi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStateChange = async (newState: string) => {
+    if (!ticket || newState === ticket.state) return;
+    const updates: Record<string, any> = { state: newState };
+    if (newState === "done") {
+      updates.done_date = new Date().toISOString().split("T")[0];
+    }
+    await saveField(updates);
+  };
+
+  const handleSendProgress = async () => {
+    if (!ticket || !progressText.trim()) return;
+    setSendingProgress(true);
+    try {
+      const supabase = createClient();
+      const { error: insertErr } = await supabase
+        .from("activity_logs")
+        .insert({
+          ticket_id: ticket.id,
+          user_id: session?.profile?.id || null,
+          action_type: "comment",
+          message: progressText.trim(),
+          created_at: new Date().toISOString(),
+        });
+      if (insertErr) throw insertErr;
+
+      setProgressText("");
+      setShowProgress(false);
+      setTimelineKey((k) => k + 1);
+    } catch (err: any) {
+      console.error("Failed to send progress:", err);
+      alert(`Gagal mengirim: ${err?.message || "Unknown error"}`);
+    } finally {
+      setSendingProgress(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Clock className="w-12 h-12 animate-spin text-indigo-600 mx-auto mb-4" />
           <p className="text-slate-600">Loading ticket...</p>
@@ -136,7 +129,7 @@ export default function TicketDetailPage() {
 
   if (error || !ticket) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || "Ticket not found"}</p>
           <Button variant="secondary" onClick={() => router.push("/gawean")}>
@@ -147,306 +140,345 @@ export default function TicketDetailPage() {
     );
   }
 
-  const availableStates = STATE_TRANSITIONS[ticket.state];
+  const userOptions = users.map((u) => ({ value: u.id, label: u.name }));
+
+  // Client/Product/Project bertingkat (filter mengikuti pilihan di atasnya)
+  const filteredProducts = ticket.client_id
+    ? products.filter((p) => p.client_id === ticket.client_id)
+    : products;
+  const filteredProjects = projects.filter((proj) => {
+    if (ticket.product_id && proj.product_id !== ticket.product_id) return false;
+    if (ticket.client_id && proj.client_id !== ticket.client_id) return false;
+    return true;
+  });
+
+  const handleClientChange = (clientId: string) => {
+    // Ganti client → reset product & project agar tetap konsisten
+    saveField({
+      client_id: clientId || null,
+      product_id: null,
+      project_id: null,
+    });
+  };
+
+  const handleProductChange = (productId: string) => {
+    saveField({ product_id: productId || null, project_id: null });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto p-4 md:p-8">
         {/* Header */}
         <div className="mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<ArrowLeft className="w-4 h-4" />}
-            onClick={() => router.push("/gawean")}
-            className="mb-4"
-          >
-            Back to Tickets
-          </Button>
-
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="font-mono text-sm font-semibold text-indigo-600">
-                  {ticket.ticket_id}
-                </span>
-                <Badge variant="state" state={ticket.state} />
-                <Badge variant="priority" priority={ticket.priority} />
-              </div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                {ticket.subject}
-              </h1>
-            </div>
-
-            <div className="flex gap-2">
-              {!isEditing ? (
-                <Button
-                  variant="secondary"
-                  icon={<Edit2 className="w-4 h-4" />}
-                  onClick={handleEdit}
-                >
-                  Edit
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    variant="secondary"
-                    icon={<X className="w-4 h-4" />}
-                    onClick={handleCancel}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    icon={<Save className="w-4 h-4" />}
-                    onClick={handleSave}
-                    loading={saving}
-                  >
-                    Save
-                  </Button>
-                </>
-              )}
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<ArrowLeft className="w-4 h-4" />}
+              onClick={() => router.push("/gawean")}
+            >
+              Back to Tickets
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<MessageSquarePlus className="w-4 h-4" />}
+              onClick={() => setShowProgress(true)}
+            >
+              Progress
+            </Button>
           </div>
+
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <span className="font-mono text-sm font-semibold text-indigo-600">
+              {ticket.ticket_id}
+            </span>
+            <Badge variant="state" state={ticket.state} />
+            <Badge variant="priority" priority={ticket.priority} />
+            {saving && (
+              <span className="text-xs text-slate-400">Menyimpan...</span>
+            )}
+          </div>
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            onBlur={() => {
+              if (subject.trim() && subject !== ticket.subject) {
+                void saveField({ subject: subject.trim() });
+              }
+            }}
+            className="text-2xl font-bold text-slate-900 w-full bg-transparent border-b border-transparent hover:border-slate-200 focus:border-indigo-500 focus:outline-none"
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Ticket Info */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">
                 Ticket Information
               </h2>
 
-              {isEditing ? (
-                <div className="space-y-4">
-                  <Input
-                    label="Subject"
-                    value={formData.subject}
-                    onChange={(e) =>
-                      setFormData({ ...formData, subject: e.target.value })
-                    }
-                    required
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                {/* Category — editable */}
+                <InlineSelect
+                  label="Category"
+                  value={ticket.category}
+                  options={TICKET_CATEGORIES.map((c) => ({
+                    value: c.value,
+                    label: c.label,
+                  }))}
+                  onChange={(v) => saveField({ category: v })}
+                />
 
-                  <Textarea
-                    label="Description"
-                    value={formData.description || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    rows={6}
-                  />
+                {/* State — editable, bebas */}
+                <InlineSelect
+                  label="State"
+                  value={ticket.state}
+                  options={TICKET_STATES.map((s) => ({
+                    value: s.value,
+                    label: s.label,
+                  }))}
+                  onChange={handleStateChange}
+                />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Select
-                      label="Priority"
-                      value={formData.priority}
-                      onChange={(e) =>
-                        setFormData({ ...formData, priority: e.target.value as any })
-                      }
-                      options={TICKET_PRIORITIES.map((p) => ({
-                        value: p.value,
-                        label: p.label,
-                      }))}
-                    />
+                {/* Priority — editable */}
+                <InlineSelect
+                  label="Priority"
+                  value={ticket.priority}
+                  options={TICKET_PRIORITIES.map((p) => ({
+                    value: p.value,
+                    label: p.label,
+                  }))}
+                  onChange={(v) => saveField({ priority: v })}
+                />
 
-                    <Select
-                      label="Category"
-                      value={formData.category}
-                      onChange={(e) =>
-                        setFormData({ ...formData, category: e.target.value as any })
-                      }
-                      options={TICKET_CATEGORIES.map((c) => ({
-                        value: c.value,
-                        label: c.label,
-                      }))}
-                    />
-                  </div>
+                {/* Reported To — editable */}
+                <InlineSelect
+                  label="Reported To"
+                  value={ticket.reported_to || ""}
+                  options={[
+                    { value: "", label: "-- Tidak ada --" },
+                    ...userOptions,
+                  ]}
+                  onChange={(v) => saveField({ reported_to: v || null })}
+                />
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Input
-                      label="Estimate (hours)"
-                      type="number"
-                      value={formData.manhours_estimate}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          manhours_estimate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
+                {/* Assignee — editable */}
+                <InlineSelect
+                  label="Assignee"
+                  value={ticket.assigned_to || ""}
+                  options={[
+                    { value: "", label: "-- Unassigned --" },
+                    ...userOptions,
+                  ]}
+                  onChange={(v) => saveField({ assigned_to: v || null })}
+                />
 
-                    <Input
-                      label="Actual (hours)"
-                      type="number"
-                      value={formData.actual_manhours}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          actual_manhours: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                    />
+                {/* Client — editable */}
+                <InlineSelect
+                  label="Client"
+                  value={ticket.client_id || ""}
+                  options={[
+                    { value: "", label: "-- Tidak ada --" },
+                    ...clients.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                  onChange={handleClientChange}
+                />
 
-                    <Input
-                      label="Due Date"
-                      type="date"
-                      value={formData.due_date || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, due_date: e.target.value })
-                      }
-                    />
-                  </div>
+                {/* Product — editable (difilter by client) */}
+                <InlineSelect
+                  label="Product"
+                  value={ticket.product_id || ""}
+                  options={[
+                    { value: "", label: "-- Tidak ada --" },
+                    ...filteredProducts.map((p) => ({
+                      value: p.id,
+                      label: p.name,
+                    })),
+                  ]}
+                  onChange={handleProductChange}
+                />
 
-                  <label className="flex items-center text-sm">
-                    <input
-                      type="checkbox"
-                      checked={formData.need_qa}
-                      onChange={(e) =>
-                        setFormData({ ...formData, need_qa: e.target.checked })
-                      }
-                      className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    Need QA
+                {/* Project — editable (difilter by product/client) */}
+                <InlineSelect
+                  label="Project"
+                  value={ticket.project_id || ""}
+                  options={[
+                    { value: "", label: "-- Tidak ada --" },
+                    ...filteredProjects.map((p) => ({
+                      value: p.id,
+                      label: p.name,
+                    })),
+                  ]}
+                  onChange={(v) => saveField({ project_id: v || null })}
+                />
+
+                <ReadOnlyField
+                  label="Divisi"
+                  value={ticket.division || ticket.assignee?.division}
+                />
+                <ReadOnlyField label="Sprint" value={ticket.sprint?.name} />
+                <ReadOnlyField
+                  label="Due Date"
+                  value={formatDate(ticket.due_date)}
+                />
+
+                {/* Done Date — editable */}
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">
+                    Done Date
                   </label>
+                  <input
+                    type="date"
+                    value={ticket.done_date || ""}
+                    onChange={(e) =>
+                      saveField({ done_date: e.target.value || null })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500 mb-1">
-                      Description
-                    </h3>
-                    <p className="text-slate-700 whitespace-pre-wrap">
-                      {ticket.description || "-"}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Client</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {ticket.client?.name || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Product</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {ticket.product?.name || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Project</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {ticket.project?.name || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Category</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {TICKET_CATEGORIES.find((c) => c.value === ticket.category)
-                          ?.label || ticket.category}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Assignee</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {ticket.assignee?.name || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Reporter</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {ticket.reporter?.name || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Estimate</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {ticket.manhours_estimate}h
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Actual</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {ticket.actual_manhours}h
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Due Date</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {formatDate(ticket.due_date)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Done Date</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {formatDate(ticket.done_date)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Need QA</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {ticket.need_qa ? "Yes" : "No"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Sprint</p>
-                      <p className="text-sm font-medium text-slate-900">
-                        {ticket.sprint?.name || "-"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* State Transitions */}
-            {availableStates.length > 0 && !isEditing && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4">
-                  Change State
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {availableStates.map((state) => {
-                    const stateConfig = TICKET_STATES.find((s) => s.value === state);
-                    return (
-                      <Button
-                        key={state}
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleStateChange(state)}
-                        disabled={saving}
-                      >
-                        Move to {stateConfig?.label}
-                      </Button>
-                    );
-                  })}
-                </div>
+                <ReadOnlyField
+                  label="Manhours"
+                  value={`${ticket.manhours_estimate || 0}h (aktual ${
+                    ticket.actual_manhours || 0
+                  }h)`}
+                />
               </div>
-            )}
+
+              {/* Description — editable */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-slate-500 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  onBlur={() => {
+                    if (description !== (ticket.description || "")) {
+                      void saveField({ description: description || null });
+                    }
+                  }}
+                  rows={8}
+                  placeholder="Tulis deskripsi pekerjaan..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Sidebar: Activity Log */}
+          {/* Sidebar: Activity Log / Chatter */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden sticky top-4">
-              <div className="p-4 border-b border-slate-200">
-                <h2 className="text-lg font-semibold text-slate-900">Activity Log</h2>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden sticky top-20">
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Activity Log
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<MessageSquarePlus className="w-4 h-4" />}
+                  onClick={() => setShowProgress(true)}
+                >
+                  Reply
+                </Button>
               </div>
-              <div className="max-h-[calc(100vh-16rem)] overflow-y-auto">
-                <ActivityTimeline ticketId={ticket.id} />
+              <div className="max-h-[calc(100vh-12rem)] overflow-y-auto">
+                <ActivityTimeline key={timelineKey} ticketId={ticket.id} />
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Progress Reply Modal */}
+      {showProgress && (
+        <Modal
+          isOpen={showProgress}
+          onClose={() => setShowProgress(false)}
+          title="Progress / Reply"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Tulis apa yang sudah kamu kerjakan. Pesan akan muncul di log
+              aktivitas tiket ini.
+            </p>
+            <textarea
+              value={progressText}
+              onChange={(e) => setProgressText(e.target.value)}
+              rows={5}
+              autoFocus
+              placeholder="Contoh: Sudah selesai implementasi endpoint & self-test."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => setShowProgress(false)}
+                disabled={sendingProgress}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSendProgress}
+                loading={sendingProgress}
+                disabled={!progressText.trim()}
+              >
+                Send
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─── Inline editable select ──────────────────────────
+
+function InlineSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="block text-xs text-slate-500 mb-1">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// ─── Read-only field ─────────────────────────────────
+
+function ReadOnlyField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  return (
+    <div>
+      <label className="block text-xs text-slate-500 mb-1">{label}</label>
+      <p className="text-sm font-medium text-slate-900 py-2">{value || "-"}</p>
     </div>
   );
 }
