@@ -45,15 +45,14 @@ export type ActivityActionType =
 
 /**
  * Profile user di tabel public.users.
- * Catatan: kolom `pin` masih ada untuk backward-compat dengan login lama,
- * tapi sejak Sprint 1 auth dipegang oleh Supabase Auth (auth_user_id).
+ * Auth dipegang oleh Supabase Auth (auth_user_id). Kolom `pin` legacy
+ * sudah di-drop (lihat scripts/drop-legacy-pin.sql).
  */
 export interface User {
   id: string;
   name: string;
   email: string | null;
   role: string;
-  pin: string;
   division: string | null;
   is_active: boolean;
   is_admin: boolean;
