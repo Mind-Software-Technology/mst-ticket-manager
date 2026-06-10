@@ -117,7 +117,11 @@ export default function CheckinListPage() {
                 </tr>
               ) : (
                 checkins.map((checkin) => (
-                  <tr key={checkin.id} className="hover:bg-slate-50 align-top">
+                  <tr
+                    key={checkin.id}
+                    onClick={() => router.push(`/checkin/${checkin.id}`)}
+                    className="hover:bg-slate-50 align-top cursor-pointer"
+                  >
                     <td className="p-4 text-slate-600 whitespace-nowrap">
                       {formatDateTime(checkin.created_at)}
                     </td>
@@ -135,9 +139,10 @@ export default function CheckinListPage() {
                               {item.ticket ? (
                                 <span
                                   className="flex items-center gap-2 flex-wrap cursor-pointer hover:text-indigo-600"
-                                  onClick={() =>
-                                    router.push(`/gawean/${item.ticket?.id}`)
-                                  }
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/gawean/${item.ticket?.id}`);
+                                  }}
                                 >
                                   <span className="text-slate-400">►</span>
                                   <span className="font-mono text-xs font-semibold text-indigo-600">
