@@ -10,7 +10,7 @@
 // =====================================================
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase/client";
 import type { Session, User as AuthUser } from "@supabase/supabase-js";
 
 interface DiagnosticState {
@@ -45,6 +45,7 @@ export default function DebugPage() {
 
   async function runDiagnostics() {
     setLoading(true);
+    const supabase = createClient();
     const next: DiagnosticState = { ...INITIAL };
 
     // 1. Env vars
@@ -103,6 +104,7 @@ export default function DebugPage() {
   }, []);
 
   async function handleSignOut() {
+    const supabase = createClient();
     await supabase.auth.signOut();
     void runDiagnostics();
   }

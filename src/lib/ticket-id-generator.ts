@@ -6,7 +6,7 @@
 // Example: ZB-20129, DOB-19999, RZ-12345
 // =====================================================
 
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase/client";
 
 /**
  * Generate ticket ID berdasarkan product prefix.
@@ -24,6 +24,8 @@ export async function generateTicketId(productId: string): Promise<{
   ticketId: string;
   sequence: number;
 }> {
+  const supabase = createClient();
+
   try {
     // 1. Get product prefix
     const { data: product, error: productError } = await supabase
