@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/hooks/useSession";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase/client";
 import { Loader2, Plus, Trash2, Lightbulb } from "lucide-react";
 
 interface Note {
@@ -33,6 +33,7 @@ export default function NotesPage() {
   }, [session, router]);
 
   async function fetchNotes() {
+    const supabase = createClient();
     try {
       const { data, error } = await supabase
         .from("user_notes")
@@ -56,6 +57,7 @@ export default function NotesPage() {
     if (!newNote.trim() || !session) return;
     
     setSubmitting(true);
+    const supabase = createClient();
     try {
       const { data, error } = await supabase
         .from("user_notes")
@@ -78,7 +80,8 @@ export default function NotesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("Hapus ide ini?")) return;
-    
+
+    const supabase = createClient();
     try {
       const { error } = await supabase.from("user_notes").delete().eq("id", id);
       if (error) throw error;

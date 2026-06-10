@@ -17,7 +17,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useSprints } from "@/hooks/useSprints";
 import { useUsers } from "@/hooks/useUsers";
 import { useSession } from "@/hooks/useSession";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase/client";
 import { generateTicketId } from "@/lib/ticket-id-generator";
 import {
   TICKET_STATES,
@@ -117,6 +117,7 @@ export default function CreateTicketPage() {
     }
 
     setSaving(true);
+    const supabase = createClient();
 
     try {
       // Create ticket
