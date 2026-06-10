@@ -165,6 +165,8 @@ export interface ActivityLog {
   old_value: string | null;
   new_value: string | null;
   message: string | null;
+  /** URL foto lampiran (analysis fitur activity-log image). */
+  image_url?: string | null;
   created_at: string;
   user?: User | null;
 }

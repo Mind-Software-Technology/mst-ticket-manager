@@ -58,11 +58,11 @@ export function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
       const oldState = log.old_value ? TICKET_STATE_BY_VALUE[log.old_value as keyof typeof TICKET_STATE_BY_VALUE] : null;
       const newState = log.new_value ? TICKET_STATE_BY_VALUE[log.new_value as keyof typeof TICKET_STATE_BY_VALUE] : null;
       return (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-slate-600">changed state from</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
           {oldState && <Badge variant="state" state={oldState.value} />}
-          <span className="text-slate-600">to</span>
+          <span className="text-slate-400">→</span>
           {newState && <Badge variant="state" state={newState.value} />}
+          <span className="text-xs text-slate-400">(State)</span>
         </div>
       );
     }
@@ -87,8 +87,22 @@ export function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
       );
     }
 
-    if (log.message) {
-      return <div className="text-slate-600">{log.message}</div>;
+    if (log.message || log.image_url) {
+      return (
+        <div className="space-y-2">
+          {log.message && <div className="text-slate-600">{log.message}</div>}
+          {log.image_url && (
+            <a href={log.image_url} target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={log.image_url}
+                alt="Lampiran"
+                className="max-h-48 rounded-lg border border-slate-200 object-cover"
+              />
+            </a>
+          )}
+        </div>
+      );
     }
 
     return <div className="text-slate-400 italic">No description</div>;
