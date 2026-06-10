@@ -67,7 +67,6 @@ export function useUsers(activeOnly = false): UseUsersResult {
           email: data.email,
           role: data.role,
           division: data.division,
-          pin: data.pin || "1234", // Default PIN
           is_active: data.is_active ?? true,
           is_admin: data.is_admin ?? false,
           auth_user_id: data.auth_user_id,

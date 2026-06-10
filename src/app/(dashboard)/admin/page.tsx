@@ -137,7 +137,6 @@ export default function AdminDashboard() {
   const [newUser, setNewUser] = useState({
     name: "",
     role: "Anggota Baru",
-    pin: "1234",
   });
 
   const [formData, setFormData] = useState<TicketFormState>(INITIAL_FORM);
@@ -321,7 +320,7 @@ export default function AdminDashboard() {
       const { error } = await supabase.from("users").insert([newUser]);
       if (error) throw error;
       setShowUserModal(false);
-      setNewUser({ name: "", role: "Anggota Baru", pin: "1234" });
+      setNewUser({ name: "", role: "Anggota Baru" });
       alert("Berhasil menambah anggota");
     } catch (err) {
       console.error("[admin] create user failed:", err);
