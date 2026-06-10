@@ -25,6 +25,7 @@ import {
   TICKET_STATES,
   TICKET_PRIORITIES,
   TICKET_CATEGORIES,
+  STORAGE_BUCKET_TICKET_ATTACHMENTS,
 } from "@/lib/constants";
 
 export default function TicketDetailPage() {
@@ -34,7 +35,7 @@ export default function TicketDetailPage() {
 
   const { session } = useSession();
   const { ticket, loading, error, updateTicket } =
-    useTicketDetail(ticketId);
+    useTicketDetail(ticketId, session?.profile?.id);
   const { users } = useUsers(true);
   const { clients } = useClients();
   const { products } = useProducts();
@@ -44,6 +45,7 @@ export default function TicketDetailPage() {
   const [showProgress, setShowProgress] = useState(false);
   const [progressText, setProgressText] = useState("");
   const [sendingProgress, setSendingProgress] = useState(false);
+  const [progressFile, setProgressFile] = useState<File | null>(null);
   // Bump untuk memaksa ActivityTimeline reload setelah ada reply baru
   const [timelineKey, setTimelineKey] = useState(0);
 
@@ -72,6 +74,7 @@ export default function TicketDetailPage() {
     setSaving(true);
     try {
       await updateTicket(updates);
+      setTimelineKey((k) => k + 1); // refresh activity log
     } catch (err) {
       console.error("Failed to update ticket:", err);
       alert("Gagal menyimpan perubahan. Coba lagi.");
@@ -90,27 +93,50 @@ export default function TicketDetailPage() {
   };
 
   const handleSendProgress = async () => {
-    if (!ticket || !progressText.trim()) return;
+    if (!ticket) return;
+    if (!progressText.trim() && !progressFile) return;
     setSendingProgress(true);
     try {
       const supabase = createClient();
+
+      // Upload foto (opsional) ke storage → ambil public URL
+      let imageUrl: string | null = null;
+      if (progressFile) {
+        const ext = progressFile.name.split(".").pop() || "png";
+        const path = `${ticket.id}/${Date.now()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from(STORAGE_BUCKET_TICKET_ATTACHMENTS)
+          .upload(path, progressFile);
+        if (uploadErr) throw uploadErr;
+        const { data: pub } = supabase.storage
+          .from(STORAGE_BUCKET_TICKET_ATTACHMENTS)
+          .getPublicUrl(path);
+        imageUrl = pub.publicUrl;
+      }
+
       const { error: insertErr } = await supabase
         .from("activity_logs")
         .insert({
           ticket_id: ticket.id,
           user_id: session?.profile?.id || null,
           action_type: "comment",
-          message: progressText.trim(),
+          message: progressText.trim() || null,
+          image_url: imageUrl,
           created_at: new Date().toISOString(),
         });
       if (insertErr) throw insertErr;
 
       setProgressText("");
+      setProgressFile(null);
       setShowProgress(false);
       setTimelineKey((k) => k + 1);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to send progress:", err);
-      alert(`Gagal mengirim: ${err?.message || "Unknown error"}`);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : (err as { message?: string })?.message ?? "Unknown error";
+      alert(`Gagal mengirim: ${msg}`);
     } finally {
       setSendingProgress(false);
     }
@@ -411,6 +437,19 @@ export default function TicketDetailPage() {
               placeholder="Contoh: Sudah selesai implementasi endpoint & self-test."
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            <div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setProgressFile(e.target.files?.[0] || null)}
+                className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
+              />
+              {progressFile && (
+                <p className="mt-1 text-xs text-slate-500">
+                  📎 {progressFile.name}
+                </p>
+              )}
+            </div>
             <div className="flex gap-2 justify-end">
               <Button
                 variant="secondary"
@@ -423,7 +462,7 @@ export default function TicketDetailPage() {
                 variant="primary"
                 onClick={handleSendProgress}
                 loading={sendingProgress}
-                disabled={!progressText.trim()}
+                disabled={!progressText.trim() && !progressFile}
               >
                 Send
               </Button>

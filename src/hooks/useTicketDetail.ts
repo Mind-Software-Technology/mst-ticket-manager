@@ -19,7 +19,10 @@ interface UseTicketDetailResult {
   updateTicket: (updates: Partial<Ticket>) => Promise<void>;
 }
 
-export function useTicketDetail(ticketId: string): UseTicketDetailResult {
+export function useTicketDetail(
+  ticketId: string,
+  currentUserId?: string | null,
+): UseTicketDetailResult {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,20 +129,25 @@ export function useTicketDetail(ticketId: string): UseTicketDetailResult {
 
       if (updateError) throw updateError;
 
-      // Log activity for changed fields (fire and forget)
-      Object.entries(updates).forEach(([field, newValue]) => {
-        const oldValue = (ticket as any)[field];
-        if (oldValue !== newValue) {
-          void supabase.from("activity_logs").insert({
+      // Log activity untuk setiap field yang berubah.
+      // Field `state` dicatat sebagai state_change (tampil badge di timeline),
+      // sisanya sebagai field_update. user_id diisi agar log tahu siapa yang ubah.
+      const current = ticket as unknown as Record<string, unknown>;
+      const logInserts = Object.entries(updates)
+        .filter(([field, newValue]) => current[field] !== newValue)
+        .map(([field, newValue]) => {
+          const oldValue = current[field];
+          return supabase.from("activity_logs").insert({
             ticket_id: ticket.id,
-            action_type: "field_update",
+            user_id: currentUserId || null,
+            action_type: field === "state" ? "state_change" : "field_update",
             field_changed: field,
-            old_value: String(oldValue || ""),
-            new_value: String(newValue || ""),
+            old_value: String(oldValue ?? ""),
+            new_value: String(newValue ?? ""),
             created_at: new Date().toISOString(),
           });
-        }
-      });
+        });
+      await Promise.all(logInserts);
 
       // Refresh ticket data
       await fetchTicket();
