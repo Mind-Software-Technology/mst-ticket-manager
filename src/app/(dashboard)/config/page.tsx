@@ -16,6 +16,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useProjects } from "@/hooks/useProjects";
 import { useSprints } from "@/hooks/useSprints";
 import { useUsers } from "@/hooks/useUsers";
+import { useSession } from "@/hooks/useSession";
 import type { Client, Product, Project, Sprint, User } from "@/types";
 
 type Tab = "clients" | "products" | "projects" | "sprints" | "users";
@@ -75,6 +76,8 @@ export default function ConfigPage() {
 
 function UsersTab() {
   const { users, loading, updateUser } = useUsers();
+  const { session } = useSession();
+  const isAdmin = Boolean(session?.profile.is_admin);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopyLink = async (user: User) => {
@@ -156,6 +159,12 @@ function UsersTab() {
         </div>
       </div>
 
+      {!isAdmin && (
+        <p className="text-xs text-amber-600 mb-4">
+          Hanya admin yang dapat menautkan / melepas Telegram user.
+        </p>
+      )}
+
       {users.length === 0 ? (
         <p className="text-slate-500 text-center py-8">
           Belum ada user.
@@ -208,7 +217,8 @@ function UsersTab() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    {isAdmin ? (
+                      <div className="flex items-center justify-end gap-2">
                       {user.telegram_chat_id ? (
                         <button
                           onClick={() => handleUnlink(user)}
@@ -237,7 +247,10 @@ function UsersTab() {
                           )}
                         </button>
                       )}
-                    </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
