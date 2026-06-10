@@ -31,6 +31,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // ── 1b. Hanya admin yang boleh kelola tautan Telegram (keputusan 1A) ──
+  const admin = createAdminClient();
+  const { data: caller } = await admin
+    .from("users")
+    .select("is_admin")
+    .eq("auth_user_id", authUser.id)
+    .maybeSingle();
+
+  if (!caller?.is_admin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   // ── 2. Validasi input ──────────────────────────────
   let userId: string | undefined;
   try {
@@ -49,7 +61,6 @@ export async function POST(request: Request) {
   const expiresAt = new Date(Date.now() + LINK_CODE_TTL_MS).toISOString();
 
   // ── 4. Simpan ke user (admin client → bypass RLS) ──
-  const admin = createAdminClient();
   const { error } = await admin
     .from("users")
     .update({
