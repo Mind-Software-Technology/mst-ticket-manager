@@ -43,6 +43,22 @@ interface TelegramUpdate {
  *   https://api.telegram.org/bot<TOKEN>/setWebhook?url=<YOUR_URL>/api/telegram/webhook
  */
 export async function POST(request: Request) {
+  // ── Verifikasi request benar-benar dari Telegram ────
+  // Telegram mengirim header ini jika webhook didaftarkan dengan secret_token.
+  // Lihat: https://core.telegram.org/bots/api#setwebhook (parameter secret_token)
+  const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (expectedSecret) {
+    const incomingSecret = request.headers.get(
+      "x-telegram-bot-api-secret-token",
+    );
+    if (incomingSecret !== expectedSecret) {
+      console.warn(
+        "[telegram-webhook] Ditolak: secret token tidak valid / tidak ada",
+      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   try {
     const body: TelegramUpdate = await request.json();
 
@@ -129,63 +145,41 @@ async function handleLinkAccount(
 ) {
   const supabase = createAdminClient();
 
-  // Extract user identifier dari link code
-  // Format: LINK-<first_8_chars_of_user_uuid>
-  const userIdPrefix = linkCode.replace("LINK-", "");
+  // Cari user dengan link code yang PERSIS cocok (bukan prefix UUID).
+  const { data: user, error } = await supabase
+    .from("users")
+    .select("id, name, telegram_link_expires_at")
+    .eq("telegram_link_code", linkCode)
+    .maybeSingle();
 
-  if (!userIdPrefix || userIdPrefix.length < 6) {
+  if (error || !user) {
     await sendTelegramMessage(
       chatId,
-      `❌ Kode link tidak valid. Pastikan kode yang kamu kirim benar.\n\nContoh: <code>/start LINK-abc12345</code>`
+      `❌ Kode link tidak valid atau sudah dipakai.\n\nBuka MST Ticket Manager → Config → Users untuk membuat kode baru.`
     );
     return;
   }
 
-  // Cari user yang ID-nya dimulai dengan prefix tersebut
-  // PostgreSQL `like` tidak bisa langsung pada kolom UUID,
-  // jadi kita cast ke text via raw filter.
-  const { data: users, error } = await supabase
-    .from("users")
-    .select("id, name")
-    .filter("id::text", "like", `${userIdPrefix}%`)
-    .limit(1);
-
-  // Fallback: jika filter cast gagal, coba fetch semua dan match di JS
-  let matchedUser: { id: string; name: string } | null = null;
-
-  if (error || !users || users.length === 0) {
-    // Fallback approach: fetch semua users, match prefix di JS
-    const { data: allUsers, error: allError } = await supabase
-      .from("users")
-      .select("id, name");
-
-    if (allError || !allUsers) {
-      await sendTelegramMessage(
-        chatId,
-        `❌ Kode link tidak ditemukan. Pastikan kode yang kamu kirim benar.\n\nBuka MST Ticket Manager → Config → Users untuk mendapatkan kode baru.`
-      );
-      return;
-    }
-
-    matchedUser = allUsers.find((u) => u.id.startsWith(userIdPrefix)) ?? null;
-
-    if (!matchedUser) {
-      await sendTelegramMessage(
-        chatId,
-        `❌ Kode link tidak ditemukan. Pastikan kode yang kamu kirim benar.\n\nBuka MST Ticket Manager → Config → Users untuk mendapatkan kode baru.`
-      );
-      return;
-    }
-  } else {
-    matchedUser = users[0];
+  // Kode sekali-pakai & berlaku terbatas — tolak kalau sudah kedaluwarsa.
+  const expiresAt = user.telegram_link_expires_at
+    ? new Date(user.telegram_link_expires_at)
+    : null;
+  if (!expiresAt || expiresAt.getTime() < Date.now()) {
+    await sendTelegramMessage(
+      chatId,
+      `⌛ Kode link sudah kedaluwarsa.\n\nBuka MST Ticket Manager → Config → Users untuk membuat kode baru.`
+    );
+    return;
   }
 
-  const user = matchedUser;
-
-  // Update telegram_chat_id
+  // Set chat_id + hapus kode (single-use).
   const { error: updateError } = await supabase
     .from("users")
-    .update({ telegram_chat_id: chatId })
+    .update({
+      telegram_chat_id: chatId,
+      telegram_link_code: null,
+      telegram_link_expires_at: null,
+    })
     .eq("id", user.id);
 
   if (updateError) {

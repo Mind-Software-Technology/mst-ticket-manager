@@ -77,20 +77,35 @@ function UsersTab() {
   const { users, loading, updateUser } = useUsers();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const generateLinkCode = (userId: string) => {
-    return `LINK-${userId.substring(0, 8)}`;
-  };
-
   const handleCopyLink = async (user: User) => {
-    const linkCode = generateLinkCode(user.id);
-    const message = `/start ${linkCode}`;
     try {
-      await navigator.clipboard.writeText(message);
-      setCopiedId(user.id);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch {
-      // Fallback
-      prompt("Kirim pesan ini ke bot Telegram MST:", message);
+      // Minta kode acak sekali-pakai dari server (analysis #3b).
+      const res = await fetch("/api/telegram/link-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Gagal membuat kode link: ${data?.error || "Unknown error"}`);
+        return;
+      }
+
+      const message = `/start ${data.code}`;
+      try {
+        await navigator.clipboard.writeText(message);
+        setCopiedId(user.id);
+        setTimeout(() => setCopiedId(null), 2000);
+      } catch {
+        // Fallback kalau clipboard diblokir browser
+        prompt(
+          "Kirim pesan ini ke bot Telegram MST (berlaku 15 menit):",
+          message,
+        );
+      }
+    } catch (err) {
+      console.error("[config] generate link code error:", err);
+      alert("Gagal membuat kode link. Coba lagi.");
     }
   };
 
@@ -134,6 +149,9 @@ function UsersTab() {
               <li>Kirim pesan yang sudah di-copy (contoh: <code className="bg-blue-100 px-1 rounded">/start LINK-abc12345</code>)</li>
               <li>Bot akan mengkonfirmasi koneksi berhasil ✅</li>
             </ol>
+            <p className="mt-2 text-xs text-blue-600">
+              ⏱️ Kode berlaku 15 menit dan hanya bisa dipakai sekali.
+            </p>
           </div>
         </div>
       </div>
