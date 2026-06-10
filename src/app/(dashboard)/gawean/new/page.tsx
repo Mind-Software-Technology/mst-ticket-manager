@@ -7,7 +7,7 @@
 // Form untuk create ticket baru dengan auto ticket ID.
 // =====================================================
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 import { Button, Input, Select, EmptyState } from "@/components/ui";
@@ -38,7 +38,6 @@ export default function CreateTicketPage() {
   const { users, loading: loadingUsers } = useUsers(true); // Active users only
 
   const [saving, setSaving] = useState(false);
-  const [generatingId, setGeneratingId] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -46,8 +45,6 @@ export default function CreateTicketPage() {
     product_id: "",
     project_id: "",
     sprint_id: "",
-    ticket_id: "",
-    sequence: 0,
     subject: "",
     description: "",
     category: "development" as TicketCategory,
@@ -75,29 +72,14 @@ export default function CreateTicketPage() {
     return true;
   });
 
-  // Auto-generate ticket ID when product changes
-  useEffect(() => {
-    if (formData.product_id) {
-      setGeneratingId(true);
-      generateTicketId(formData.product_id)
-        .then((result) => {
-          setFormData((prev) => ({
-            ...prev,
-            ticket_id: result.ticketId,
-            sequence: result.sequence,
-          }));
-        })
-        .catch((err) => {
-          console.error("Failed to generate ticket ID:", err);
-          alert("Failed to generate ticket ID. Please try again.");
-        })
-        .finally(() => {
-          setGeneratingId(false);
-        });
-    } else {
-      setFormData((prev) => ({ ...prev, ticket_id: "", sequence: 0 }));
-    }
-  }, [formData.product_id]);
+  // Ticket ID di-generate ATOMIK di server saat submit (lihat handleSubmit).
+  // Di sini cukup tampilkan preview prefix supaya user tahu format ID-nya
+  // tanpa mengalokasikan nomor (yang akan membakar sequence kalau batal).
+  const selectedProduct =
+    products.find((p) => p.id === formData.product_id) ?? null;
+  const ticketIdPreview = selectedProduct?.prefix
+    ? `${selectedProduct.prefix.toUpperCase()}-•••`
+    : "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,12 +102,15 @@ export default function CreateTicketPage() {
     const supabase = createClient();
 
     try {
+      // Alokasikan ticket ID + sequence secara atomik di server (race-safe).
+      const { ticketId, sequence } = await generateTicketId(formData.product_id);
+
       // Create ticket
       const { data: newTicket, error: createError } = await supabase
         .from("tickets")
         .insert({
-          ticket_id: formData.ticket_id,
-          sequence: formData.sequence,
+          ticket_id: ticketId,
+          sequence: sequence,
           subject: formData.subject.trim(),
           description: formData.description.trim() || null,
           category: formData.category,
@@ -156,17 +141,19 @@ export default function CreateTicketPage() {
         ticket_id: newTicket.id,
         user_id: session?.profile?.id || null,
         action_type: "created",
-        message: `Ticket created: ${formData.ticket_id}`,
+        message: `Ticket created: ${ticketId}`,
         created_at: new Date().toISOString(),
       });
 
       // Redirect to ticket detail
       router.push(`/gawean/${newTicket.id}`);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to create ticket:", err);
-      alert(
-        `Failed to create ticket: ${err?.message || "Unknown error"}. Please try again.`,
-      );
+      const message =
+        err instanceof Error
+          ? err.message
+          : (err as { message?: string })?.message ?? "Unknown error";
+      alert(`Failed to create ticket: ${message}. Please try again.`);
       setSaving(false);
     }
   };
@@ -306,15 +293,18 @@ export default function CreateTicketPage() {
                 />
               </div>
 
-              {/* Ticket ID (Read-only) */}
-              {formData.ticket_id && (
+              {/* Ticket ID preview — nomor final dialokasikan saat submit */}
+              {ticketIdPreview && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Ticket ID
                   </label>
-                  <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg flex flex-wrap items-center gap-2">
                     <span className="font-mono text-indigo-600 font-semibold">
-                      {generatingId ? "Generating..." : formData.ticket_id}
+                      {ticketIdPreview}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      — nomor dibuat otomatis saat disimpan
                     </span>
                   </div>
                 </div>
@@ -537,7 +527,7 @@ export default function CreateTicketPage() {
               type="submit"
               variant="primary"
               loading={saving}
-              disabled={!formData.ticket_id || generatingId}
+              disabled={!formData.product_id || saving}
             >
               Create Ticket
             </Button>
