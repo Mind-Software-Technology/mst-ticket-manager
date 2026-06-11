@@ -94,4 +94,8 @@ export const DEFAULT_PAGE_SIZE = 20;
 // ─── Storage buckets ─────────────────────────────────
 
 export const STORAGE_BUCKET_TICKET_ATTACHMENTS = "ticket-attachments";
-export const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+export const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10MB (foto chatter)
+
+// Lampiran tiket (image / video) — dipasang admin saat create / di detail.
+export const MAX_TICKET_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+export const ACCEPTED_ATTACHMENT_TYPES = "image/*,video/*";

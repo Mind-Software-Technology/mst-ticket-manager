@@ -20,6 +20,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useSession } from "@/hooks/useSession";
 import { createClient } from "@/utils/supabase/client";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
+import { TicketAttachments } from "@/components/TicketAttachments";
 import { Badge, Button, Modal } from "@/components/ui";
 import {
   TICKET_STATES,
@@ -34,8 +35,9 @@ export default function TicketDetailPage() {
   const ticketId = params?.id as string;
 
   const { session } = useSession();
-  const { ticket, loading, error, updateTicket } =
+  const { ticket, loading, error, updateTicket, refresh } =
     useTicketDetail(ticketId, session?.profile?.id);
+  const isAdmin = !!session?.profile?.is_admin;
   const { users } = useUsers(true);
   const { clients } = useClients();
   const { products } = useProducts();
@@ -391,6 +393,15 @@ export default function TicketDetailPage() {
                 />
               </div>
             </div>
+
+            {/* Attachment — download untuk semua, admin bisa tambah/hapus */}
+            <TicketAttachments
+              ticketId={ticket.id}
+              attachments={ticket.attachments ?? []}
+              canManage={isAdmin}
+              uploadedBy={session?.profile?.id ?? null}
+              onChanged={() => void refresh()}
+            />
           </div>
 
           {/* Sidebar: Activity Log / Chatter */}
