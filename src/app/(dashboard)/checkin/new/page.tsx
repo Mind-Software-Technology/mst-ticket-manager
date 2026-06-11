@@ -252,6 +252,7 @@ export default function NewCheckinPage() {
 
       {showPicker && (
         <TicketPickerModal
+          assigneeId={profile?.id}
           onClose={() => setShowPicker(false)}
           onSelect={addTicketItem}
         />
@@ -263,18 +264,21 @@ export default function NewCheckinPage() {
 // ─── Ticket Picker Modal (state != done) ─────────────
 
 function TicketPickerModal({
+  assigneeId,
   onClose,
   onSelect,
 }: {
+  assigneeId: string | undefined;
   onClose: () => void;
   onSelect: (ticket: Ticket) => void;
 }) {
   const [search, setSearch] = useState("");
 
-  // Ambil tiket dengan state selain done (sesuai aturan ERP).
+  // Hanya tiket milik user login (assignee) dengan state selain done.
   const { tickets, loading } = useTickets(
     {
       search,
+      assigned_to: assigneeId,
       state: [
         "backlog",
         "todo",
