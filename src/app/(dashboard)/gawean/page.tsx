@@ -33,12 +33,12 @@ export default function GaweanPage() {
     assign_to_me: true,
   });
 
-  // Pagination state
+  // Pagination state — default: tiket terbaru (created_at) tampil paling atas
   const [pagination, setPagination] = useState<PaginationParams>({
     page: 1,
     pageSize: DEFAULT_PAGE_SIZE,
-    sortBy: "due_date",
-    sortOrder: "asc",
+    sortBy: "created_at",
+    sortOrder: "desc",
   });
 
   // Show/hide filter panel
