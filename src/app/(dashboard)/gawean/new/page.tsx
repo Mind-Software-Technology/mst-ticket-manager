@@ -10,7 +10,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Loader2, Paperclip, X } from "lucide-react";
-import { Button, Input, Select, EmptyState } from "@/components/ui";
+import { Button, Input, Select, EmptyState, RichTextEditor } from "@/components/ui";
+import { DESCRIPTION_TEMPLATE, isEmptyHtml } from "@/lib/rich-text";
 import { useClients } from "@/hooks/useClients";
 import { useProducts } from "@/hooks/useProducts";
 import { useProjects } from "@/hooks/useProjects";
@@ -76,13 +77,13 @@ export default function CreateTicketPage() {
     project_id: "",
     sprint_id: "",
     subject: "",
-    description: "",
+    description: DESCRIPTION_TEMPLATE,
     category: "development" as TicketCategory,
     state: "backlog" as TicketState,
     priority: "normal" as TicketPriority,
     assigned_to: "",
     reported_to: session?.profile?.id || "",
-    manhours_estimate: 0,
+    manhours_estimate: "",
     start_date: "",
     due_date: "",
     need_qa: false,
@@ -142,7 +143,9 @@ export default function CreateTicketPage() {
           ticket_id: ticketId,
           sequence: sequence,
           subject: formData.subject.trim(),
-          description: formData.description.trim() || null,
+          description: isEmptyHtml(formData.description)
+            ? null
+            : formData.description,
           category: formData.category,
           state: formData.state,
           priority: formData.priority,
@@ -152,7 +155,7 @@ export default function CreateTicketPage() {
           sprint_id: formData.sprint_id || null,
           assigned_to: formData.assigned_to || null,
           reported_to: formData.reported_to || null,
-          manhours_estimate: formData.manhours_estimate,
+          manhours_estimate: parseFloat(formData.manhours_estimate) || 0,
           actual_manhours: 0,
           start_date: formData.start_date || null,
           due_date: formData.due_date || null,
@@ -413,14 +416,13 @@ export default function CreateTicketPage() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Description (Optional)
                 </label>
-                <textarea
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
+                  onChange={(html) =>
+                    setFormData({ ...formData, description: html })
                   }
                   placeholder="Detailed description, requirements, or notes"
-                  rows={6}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  minHeightClass="min-h-[240px]"
                 />
               </div>
 
@@ -519,11 +521,12 @@ export default function CreateTicketPage() {
                   type="number"
                   min="0"
                   step="0.5"
+                  placeholder="0"
                   value={formData.manhours_estimate}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      manhours_estimate: parseFloat(e.target.value) || 0,
+                      manhours_estimate: e.target.value,
                     })
                   }
                 />
