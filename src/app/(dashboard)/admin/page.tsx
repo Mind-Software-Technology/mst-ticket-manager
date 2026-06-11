@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { PlusCircle, Search, Edit2, Trash2, Loader2 } from "lucide-react";
+import { Search, Edit2, Trash2, Loader2 } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useUsers } from "@/hooks/useUsers";
 import { useSprints } from "@/hooks/useSprints";
@@ -39,6 +39,13 @@ const PRIORITY_OPTIONS: Array<{ value: string; label: string; color: string }> =
   { value: "normal", label: "Normal", color: "bg-indigo-100 text-indigo-700" },
   { value: "high", label: "Tinggi", color: "bg-orange-100 text-orange-700" },
   { value: "critical", label: "Kritis", color: "bg-red-100 text-red-700" },
+];
+
+// Filter tenggat (due date) untuk membantu admin memantau tiket mendesak.
+const DUE_FILTERS: Array<{ value: string; label: string }> = [
+  { value: "all", label: "Semua" },
+  { value: "today", label: "Hari Ini" },
+  { value: "soon", label: "≤ 3 Hari" },
 ];
 
 const CATEGORY_OPTIONS = [
@@ -128,16 +135,11 @@ export default function AdminDashboard() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showUserModal, setShowUserModal] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dueFilter, setDueFilter] = useState("all");
 
   const userRole = session?.profile.is_admin ? "Admin" : "Viewer";
-
-  const [newUser, setNewUser] = useState({
-    name: "",
-    role: "Anggota Baru",
-  });
 
   const [formData, setFormData] = useState<TicketFormState>(INITIAL_FORM);
 
@@ -170,16 +172,39 @@ export default function AdminDashboard() {
     void fetchTickets();
   }, [fetchTickets]);
 
-  // ─── Filter tickets by search ─────────────────────
+  // ─── Filter tickets by search + due date ──────────
+
+  // Selisih hari antara tenggat dan hari ini (0 = jatuh tempo hari ini,
+  // negatif = sudah lewat). null jika tiket tanpa tenggat.
+  const getDaysUntilDue = (dueDate: string | null): number | null => {
+    if (!dueDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0);
+    return Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  };
 
   const filteredTickets = tickets.filter((t) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      t.ticket_id.toLowerCase().includes(q) ||
-      t.subject.toLowerCase().includes(q) ||
-      (t.assignee?.name || "").toLowerCase().includes(q)
-    );
+    // Pencarian
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matches =
+        t.ticket_id.toLowerCase().includes(q) ||
+        t.subject.toLowerCase().includes(q) ||
+        (t.assignee?.name || "").toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+
+    // Filter tenggat
+    if (dueFilter !== "all") {
+      const days = getDaysUntilDue(t.due_date);
+      if (days === null) return false;
+      if (dueFilter === "today" && days !== 0) return false;
+      if (dueFilter === "soon" && (days < 0 || days > 3)) return false;
+    }
+
+    return true;
   });
 
   // ─── Stats ────────────────────────────────────────
@@ -274,18 +299,6 @@ export default function AdminDashboard() {
 
   // ─── Modal Helpers ────────────────────────────────
 
-  const openCreateModal = () => {
-    const defaultAssignee = users.length > 0 ? users[0].id : "";
-    setFormData({
-      ...INITIAL_FORM,
-      ticket_id: generateTicketId(INITIAL_FORM.division, tickets),
-      assigned_to: defaultAssignee,
-      sprint_id: sprints.find((s) => s.status === "Aktif")?.id || "",
-    });
-    setEditingTicketId(null);
-    setShowModal(true);
-  };
-
   const openEditModal = (ticket: Ticket) => {
     setFormData({
       ticket_id: ticket.ticket_id,
@@ -309,23 +322,6 @@ export default function AdminDashboard() {
   const closeModal = () => {
     setShowModal(false);
     setEditingTicketId(null);
-  };
-
-  // ─── Create User ──────────────────────────────────
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.from("users").insert([newUser]);
-      if (error) throw error;
-      setShowUserModal(false);
-      setNewUser({ name: "", role: "Anggota Baru" });
-      alert("Berhasil menambah anggota");
-    } catch (err) {
-      console.error("[admin] create user failed:", err);
-      alert("Gagal menambah anggota. Cek koneksi Supabase.");
-    }
   };
 
   // ─── Lookup Helpers ───────────────────────────────
@@ -358,26 +354,6 @@ export default function AdminDashboard() {
               : "Kelola seluruh tugas dan sprint startup."}
           </p>
         </div>
-        {userRole !== "Viewer" && (
-          <div className="flex flex-row space-x-2 md:space-x-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-            <button
-              type="button"
-              onClick={() => setShowUserModal(true)}
-              className="flex items-center px-3 md:px-4 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
-            >
-              <PlusCircle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" />
-              Tambah Anggota
-            </button>
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="flex items-center px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"
-            >
-              <PlusCircle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" />
-              Tambah Tugas
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Stats Cards */}
@@ -397,17 +373,37 @@ export default function AdminDashboard() {
 
       {/* Ticket Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
           <h3 className="font-semibold text-slate-800">Daftar Tugas Aktif</h3>
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari tugas..."
-              className="pl-9 pr-4 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
-            />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            {/* Filter tenggat */}
+            <div className="flex items-center gap-1.5">
+              {DUE_FILTERS.map((f) => (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => setDueFilter(f.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    dueFilter === f.value
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "bg-white text-slate-600 border border-slate-300 hover:bg-slate-100"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            {/* Pencarian */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari tugas..."
+                className="pl-9 pr-4 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64"
+              />
+            </div>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -436,8 +432,8 @@ export default function AdminDashboard() {
               ) : filteredTickets.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-slate-500">
-                    {searchQuery
-                      ? "Tidak ada tugas yang cocok dengan pencarian."
+                    {searchQuery || dueFilter !== "all"
+                      ? "Tidak ada tugas yang cocok dengan filter."
                       : "Belum ada tugas."}
                   </td>
                 </tr>
@@ -752,66 +748,6 @@ export default function AdminDashboard() {
                   className="px-4 py-2 bg-indigo-600 text-white font-medium hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
                 >
                   Simpan Tugas
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Modal Tambah Anggota ─────────────────────── */}
-      {showUserModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-900">
-                Tambah Anggota Tim
-              </h2>
-            </div>
-            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Nama Anggota
-                </label>
-                <input
-                  required
-                  type="text"
-                  value={newUser.name}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, name: e.target.value })
-                  }
-                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="Masukkan nama panggilan"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Jabatan / Peran
-                </label>
-                <input
-                  required
-                  type="text"
-                  value={newUser.role}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, role: e.target.value })
-                  }
-                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="Contoh: Frontend Developer"
-                />
-              </div>
-              <div className="pt-4 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowUserModal(false)}
-                  className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white font-medium hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
-                >
-                  Simpan Anggota
                 </button>
               </div>
             </form>
