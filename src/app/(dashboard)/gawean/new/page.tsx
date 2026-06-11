@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Paperclip, X } from "lucide-react";
 import { Button, Input, Select, EmptyState } from "@/components/ui";
 import { useClients } from "@/hooks/useClients";
 import { useProducts } from "@/hooks/useProducts";
@@ -23,7 +23,14 @@ import {
   TICKET_STATES,
   TICKET_PRIORITIES,
   TICKET_CATEGORIES,
+  ACCEPTED_ATTACHMENT_TYPES,
+  MAX_TICKET_ATTACHMENT_SIZE_BYTES,
 } from "@/lib/constants";
+import {
+  uploadTicketAttachments,
+  validateAttachment,
+  formatFileSize,
+} from "@/lib/ticket-attachments";
 import type { TicketState, TicketPriority, TicketCategory } from "@/types";
 
 export default function CreateTicketPage() {
@@ -37,7 +44,30 @@ export default function CreateTicketPage() {
   const { sprints, loading: loadingSprints } = useSprints();
   const { users, loading: loadingUsers } = useUsers(true); // Active users only
 
+  const isAdmin = !!session?.profile?.is_admin;
+
   const [saving, setSaving] = useState(false);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+
+  const handleAddFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    if (!list) return;
+    const valid: File[] = [];
+    for (const f of Array.from(list)) {
+      const err = validateAttachment(f);
+      if (err) {
+        alert(err);
+        continue;
+      }
+      valid.push(f);
+    }
+    setAttachmentFiles((prev) => [...prev, ...valid]);
+    e.target.value = ""; // reset agar file yang sama bisa dipilih lagi
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setAttachmentFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -135,6 +165,24 @@ export default function CreateTicketPage() {
         .single();
 
       if (createError) throw createError;
+
+      // Upload lampiran (kalau ada). Tiket sudah dibuat, jadi kegagalan
+      // upload tidak membatalkan tiket — cukup beri tahu user.
+      if (attachmentFiles.length > 0) {
+        try {
+          await uploadTicketAttachments(
+            supabase,
+            newTicket.id,
+            attachmentFiles,
+            session?.profile?.id ?? null,
+          );
+        } catch (attErr) {
+          console.error("Failed to upload attachments:", attErr);
+          alert(
+            "Tiket berhasil dibuat, tapi sebagian lampiran gagal diunggah. Kamu bisa menambahkannya lagi di halaman detail tiket.",
+          );
+        }
+      }
 
       // Log activity (fire and forget)
       void supabase.from("activity_logs").insert({
@@ -512,6 +560,55 @@ export default function CreateTicketPage() {
               </label>
             </div>
           </div>
+
+          {/* Card: Attachment (admin only) */}
+          {isAdmin && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 mb-1">
+                <Paperclip className="w-4 h-4 text-slate-400" />
+                Attachment (Optional)
+              </h2>
+              <p className="text-sm text-slate-500 mb-4">
+                Lampirkan gambar atau video. Maksimal{" "}
+                {Math.round(MAX_TICKET_ATTACHMENT_SIZE_BYTES / 1024 / 1024)}MB
+                per file.
+              </p>
+
+              <input
+                type="file"
+                accept={ACCEPTED_ATTACHMENT_TYPES}
+                multiple
+                onChange={handleAddFiles}
+                className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
+              />
+
+              {attachmentFiles.length > 0 && (
+                <ul className="mt-4 space-y-2">
+                  {attachmentFiles.map((f, i) => (
+                    <li
+                      key={`${f.name}-${i}`}
+                      className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+                        📎 {f.name}
+                        <span className="ml-2 text-xs text-slate-400">
+                          {formatFileSize(f.size)}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(i)}
+                        title="Hapus"
+                        className="ml-2 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 justify-end">
