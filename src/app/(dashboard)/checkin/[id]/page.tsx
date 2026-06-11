@@ -334,6 +334,7 @@ export default function CheckinDetailPage() {
 
       {showPicker && (
         <TicketPickerModal
+          assigneeId={session?.profile?.id}
           onClose={() => setShowPicker(false)}
           onSelect={addTicketDraft}
         />
@@ -354,16 +355,20 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 function TicketPickerModal({
+  assigneeId,
   onClose,
   onSelect,
 }: {
+  assigneeId: string | undefined;
   onClose: () => void;
   onSelect: (ticket: Ticket) => void;
 }) {
   const [search, setSearch] = useState("");
+  // Hanya tiket milik user login (assignee) dengan state selain done.
   const { tickets, loading } = useTickets(
     {
       search,
+      assigned_to: assigneeId,
       state: [
         "backlog",
         "todo",
