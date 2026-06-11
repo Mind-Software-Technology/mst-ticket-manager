@@ -13,3 +13,4 @@ export { Modal } from "./Modal";
 export { Pagination } from "./Pagination";
 export { SearchInput } from "./SearchInput";
 export { EmptyState } from "./EmptyState";
+export { RichTextEditor } from "./RichTextEditor";

@@ -7,3 +7,76 @@
 body {
   font-family: var(--font-sans), sans-serif;
 }
+
+/* ===== Rich text (TipTap) — dipakai untuk edit & tampil deskripsi ===== */
+.tiptap-content {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #334155; /* slate-700 */
+}
+.tiptap-content:focus {
+  outline: none;
+}
+.tiptap-content h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a; /* slate-900 */
+  margin: 1rem 0 0.5rem;
+}
+.tiptap-content h2:first-child {
+  margin-top: 0;
+}
+.tiptap-content h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b; /* slate-800 */
+  margin: 0.75rem 0 0.375rem;
+}
+.tiptap-content p {
+  margin: 0.375rem 0;
+}
+.tiptap-content ul,
+.tiptap-content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+.tiptap-content ul {
+  list-style-type: disc;
+}
+.tiptap-content ol {
+  list-style-type: decimal;
+}
+.tiptap-content li {
+  margin: 0.125rem 0;
+}
+.tiptap-content li > p {
+  margin: 0;
+}
+.tiptap-content a {
+  color: #4f46e5; /* indigo-600 */
+  text-decoration: underline;
+  cursor: pointer;
+}
+.tiptap-content strong {
+  font-weight: 700;
+}
+.tiptap-content em {
+  font-style: italic;
+}
+.tiptap-content u {
+  text-decoration: underline;
+}
+.tiptap-content blockquote {
+  border-left: 3px solid #cbd5e1; /* slate-300 */
+  padding-left: 0.75rem;
+  color: #475569; /* slate-600 */
+  margin: 0.5rem 0;
+}
+/* Placeholder saat editor kosong */
+.tiptap-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #94a3b8; /* slate-400 */
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

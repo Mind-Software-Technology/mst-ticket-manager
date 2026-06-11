@@ -15,6 +15,8 @@ import { useSession } from "@/hooks/useSession";
 import { useUsers } from "@/hooks/useUsers";
 import { useSprints } from "@/hooks/useSprints";
 import { useProducts } from "@/hooks/useProducts";
+import { RichTextEditor } from "@/components/ui";
+import { isEmptyHtml } from "@/lib/rich-text";
 import type { Ticket, User, Sprint } from "@/types";
 
 // ─── Constants ────────────────────────────────────────
@@ -72,7 +74,7 @@ interface TicketFormState {
   category: string;
   start_date: string;
   due_date: string;
-  manhours_estimate: number;
+  manhours_estimate: string;
   sprint_id: string;
   product_id: string;
 }
@@ -88,7 +90,7 @@ const INITIAL_FORM: TicketFormState = {
   category: "development",
   start_date: "",
   due_date: "",
-  manhours_estimate: 0,
+  manhours_estimate: "",
   sprint_id: "",
   product_id: "",
 };
@@ -241,7 +243,9 @@ export default function AdminDashboard() {
       const ticketData: Record<string, unknown> = {
         ticket_id: formData.ticket_id,
         subject: formData.subject,
-        description: formData.description || null,
+        description: isEmptyHtml(formData.description)
+          ? null
+          : formData.description,
         division: formData.division,
         assigned_to: formData.assigned_to || null,
         priority: formData.priority,
@@ -249,7 +253,7 @@ export default function AdminDashboard() {
         category: formData.category,
         start_date: formData.start_date || null,
         due_date: formData.due_date || null,
-        manhours_estimate: formData.manhours_estimate || 0,
+        manhours_estimate: parseFloat(formData.manhours_estimate) || 0,
         sprint_id: formData.sprint_id || null,
         product_id: formData.product_id || null,
         updated_at: new Date().toISOString(),
@@ -311,7 +315,9 @@ export default function AdminDashboard() {
       category: ticket.category,
       start_date: ticket.start_date || "",
       due_date: ticket.due_date || "",
-      manhours_estimate: ticket.manhours_estimate || 0,
+      manhours_estimate: ticket.manhours_estimate
+        ? String(ticket.manhours_estimate)
+        : "",
       sprint_id: ticket.sprint_id || "",
       product_id: ticket.product_id || "",
     });
@@ -583,6 +589,21 @@ export default function AdminDashboard() {
                 />
               </div>
 
+              {/* Description — rich text */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Deskripsi
+                </label>
+                <RichTextEditor
+                  value={formData.description}
+                  onChange={(html) =>
+                    setFormData({ ...formData, description: html })
+                  }
+                  placeholder="Tulis deskripsi pekerjaan..."
+                  minHeightClass="min-h-[180px]"
+                />
+              </div>
+
               {/* Row 2: PIC & Priority */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -692,11 +713,13 @@ export default function AdminDashboard() {
                   <input
                     type="number"
                     min={0}
+                    step="0.5"
+                    placeholder="0"
                     value={formData.manhours_estimate}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        manhours_estimate: parseInt(e.target.value) || 0,
+                        manhours_estimate: e.target.value,
                       })
                     }
                     className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"

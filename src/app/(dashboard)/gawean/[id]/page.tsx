@@ -21,7 +21,8 @@ import { useSession } from "@/hooks/useSession";
 import { createClient } from "@/utils/supabase/client";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { TicketAttachments } from "@/components/TicketAttachments";
-import { Badge, Button, Modal } from "@/components/ui";
+import { Badge, Button, Modal, RichTextEditor } from "@/components/ui";
+import { toEditorHtml, isEmptyHtml } from "@/lib/rich-text";
 import {
   TICKET_STATES,
   TICKET_PRIORITIES,
@@ -374,22 +375,25 @@ export default function TicketDetailPage() {
                 />
               </div>
 
-              {/* Description — editable */}
+              {/* Description — editable (rich text) */}
               <div className="mt-6">
                 <label className="block text-sm font-medium text-slate-500 mb-1">
                   Description
                 </label>
-                <textarea
+                <RichTextEditor
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  onBlur={() => {
-                    if (description !== (ticket.description || "")) {
-                      void saveField({ description: description || null });
+                  onChange={setDescription}
+                  onBlur={(html) => {
+                    // Bandingkan dengan bentuk ternormalisasi agar deskripsi
+                    // lama (plain text) tidak tersimpan ulang tanpa perubahan.
+                    if (html !== toEditorHtml(ticket.description)) {
+                      void saveField({
+                        description: isEmptyHtml(html) ? null : html,
+                      });
                     }
                   }}
-                  rows={8}
                   placeholder="Tulis deskripsi pekerjaan..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  minHeightClass="min-h-[200px]"
                 />
               </div>
             </div>
