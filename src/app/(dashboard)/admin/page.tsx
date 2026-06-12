@@ -10,14 +10,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { Search, Edit2, Trash2, Loader2 } from "lucide-react";
+import { Edit2, Trash2, Loader2 } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useUsers } from "@/hooks/useUsers";
 import { useSprints } from "@/hooks/useSprints";
 import { useProducts } from "@/hooks/useProducts";
-import { RichTextEditor } from "@/components/ui";
+import { RichTextEditor, SearchInput, Pagination } from "@/components/ui";
 import { isEmptyHtml } from "@/lib/rich-text";
-import type { Ticket, User, Sprint } from "@/types";
+import { toISODate } from "@/lib/date-utils";
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import type { Ticket } from "@/types";
 
 // ─── Constants ────────────────────────────────────────
 
@@ -97,25 +99,31 @@ const INITIAL_FORM: TicketFormState = {
 
 // ─── Helper: Generate Ticket ID ──────────────────────
 
-function generateTicketId(
-  division: string,
-  existingTickets: Array<{ ticket_id: string }>
-): string {
-  const divisionCodeMap: Record<string, string> = {
-    Marketing: "MKT",
-    Design: "DSN",
-    Development: "DEV",
-    Business: "BIZ",
-    Project: "PRJ",
-  };
-  const code = divisionCodeMap[division] || "GEN";
-  const prefix = `SPT1-${code}`;
+const DIVISION_CODE_MAP: Record<string, string> = {
+  Marketing: "MKT",
+  Design: "DSN",
+  Development: "DEV",
+  Business: "BIZ",
+  Project: "PRJ",
+};
 
+function divisionPrefix(division: string): string {
+  return `SPT1-${DIVISION_CODE_MAP[division] || "GEN"}`;
+}
+
+// Hitung ID berikutnya dari daftar ticket_id untuk prefix divisi.
+// CATATAN: belum atomik (dua admin bersamaan bisa bentrok) — itu item terpisah
+// "generator ID atomik". Yang penting di sini: TIDAK bergantung pada list tiket
+// yang kini terpaginasi; pemanggil memberi daftar ID hasil query khusus prefix.
+function computeNextTicketId(
+  division: string,
+  existingIds: Array<{ ticket_id: string }>,
+): string {
+  const prefix = divisionPrefix(division);
   let maxNum = 0;
-  for (const t of existingTickets) {
+  for (const t of existingIds) {
     if (t.ticket_id && t.ticket_id.startsWith(prefix)) {
-      const numPart = t.ticket_id.slice(prefix.length);
-      const parsedNum = parseInt(numPart, 10);
+      const parsedNum = parseInt(t.ticket_id.slice(prefix.length), 10);
       if (!isNaN(parsedNum) && parsedNum > maxNum) {
         maxNum = parsedNum;
       }
@@ -141,90 +149,138 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dueFilter, setDueFilter] = useState("all");
 
+  // Pagination server-side (hindari memuat seluruh tabel tickets)
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Statistik global (count terpisah, independen dari halaman & filter daftar)
+  const [statCounts, setStatCounts] = useState({ total: 0, done: 0, progres: 0 });
+
   const userRole = session?.profile.is_admin ? "Admin" : "Viewer";
 
   const [formData, setFormData] = useState<TicketFormState>(INITIAL_FORM);
 
-  // ─── Fetch Tickets ────────────────────────────────
+  // ─── Fetch Tickets (paginated + server-side filter) ─
 
   const fetchTickets = useCallback(async () => {
     setLoading(true);
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
+      let query = supabase
         .from("tickets")
-        .select(`
+        .select(
+          `
           *,
           assignee:users!tickets_assigned_to_fkey(id, name, email),
           sprint:sprints(id, name)
-        `)
-        .order("created_at", { ascending: false });
+        `,
+          { count: "exact" },
+        );
+
+      // Pencarian: ID tiket OR subject OR nama assignee — sama seperti sebelumnya,
+      // tapi kini di server. Nama assignee di-resolve ke daftar ID lebih dulu.
+      const term = searchQuery.trim();
+      if (term) {
+        const { data: matchedUsers } = await supabase
+          .from("users")
+          .select("id")
+          .ilike("name", `%${term}%`);
+        const assigneeIds = (matchedUsers ?? []).map((u) => u.id as string);
+
+        // Bersihkan karakter yang merusak sintaks filter `or` PostgREST.
+        const safe = term.replace(/[,()*%"\\]/g, " ").trim();
+        const orParts = [`ticket_id.ilike.%${safe}%`, `subject.ilike.%${safe}%`];
+        if (assigneeIds.length > 0) {
+          orParts.push(`assigned_to.in.(${assigneeIds.join(",")})`);
+        }
+        query = query.or(orParts.join(","));
+      }
+
+      // Filter tenggat (due_date = kolom date)
+      if (dueFilter === "today") {
+        query = query.eq("due_date", toISODate());
+      } else if (dueFilter === "soon") {
+        const soon = new Date();
+        soon.setDate(soon.getDate() + 3);
+        query = query
+          .gte("due_date", toISODate())
+          .lte("due_date", toISODate(soon));
+      }
+
+      const from = (page - 1) * DEFAULT_PAGE_SIZE;
+      const to = from + DEFAULT_PAGE_SIZE - 1;
+      const { data, count, error } = await query
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
       setTickets((data as Ticket[]) || []);
+      setTotalCount(count || 0);
     } catch (err) {
       console.error("[admin] fetch tickets error:", err);
       setTickets([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
+  }, [page, searchQuery, dueFilter]);
+
+  // ─── Fetch Stats (count global, head-only — murah) ──
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const [totalRes, doneRes, progresRes] = await Promise.all([
+        supabase.from("tickets").select("*", { count: "exact", head: true }),
+        supabase
+          .from("tickets")
+          .select("*", { count: "exact", head: true })
+          .eq("state", "done"),
+        supabase
+          .from("tickets")
+          .select("*", { count: "exact", head: true })
+          .in("state", ["on_progress", "code_review", "in_qa"]),
+      ]);
+      setStatCounts({
+        total: totalRes.count ?? 0,
+        done: doneRes.count ?? 0,
+        progres: progresRes.count ?? 0,
+      });
+    } catch (err) {
+      console.error("[admin] fetch stats error:", err);
+    }
   }, []);
+
+  // ID tiket berikutnya — query khusus prefix divisi (bukan dari list terpaginasi).
+  const fetchNextTicketId = useCallback(
+    async (division: string): Promise<string> => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("tickets")
+        .select("ticket_id")
+        .ilike("ticket_id", `${divisionPrefix(division)}%`);
+      return computeNextTicketId(
+        division,
+        (data as Array<{ ticket_id: string }>) ?? [],
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     void fetchTickets();
   }, [fetchTickets]);
 
-  // ─── Filter tickets by search + due date ──────────
-
-  // Selisih hari antara tenggat dan hari ini (0 = jatuh tempo hari ini,
-  // negatif = sudah lewat). null jika tiket tanpa tenggat.
-  const getDaysUntilDue = (dueDate: string | null): number | null => {
-    if (!dueDate) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(dueDate);
-    due.setHours(0, 0, 0, 0);
-    return Math.round((due.getTime() - today.getTime()) / 86_400_000);
-  };
-
-  const filteredTickets = tickets.filter((t) => {
-    // Pencarian
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const matches =
-        t.ticket_id.toLowerCase().includes(q) ||
-        t.subject.toLowerCase().includes(q) ||
-        (t.assignee?.name || "").toLowerCase().includes(q);
-      if (!matches) return false;
-    }
-
-    // Filter tenggat
-    if (dueFilter !== "all") {
-      const days = getDaysUntilDue(t.due_date);
-      if (days === null) return false;
-      if (dueFilter === "today" && days !== 0) return false;
-      if (dueFilter === "soon" && (days < 0 || days > 3)) return false;
-    }
-
-    return true;
-  });
+  useEffect(() => {
+    void fetchStats();
+  }, [fetchStats]);
 
   // ─── Stats ────────────────────────────────────────
 
   const stats = [
-    { label: "Total Tugas", value: tickets.length, color: "text-indigo-600" },
-    {
-      label: "Selesai",
-      value: tickets.filter((t) => t.state === "done").length,
-      color: "text-green-600",
-    },
-    {
-      label: "Progres",
-      value: tickets.filter((t) =>
-        ["on_progress", "code_review", "in_qa"].includes(t.state)
-      ).length,
-      color: "text-blue-600",
-    },
+    { label: "Total Tugas", value: statCounts.total, color: "text-indigo-600" },
+    { label: "Selesai", value: statCounts.done, color: "text-green-600" },
+    { label: "Progres", value: statCounts.progres, color: "text-blue-600" },
     {
       label: "Sprint Aktif",
       value: sprints.filter((s) => s.status === "Aktif").length,
@@ -275,7 +331,7 @@ export default function AdminDashboard() {
       }
 
       closeModal();
-      await fetchTickets();
+      await Promise.all([fetchTickets(), fetchStats()]);
     } catch (err) {
       console.error("[admin] save ticket failed:", err);
       alert("Gagal menyimpan tugas. Cek koneksi Supabase.");
@@ -294,7 +350,7 @@ export default function AdminDashboard() {
         .delete()
         .eq("id", ticketId);
       if (error) throw error;
-      setTickets((prev) => prev.filter((t) => t.id !== ticketId));
+      await Promise.all([fetchTickets(), fetchStats()]);
     } catch (err) {
       console.error("[admin] delete ticket failed:", err);
       alert("Gagal menghapus tugas. Cek koneksi Supabase.");
@@ -388,7 +444,10 @@ export default function AdminDashboard() {
                 <button
                   key={f.value}
                   type="button"
-                  onClick={() => setDueFilter(f.value)}
+                  onClick={() => {
+                    setDueFilter(f.value);
+                    setPage(1);
+                  }}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     dueFilter === f.value
                       ? "bg-indigo-600 text-white shadow-sm"
@@ -399,17 +458,16 @@ export default function AdminDashboard() {
                 </button>
               ))}
             </div>
-            {/* Pencarian */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari tugas..."
-                className="pl-9 pr-4 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64"
-              />
-            </div>
+            {/* Pencarian — debounced (300ms), difilter di server */}
+            <SearchInput
+              value={searchQuery}
+              onChange={(v) => {
+                setSearchQuery(v);
+                setPage(1);
+              }}
+              placeholder="Cari tugas..."
+              className="w-full sm:w-64"
+            />
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -435,7 +493,7 @@ export default function AdminDashboard() {
                     Memuat data...
                   </td>
                 </tr>
-              ) : filteredTickets.length === 0 ? (
+              ) : tickets.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-slate-500">
                     {searchQuery || dueFilter !== "all"
@@ -444,7 +502,7 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ) : (
-                filteredTickets.map((ticket) => {
+                tickets.map((ticket) => {
                   const stateDisplay = getStateDisplay(ticket.state);
                   const priorityDisplay = getPriorityDisplay(ticket.priority);
 
@@ -516,6 +574,17 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination server-side */}
+        {!loading && tickets.length > 0 && (
+          <Pagination
+            currentPage={page}
+            totalPages={Math.ceil(totalCount / DEFAULT_PAGE_SIZE)}
+            pageSize={DEFAULT_PAGE_SIZE}
+            totalItems={totalCount}
+            onPageChange={setPage}
+          />
+        )}
       </div>
 
       {/* ─── Modal Tambah/Edit Tugas ─────────────────── */}
@@ -552,15 +621,20 @@ export default function AdminDashboard() {
                   </label>
                   <select
                     value={formData.division}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const newDiv = e.target.value;
-                      setFormData({
-                        ...formData,
+                      // Saat edit: ID tidak berubah. Saat create: generate dari
+                      // query khusus prefix (bukan dari list yang terpaginasi).
+                      if (editingTicketId) {
+                        setFormData((f) => ({ ...f, division: newDiv }));
+                        return;
+                      }
+                      const newId = await fetchNextTicketId(newDiv);
+                      setFormData((f) => ({
+                        ...f,
                         division: newDiv,
-                        ticket_id: editingTicketId
-                          ? formData.ticket_id
-                          : generateTicketId(newDiv, tickets),
-                      });
+                        ticket_id: newId,
+                      }));
                     }}
                     className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
                   >
