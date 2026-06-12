@@ -34,6 +34,9 @@ export type TicketCategory =
 
 export type CheckinStatus = "draft" | "approved";
 
+/** Preset rentang due-date untuk quick filter (gaya Odoo). */
+export type DuePreset = "today" | "this_week" | "this_month" | "this_year";
+
 export type ActivityActionType =
   | "state_change"
   | "field_update"
@@ -233,6 +236,28 @@ export interface TicketFilters {
   sprint_id?: string;
   /** Quick-filter shorthand untuk `assigned_to = current user` */
   assign_to_me?: boolean;
+
+  // ─── Custom filter "contains" (gaya Odoo) ──────────
+  /** Free-text: cocokkan nama assignee (case-insensitive, contains). */
+  assignee_name?: string;
+  /** Free-text: cocokkan nama reporter (case-insensitive, contains). */
+  reporter_name?: string;
+
+  // ─── Rentang tanggal (YYYY-MM-DD) ──────────────────
+  due_date_from?: string;
+  due_date_to?: string;
+  /** Label preset due-date aktif — hanya untuk chip UI; query pakai from/to. */
+  due_preset?: DuePreset;
+  done_date_from?: string;
+  done_date_to?: string;
+  created_from?: string;
+  created_to?: string;
+
+  // ─── Quick flags ───────────────────────────────────
+  /** Belum selesai: state ≠ done & ≠ cancel. */
+  not_closed?: boolean;
+  /** Lewat jatuh tempo: due_date < hari ini & belum selesai. */
+  overdue?: boolean;
 }
 
 export interface PaginationParams {

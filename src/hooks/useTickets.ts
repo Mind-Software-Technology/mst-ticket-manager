@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { toISODate } from "@/lib/date-utils";
 import type { Ticket, TicketFilters, PaginationParams } from "@/types";
 
 interface UseTicketsResult {
@@ -37,6 +38,39 @@ export function useTickets(
 
     try {
       const supabase = createClient();
+
+      // Free-text "contains" pada nama user → resolusi ke daftar ID.
+      // (Gaya Odoo "Assignee contains fadil".)
+      let assigneeIds: string[] | null = null;
+      if (filters.assignee_name?.trim()) {
+        const { data: matched, error: lookupErr } = await supabase
+          .from("users")
+          .select("id")
+          .ilike("name", `%${filters.assignee_name.trim()}%`);
+        if (lookupErr) throw lookupErr;
+        assigneeIds = (matched ?? []).map((u) => u.id as string);
+        if (assigneeIds.length === 0) {
+          setTickets([]);
+          setTotal(0);
+          return; // finally tetap mematikan loading
+        }
+      }
+
+      let reporterIds: string[] | null = null;
+      if (filters.reporter_name?.trim()) {
+        const { data: matched, error: lookupErr } = await supabase
+          .from("users")
+          .select("id")
+          .ilike("name", `%${filters.reporter_name.trim()}%`);
+        if (lookupErr) throw lookupErr;
+        reporterIds = (matched ?? []).map((u) => u.id as string);
+        if (reporterIds.length === 0) {
+          setTickets([]);
+          setTotal(0);
+          return;
+        }
+      }
+
       // Start query with count
       let query = supabase
         .from("tickets")
@@ -72,6 +106,35 @@ export function useTickets(
 
       if (filters.assigned_to) {
         query = query.eq("assigned_to", filters.assigned_to);
+      }
+
+      if (assigneeIds) {
+        query = query.in("assigned_to", assigneeIds);
+      }
+
+      if (reporterIds) {
+        query = query.in("reported_to", reporterIds);
+      }
+
+      // Rentang tanggal (due/done = kolom date, created_at = timestamp)
+      if (filters.due_date_from) query = query.gte("due_date", filters.due_date_from);
+      if (filters.due_date_to) query = query.lte("due_date", filters.due_date_to);
+      if (filters.done_date_from) query = query.gte("done_date", filters.done_date_from);
+      if (filters.done_date_to) query = query.lte("done_date", filters.done_date_to);
+      if (filters.created_from) query = query.gte("created_at", filters.created_from);
+      if (filters.created_to) {
+        // created_at bertipe timestamp → sertakan sampai akhir hari.
+        query = query.lte("created_at", `${filters.created_to}T23:59:59.999`);
+      }
+
+      // Quick flags
+      if (filters.not_closed) {
+        query = query.not("state", "in", "(done,cancel)");
+      }
+      if (filters.overdue) {
+        query = query
+          .lt("due_date", toISODate())
+          .not("state", "in", "(done,cancel)");
       }
 
       if (filters.client_id) {
@@ -131,6 +194,16 @@ export function useTickets(
     filters.priority?.join(","),
     filters.category?.join(","),
     filters.assigned_to,
+    filters.assignee_name,
+    filters.reporter_name,
+    filters.due_date_from,
+    filters.due_date_to,
+    filters.done_date_from,
+    filters.done_date_to,
+    filters.created_from,
+    filters.created_to,
+    filters.not_closed,
+    filters.overdue,
     filters.client_id,
     filters.product_id,
     filters.project_id,

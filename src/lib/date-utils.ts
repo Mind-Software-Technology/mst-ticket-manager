@@ -5,6 +5,8 @@
 // Helper untuk format tanggal/waktu dengan locale Indonesia.
 // =====================================================
 
+import type { DuePreset } from "@/types";
+
 const ID_LOCALE = "id-ID";
 
 /**
@@ -143,4 +145,51 @@ export function daysUntil(input: string | Date | null | undefined): number | nul
   const today = startOfDay();
   const due = startOfDay(target);
   return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Format Date lokal → "YYYY-MM-DD" tanpa pergeseran timezone.
+ * (`toISOString()` pakai UTC sehingga bisa meleset 1 hari di GMT+7.)
+ */
+export function toISODate(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Rentang tanggal {from, to} (inklusif, format YYYY-MM-DD) untuk preset cepat.
+ * Minggu dihitung Senin–Minggu.
+ */
+export function getDuePresetRange(
+  preset: DuePreset,
+  now: Date = new Date(),
+): { from: string; to: string } {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+
+  switch (preset) {
+    case "today": {
+      const t = new Date(y, m, d);
+      return { from: toISODate(t), to: toISODate(t) };
+    }
+    case "this_week": {
+      const dow = now.getDay(); // 0=Minggu … 6=Sabtu
+      const toMonday = dow === 0 ? -6 : 1 - dow;
+      const monday = new Date(y, m, d + toMonday);
+      const sunday = new Date(y, m, d + toMonday + 6);
+      return { from: toISODate(monday), to: toISODate(sunday) };
+    }
+    case "this_month": {
+      return {
+        from: toISODate(new Date(y, m, 1)),
+        to: toISODate(new Date(y, m + 1, 0)),
+      };
+    }
+    case "this_year": {
+      return { from: `${y}-01-01`, to: `${y}-12-31` };
+    }
+  }
 }

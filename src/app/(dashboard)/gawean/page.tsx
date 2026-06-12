@@ -10,11 +10,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, Filter } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useTickets } from "@/hooks/useTickets";
-import { Badge, Button, SearchInput, Pagination, EmptyState } from "@/components/ui";
-import { TICKET_STATES, TICKET_PRIORITIES, TICKET_CATEGORIES } from "@/lib/constants";
+import { Badge, Button, Pagination, EmptyState } from "@/components/ui";
+import { TicketFilterBar } from "@/components/TicketFilterBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 import type { TicketFilters, PaginationParams } from "@/types";
 
@@ -41,9 +41,6 @@ export default function GaweanPage() {
     sortOrder: "desc",
   });
 
-  // Show/hide filter panel
-  const [showFilters, setShowFilters] = useState(false);
-
   // Fetch tickets with current filters & pagination
   const { tickets, loading, error, total, totalPages } = useTickets(
     {
@@ -53,17 +50,14 @@ export default function GaweanPage() {
     pagination,
   );
 
-  const handleSearch = (value: string) => {
-    setFilters((prev) => ({ ...prev, search: value }));
-    setPagination((prev) => ({ ...prev, page: 1 })); // Reset to page 1
+  // Merge sebagian filter + selalu reset ke halaman 1
+  const patchFilters = (patch: Partial<TicketFilters>) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const handleAssignToMe = () => {
-    setFilters((prev) => ({
-      ...prev,
-      assign_to_me: !prev.assign_to_me,
-      assigned_to: undefined,
-    }));
+  const clearAllFilters = () => {
+    setFilters({ search: "", state: [], priority: [], category: [], assign_to_me: false });
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -110,148 +104,12 @@ export default function GaweanPage() {
         )}
       </div>
 
-      {/* Toolbar: Search + Quick Filters */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1">
-            <SearchInput
-              value={filters.search || ""}
-              onChange={handleSearch}
-              placeholder="Cari tiket berdasarkan subject..."
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant={filters.assign_to_me ? "primary" : "secondary"}
-              size="md"
-              onClick={handleAssignToMe}
-            >
-              Assign To Me
-            </Button>
-            <Button
-              variant="secondary"
-              icon={<Filter className="w-4 h-4" />}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              Filters
-            </Button>
-          </div>
-        </div>
-
-        {/* Advanced Filters Panel */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-slate-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* State Filter */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Status
-                </label>
-                <div className="space-y-1 max-h-48 overflow-y-auto">
-                  {TICKET_STATES.map((state) => (
-                    <label
-                      key={state.value}
-                      className="flex items-center text-sm cursor-pointer hover:bg-slate-50 p-1 rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters.state?.includes(state.value)}
-                        onChange={(e) => {
-                          const newStates = e.target.checked
-                            ? [...(filters.state || []), state.value]
-                            : filters.state?.filter((s) => s !== state.value) || [];
-                          setFilters((prev) => ({ ...prev, state: newStates }));
-                          setPagination((prev) => ({ ...prev, page: 1 }));
-                        }}
-                        className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <Badge variant="state" state={state.value} />
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Priority Filter */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Prioritas
-                </label>
-                <div className="space-y-1">
-                  {TICKET_PRIORITIES.map((priority) => (
-                    <label
-                      key={priority.value}
-                      className="flex items-center text-sm cursor-pointer hover:bg-slate-50 p-1 rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters.priority?.includes(priority.value)}
-                        onChange={(e) => {
-                          const newPriorities = e.target.checked
-                            ? [...(filters.priority || []), priority.value]
-                            : filters.priority?.filter((p) => p !== priority.value) || [];
-                          setFilters((prev) => ({ ...prev, priority: newPriorities }));
-                          setPagination((prev) => ({ ...prev, page: 1 }));
-                        }}
-                        className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <Badge variant="priority" priority={priority.value} />
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Category Filter */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Kategori
-                </label>
-                <div className="space-y-1 max-h-48 overflow-y-auto">
-                  {TICKET_CATEGORIES.map((category) => (
-                    <label
-                      key={category.value}
-                      className="flex items-center text-sm cursor-pointer hover:bg-slate-50 p-1 rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters.category?.includes(category.value)}
-                        onChange={(e) => {
-                          const newCategories = e.target.checked
-                            ? [...(filters.category || []), category.value]
-                            : filters.category?.filter((c) => c !== category.value) || [];
-                          setFilters((prev) => ({ ...prev, category: newCategories }));
-                          setPagination((prev) => ({ ...prev, page: 1 }));
-                        }}
-                        className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      {category.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Clear Filters */}
-            <div className="mt-4 flex justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setFilters({
-                    search: "",
-                    state: [],
-                    priority: [],
-                    category: [],
-                    assign_to_me: false,
-                  });
-                  setPagination((prev) => ({ ...prev, page: 1 }));
-                }}
-              >
-                Clear All Filters
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Toolbar: Search + Filters (gaya Odoo) */}
+      <TicketFilterBar
+        filters={filters}
+        onChange={patchFilters}
+        onClearAll={clearAllFilters}
+      />
 
       {/* Ticket Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
