@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Plus, Trash2, Search, Loader2 } from "lucide-react";
-import { Button, Input, Modal, Badge, EmptyState } from "@/components/ui";
+import { Button, Input, Modal, Badge, EmptyState, SearchInput } from "@/components/ui";
 import { useSession } from "@/hooks/useSession";
 import { useCheckinDetail } from "@/hooks/useCheckinDetail";
 import { useTickets } from "@/hooks/useTickets";
@@ -387,9 +387,10 @@ function TicketPickerModal({
   return (
     <Modal isOpen onClose={onClose} title="Add: Tickets">
       <div className="space-y-4">
-        <Input
+        {/* Debounced (300ms) — hindari query per ketukan ke useTickets */}
+        <SearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={setSearch}
           placeholder="Cari tiket berdasarkan subject..."
         />
 
