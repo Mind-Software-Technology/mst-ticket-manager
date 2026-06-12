@@ -18,7 +18,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { RichTextEditor, SearchInput, Pagination } from "@/components/ui";
 import { isEmptyHtml } from "@/lib/rich-text";
 import { toISODate } from "@/lib/date-utils";
-import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import { DEFAULT_PAGE_SIZE, MANHOURS_OPTIONS } from "@/lib/constants";
 import type { Ticket } from "@/types";
 
 // ─── Constants ────────────────────────────────────────
@@ -784,11 +784,7 @@ export default function AdminDashboard() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Manhours Estimasi
                   </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.5"
-                    placeholder="0"
+                  <select
                     value={formData.manhours_estimate}
                     onChange={(e) =>
                       setFormData({
@@ -797,7 +793,23 @@ export default function AdminDashboard() {
                       })
                     }
                     className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
-                  />
+                  >
+                    <option value="">Pilih manhours</option>
+                    {/* Nilai lama yang tidak ada di daftar standar tetap tampil */}
+                    {formData.manhours_estimate &&
+                      !MANHOURS_OPTIONS.includes(
+                        Number(formData.manhours_estimate),
+                      ) && (
+                        <option value={formData.manhours_estimate}>
+                          {formData.manhours_estimate}
+                        </option>
+                      )}
+                    {MANHOURS_OPTIONS.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

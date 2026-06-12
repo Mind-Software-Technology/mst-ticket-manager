@@ -87,6 +87,12 @@ export const STATE_TRANSITIONS: Record<TicketState, TicketState[]> = {
   cancel:          [],
 };
 
+// ─── Manhours Selection options ──────────────────────
+// Pilihan estimasi manhours (jam) untuk tiket — dipakai sebagai
+// dropdown saat create / edit / detail tiket.
+
+export const MANHOURS_OPTIONS = [1, 3, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+
 // ─── Pagination defaults ─────────────────────────────
 
 export const DEFAULT_PAGE_SIZE = 20;

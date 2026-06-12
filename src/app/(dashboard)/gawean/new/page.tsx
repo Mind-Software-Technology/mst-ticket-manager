@@ -24,6 +24,7 @@ import {
   TICKET_STATES,
   TICKET_PRIORITIES,
   TICKET_CATEGORIES,
+  MANHOURS_OPTIONS,
   ACCEPTED_ATTACHMENT_TYPES,
   MAX_TICKET_ATTACHMENT_SIZE_BYTES,
 } from "@/lib/constants";
@@ -516,12 +517,8 @@ export default function CreateTicketPage() {
 
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input
+                <Select
                   label="Estimate (hours)"
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  placeholder="0"
                   value={formData.manhours_estimate}
                   onChange={(e) =>
                     setFormData({
@@ -529,6 +526,13 @@ export default function CreateTicketPage() {
                       manhours_estimate: e.target.value,
                     })
                   }
+                  options={[
+                    { value: "", label: "Pilih manhours" },
+                    ...MANHOURS_OPTIONS.map((h) => ({
+                      value: String(h),
+                      label: String(h),
+                    })),
+                  ]}
                 />
 
                 <Input

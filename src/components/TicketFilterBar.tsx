@@ -10,8 +10,9 @@
 // =====================================================
 
 import { useEffect, useRef, useState } from "react";
-import { Filter, X } from "lucide-react";
+import { Filter, X, Check, ChevronRight } from "lucide-react";
 import { Button, SearchInput } from "@/components/ui";
+import { TicketGroupByMenu } from "@/components/TicketGroupByMenu";
 import {
   TICKET_STATES,
   TICKET_PRIORITIES,
@@ -29,6 +30,10 @@ interface TicketFilterBarProps {
   onChange: (patch: Partial<TicketFilters>) => void;
   /** Reset semua filter ke default. */
   onClearAll: () => void;
+  /** Key field "Group By" aktif (null = tidak mengelompok). */
+  groupBy?: string | null;
+  /** Ubah field "Group By". Kalau tidak diberikan, tombol disembunyikan. */
+  onGroupByChange?: (key: string | null) => void;
 }
 
 const DUE_PRESETS: { value: DuePreset; label: string }[] = [
@@ -64,11 +69,27 @@ function Pill({
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+/** Baris pilihan filter dengan checkmark (gaya menu Group By). */
+function FilterRow({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-50"
+    >
+      <span className="flex w-4 justify-center text-indigo-600">
+        {active && <Check className="w-3.5 h-3.5" />}
+      </span>
       {children}
-    </p>
+    </button>
   );
 }
 
@@ -78,8 +99,13 @@ export function TicketFilterBar({
   filters,
   onChange,
   onClearAll,
+  groupBy = null,
+  onGroupByChange,
 }: TicketFilterBarProps) {
   const [open, setOpen] = useState(false);
+  // "Add Custom Filter": expander + field yang sedang dipilih.
+  const [showCustom, setShowCustom] = useState(false);
+  const [customField, setCustomField] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Input lokal untuk custom "contains" (apply via Enter / tombol).
@@ -249,199 +275,230 @@ export function TicketFilterBar({
               )}
             </Button>
 
-            {/* Dropdown panel */}
+            {/* Dropdown panel — menu ringkas (gaya Group By) */}
             {open && (
-              <div className="absolute right-0 z-20 mt-2 w-[22rem] max-h-[75vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-4 space-y-4">
-                {/* Quick filter */}
-                <div>
-                  <SectionLabel>Cepat</SectionLabel>
-                  <div className="flex flex-wrap gap-2">
-                    <Pill active={!!filters.not_closed} onClick={() => onChange({ not_closed: !filters.not_closed })}>
-                      Not Close
-                    </Pill>
-                    <Pill active={!!filters.overdue} onClick={() => onChange({ overdue: !filters.overdue })}>
-                      Overdue
-                    </Pill>
-                    <Pill
-                      active={(filters.state ?? []).includes("backlog")}
-                      onClick={() => onChange({ state: toggleInArray(filters.state, "backlog") })}
+              <div className="absolute right-0 z-20 mt-2 w-72 max-h-[75vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1.5">
+                {/* Pilihan cepat (checkmark) */}
+                <FilterRow
+                  active={!!filters.not_closed}
+                  onClick={() => onChange({ not_closed: !filters.not_closed })}
+                >
+                  Not Close
+                </FilterRow>
+                <FilterRow
+                  active={!!filters.overdue}
+                  onClick={() => onChange({ overdue: !filters.overdue })}
+                >
+                  Overdue
+                </FilterRow>
+                <FilterRow
+                  active={(filters.state ?? []).includes("backlog")}
+                  onClick={() => onChange({ state: toggleInArray(filters.state, "backlog") })}
+                >
+                  Backlog
+                </FilterRow>
+                <FilterRow
+                  active={(filters.state ?? []).includes("done")}
+                  onClick={() => onChange({ state: toggleInArray(filters.state, "done") })}
+                >
+                  Done
+                </FilterRow>
+
+                {/* Add Custom Filter */}
+                <div className="my-1 border-t border-slate-100" />
+                <button
+                  type="button"
+                  onClick={() => setShowCustom((s) => !s)}
+                  className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  <span>Add Custom Filter</span>
+                  <ChevronRight
+                    className={`w-4 h-4 text-slate-400 transition-transform ${
+                      showCustom ? "rotate-90" : ""
+                    }`}
+                  />
+                </button>
+
+                {showCustom && (
+                  <div className="px-2.5 pb-2 pt-1 space-y-2">
+                    <select
+                      value={customField}
+                      onChange={(e) => setCustomField(e.target.value)}
+                      className={dateInputCls}
                     >
-                      Backlog
-                    </Pill>
-                    <Pill
-                      active={(filters.state ?? []).includes("done")}
-                      onClick={() => onChange({ state: toggleInArray(filters.state, "done") })}
-                    >
-                      Done
-                    </Pill>
-                  </div>
-                </div>
+                      <option value="">— Pilih filter —</option>
+                      <option value="status">Status</option>
+                      <option value="priority">Priority</option>
+                      <option value="category">Category</option>
+                      <option value="due">Due Date</option>
+                      <option value="done">Done Date</option>
+                      <option value="created">Created</option>
+                      <option value="assignee">Assignee (contains)</option>
+                      <option value="reporter">Reporter (contains)</option>
+                    </select>
 
-                {/* Status */}
-                <div className="pt-3 border-t border-slate-100">
-                  <SectionLabel>Status</SectionLabel>
-                  <div className="grid grid-cols-2 gap-1">
-                    {TICKET_STATES.map((s) => (
-                      <label
-                        key={s.value}
-                        className="flex items-center text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"
-                      >
+                    {customField === "status" && (
+                      <div className="space-y-0.5">
+                        {TICKET_STATES.map((s) => (
+                          <label
+                            key={s.value}
+                            className="flex items-center text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={(filters.state ?? []).includes(s.value)}
+                              onChange={() => onChange({ state: toggleInArray(filters.state, s.value) })}
+                              className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            {s.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {customField === "priority" && (
+                      <div className="space-y-0.5">
+                        {TICKET_PRIORITIES.map((p) => (
+                          <label
+                            key={p.value}
+                            className="flex items-center text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={(filters.priority ?? []).includes(p.value)}
+                              onChange={() => onChange({ priority: toggleInArray(filters.priority, p.value) })}
+                              className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            {p.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {customField === "category" && (
+                      <div className="space-y-0.5">
+                        {TICKET_CATEGORIES.map((c) => (
+                          <label
+                            key={c.value}
+                            className="flex items-center text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={(filters.category ?? []).includes(c.value)}
+                              onChange={() => onChange({ category: toggleInArray(filters.category, c.value) })}
+                              className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            {c.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {customField === "due" && (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          {DUE_PRESETS.map((d) => (
+                            <Pill
+                              key={d.value}
+                              active={filters.due_preset === d.value}
+                              onClick={() => applyDuePreset(d.value)}
+                            >
+                              {d.label}
+                            </Pill>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="date"
+                            value={filters.due_date_from ?? ""}
+                            onChange={(e) =>
+                              onChange({ due_date_from: e.target.value || undefined, due_preset: undefined })
+                            }
+                            className={dateInputCls}
+                          />
+                          <input
+                            type="date"
+                            value={filters.due_date_to ?? ""}
+                            onChange={(e) =>
+                              onChange({ due_date_to: e.target.value || undefined, due_preset: undefined })
+                            }
+                            className={dateInputCls}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {customField === "done" && (
+                      <div className="grid grid-cols-2 gap-2">
                         <input
-                          type="checkbox"
-                          checked={(filters.state ?? []).includes(s.value)}
-                          onChange={() => onChange({ state: toggleInArray(filters.state, s.value) })}
-                          className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          type="date"
+                          value={filters.done_date_from ?? ""}
+                          onChange={(e) => onChange({ done_date_from: e.target.value || undefined })}
+                          className={dateInputCls}
                         />
-                        {s.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Prioritas */}
-                <div className="pt-3 border-t border-slate-100">
-                  <SectionLabel>Prioritas</SectionLabel>
-                  <div className="space-y-1">
-                    {TICKET_PRIORITIES.map((p) => (
-                      <label
-                        key={p.value}
-                        className="flex items-center text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"
-                      >
                         <input
-                          type="checkbox"
-                          checked={(filters.priority ?? []).includes(p.value)}
-                          onChange={() => onChange({ priority: toggleInArray(filters.priority, p.value) })}
-                          className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          type="date"
+                          value={filters.done_date_to ?? ""}
+                          onChange={(e) => onChange({ done_date_to: e.target.value || undefined })}
+                          className={dateInputCls}
                         />
-                        {p.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                      </div>
+                    )}
 
-                {/* Kategori */}
-                <div className="pt-3 border-t border-slate-100">
-                  <SectionLabel>Kategori</SectionLabel>
-                  <div className="grid grid-cols-2 gap-1">
-                    {TICKET_CATEGORIES.map((c) => (
-                      <label
-                        key={c.value}
-                        className="flex items-center text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"
-                      >
+                    {customField === "created" && (
+                      <div className="grid grid-cols-2 gap-2">
                         <input
-                          type="checkbox"
-                          checked={(filters.category ?? []).includes(c.value)}
-                          onChange={() => onChange({ category: toggleInArray(filters.category, c.value) })}
-                          className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          type="date"
+                          value={filters.created_from ?? ""}
+                          onChange={(e) => onChange({ created_from: e.target.value || undefined })}
+                          className={dateInputCls}
                         />
-                        {c.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                        <input
+                          type="date"
+                          value={filters.created_to ?? ""}
+                          onChange={(e) => onChange({ created_to: e.target.value || undefined })}
+                          className={dateInputCls}
+                        />
+                      </div>
+                    )}
 
-                {/* Due date */}
-                <div className="pt-3 border-t border-slate-100">
-                  <SectionLabel>Due Date</SectionLabel>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {DUE_PRESETS.map((d) => (
-                      <Pill key={d.value} active={filters.due_preset === d.value} onClick={() => applyDuePreset(d.value)}>
-                        {d.label}
-                      </Pill>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="date"
-                      value={filters.due_date_from ?? ""}
-                      onChange={(e) =>
-                        onChange({ due_date_from: e.target.value || undefined, due_preset: undefined })
-                      }
-                      className={dateInputCls}
-                    />
-                    <input
-                      type="date"
-                      value={filters.due_date_to ?? ""}
-                      onChange={(e) =>
-                        onChange({ due_date_to: e.target.value || undefined, due_preset: undefined })
-                      }
-                      className={dateInputCls}
-                    />
-                  </div>
-                </div>
+                    {customField === "assignee" && (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={assigneeInput}
+                          onChange={(e) => setAssigneeInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && applyCustom()}
+                          placeholder="Assignee contains…"
+                          className={dateInputCls}
+                        />
+                        <Button variant="primary" size="sm" onClick={applyCustom} className="w-full">
+                          Apply
+                        </Button>
+                      </div>
+                    )}
 
-                {/* Done date */}
-                <div className="pt-3 border-t border-slate-100">
-                  <SectionLabel>Done Date</SectionLabel>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="date"
-                      value={filters.done_date_from ?? ""}
-                      onChange={(e) => onChange({ done_date_from: e.target.value || undefined })}
-                      className={dateInputCls}
-                    />
-                    <input
-                      type="date"
-                      value={filters.done_date_to ?? ""}
-                      onChange={(e) => onChange({ done_date_to: e.target.value || undefined })}
-                      className={dateInputCls}
-                    />
+                    {customField === "reporter" && (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={reporterInput}
+                          onChange={(e) => setReporterInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && applyCustom()}
+                          placeholder="Reporter contains…"
+                          className={dateInputCls}
+                        />
+                        <Button variant="primary" size="sm" onClick={applyCustom} className="w-full">
+                          Apply
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                {/* Created date */}
-                <div className="pt-3 border-t border-slate-100">
-                  <SectionLabel>Dibuat (Created)</SectionLabel>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="date"
-                      value={filters.created_from ?? ""}
-                      onChange={(e) => onChange({ created_from: e.target.value || undefined })}
-                      className={dateInputCls}
-                    />
-                    <input
-                      type="date"
-                      value={filters.created_to ?? ""}
-                      onChange={(e) => onChange({ created_to: e.target.value || undefined })}
-                      className={dateInputCls}
-                    />
-                  </div>
-                </div>
-
-                {/* Custom contains */}
-                <div className="pt-3 border-t border-slate-100">
-                  <SectionLabel>Custom Filter (contains)</SectionLabel>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">Assignee</label>
-                      <input
-                        type="text"
-                        value={assigneeInput}
-                        onChange={(e) => setAssigneeInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && applyCustom()}
-                        placeholder="Assigned to"
-                        className={dateInputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">Reporter</label>
-                      <input
-                        type="text"
-                        value={reporterInput}
-                        onChange={(e) => setReporterInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && applyCustom()}
-                        placeholder="Reported to"
-                        className={dateInputCls}
-                      />
-                    </div>
-                    <Button variant="primary" size="sm" onClick={applyCustom} className="w-full">
-                      Apply
-                    </Button>
-                  </div>
-                </div>
+                )}
 
                 {/* Footer */}
-                <div className="pt-3 border-t border-slate-100 flex justify-between">
+                <div className="my-1 border-t border-slate-100" />
+                <div className="flex items-center justify-between px-1">
                   <Button variant="ghost" size="sm" onClick={onClearAll}>
                     Clear All
                   </Button>
@@ -452,6 +509,11 @@ export function TicketFilterBar({
               </div>
             )}
           </div>
+
+          {/* Group By — di sebelah Filters */}
+          {onGroupByChange && (
+            <TicketGroupByMenu groupBy={groupBy} onChange={onGroupByChange} />
+          )}
         </div>
       </div>
 
