@@ -27,6 +27,7 @@ import {
   TICKET_STATES,
   TICKET_PRIORITIES,
   TICKET_CATEGORIES,
+  MANHOURS_OPTIONS,
   STORAGE_BUCKET_TICKET_ATTACHMENTS,
 } from "@/lib/constants";
 
@@ -170,6 +171,22 @@ export default function TicketDetailPage() {
   }
 
   const userOptions = users.map((u) => ({ value: u.id, label: u.name }));
+
+  // Opsi manhours (estimasi). Kalau nilai tersimpan tidak ada di daftar
+  // standar, tambahkan agar tetap tampil di dropdown.
+  const manhoursOptions = [
+    { value: "", label: "Pilih manhours" },
+    ...MANHOURS_OPTIONS.map((h) => ({ value: String(h), label: String(h) })),
+  ];
+  if (
+    ticket.manhours_estimate &&
+    !MANHOURS_OPTIONS.includes(ticket.manhours_estimate)
+  ) {
+    manhoursOptions.push({
+      value: String(ticket.manhours_estimate),
+      label: String(ticket.manhours_estimate),
+    });
+  }
 
   // Client/Product/Project bertingkat (filter mengikuti pilihan di atasnya)
   const filteredProducts = ticket.client_id
@@ -367,11 +384,14 @@ export default function TicketDetailPage() {
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                   />
                 </div>
-                <ReadOnlyField
-                  label="Manhours"
-                  value={`${ticket.manhours_estimate || 0}h (aktual ${
-                    ticket.actual_manhours || 0
-                  }h)`}
+                {/* Manhours estimasi — editable (dropdown) */}
+                <InlineSelect
+                  label={`Manhours (aktual ${ticket.actual_manhours || 0}h)`}
+                  value={String(ticket.manhours_estimate || "")}
+                  options={manhoursOptions}
+                  onChange={(v) =>
+                    saveField({ manhours_estimate: parseFloat(v) || 0 })
+                  }
                 />
               </div>
 
