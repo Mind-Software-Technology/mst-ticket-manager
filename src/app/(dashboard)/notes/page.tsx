@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/hooks/useSession";
 import { createClient } from "@/utils/supabase/client";
-import { Loader2, Plus, Trash2, Lightbulb } from "lucide-react";
+import { Loader2, Plus, Trash2, Lightbulb, Pencil, Check, X } from "lucide-react";
 
 interface Note {
   id: string;
@@ -19,6 +19,9 @@ export default function NotesPage() {
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -85,10 +88,46 @@ export default function NotesPage() {
     try {
       const { error } = await supabase.from("user_notes").delete().eq("id", id);
       if (error) throw error;
-      
+
       setNotes((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
       console.error("Delete failed", err);
+    }
+  }
+
+  function startEdit(note: Note) {
+    setEditingId(note.id);
+    setEditContent(note.content);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditContent("");
+  }
+
+  async function handleUpdate(id: string) {
+    const trimmed = editContent.trim();
+    if (!trimmed) return;
+
+    setSavingEdit(true);
+    const supabase = createClient();
+    try {
+      const { error } = await supabase
+        .from("user_notes")
+        .update({ content: trimmed })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setNotes((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, content: trimmed } : n))
+      );
+      cancelEdit();
+    } catch (err) {
+      console.error("Update failed", err);
+      alert("Gagal memperbarui ide.");
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -157,10 +196,19 @@ export default function NotesPage() {
               >
                 {/* Lipatan ujung kertas (Sticky note fold effect) */}
                 <div className="absolute bottom-0 right-0 w-[20px] h-[20px] bg-amber-200/80 rounded-tl-lg" />
-                
-                <p className="text-slate-800 flex-1 whitespace-pre-wrap leading-relaxed">
-                  {note.content}
-                </p>
+
+                {editingId === note.id ? (
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    autoFocus
+                    className="flex-1 w-full bg-white/70 resize-none rounded-xl border border-amber-300 p-3 outline-none focus:ring-2 focus:ring-amber-400 text-slate-800 leading-relaxed min-h-[120px]"
+                  />
+                ) : (
+                  <p className="text-slate-800 flex-1 whitespace-pre-wrap leading-relaxed">
+                    {note.content}
+                  </p>
+                )}
                 <div className="mt-4 flex items-end justify-between pt-4 border-t border-amber-200/50">
                   <p className="text-xs text-amber-700/70 font-medium">
                     {new Date(note.created_at).toLocaleDateString("id-ID", {
@@ -169,13 +217,47 @@ export default function NotesPage() {
                       year: "numeric",
                     })}
                   </p>
-                  <button
-                    onClick={() => handleDelete(note.id)}
-                    className="text-amber-600 hover:text-red-500 hover:bg-white/60 p-2 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                    title="Hapus Ide"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {editingId === note.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleUpdate(note.id)}
+                        disabled={savingEdit || !editContent.trim()}
+                        className="text-emerald-600 hover:text-emerald-700 hover:bg-white/60 p-2 rounded-lg transition-colors disabled:opacity-40"
+                        title="Simpan"
+                      >
+                        {savingEdit ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4" />
+                        )}
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        disabled={savingEdit}
+                        className="text-slate-500 hover:text-slate-700 hover:bg-white/60 p-2 rounded-lg transition-colors disabled:opacity-40"
+                        title="Batal"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => startEdit(note)}
+                        className="text-amber-600 hover:text-amber-800 hover:bg-white/60 p-2 rounded-lg transition-colors"
+                        title="Edit Ide"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(note.id)}
+                        className="text-amber-600 hover:text-red-500 hover:bg-white/60 p-2 rounded-lg transition-colors"
+                        title="Hapus Ide"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
