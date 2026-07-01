@@ -11,14 +11,17 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Clock, MessageSquarePlus } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquarePlus, Copy, X } from "lucide-react";
 import { useTicketDetail } from "@/hooks/useTicketDetail";
 import { useUsers } from "@/hooks/useUsers";
 import { useClients } from "@/hooks/useClients";
 import { useProducts } from "@/hooks/useProducts";
 import { useProjects } from "@/hooks/useProjects";
+import { useSprints } from "@/hooks/useSprints";
+import { useLabels } from "@/hooks/useLabels";
 import { useSession } from "@/hooks/useSession";
 import { createClient } from "@/utils/supabase/client";
+import { generateTicketId } from "@/lib/ticket-id-generator";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { TicketAttachments } from "@/components/TicketAttachments";
 import { Badge, Button, Modal, RichTextEditor } from "@/components/ui";
@@ -44,12 +47,18 @@ export default function TicketDetailPage() {
   const { clients } = useClients();
   const { products } = useProducts();
   const { projects } = useProjects();
+  const { sprints } = useSprints();
+  const { labels: allLabels } = useLabels();
 
   const [saving, setSaving] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [progressText, setProgressText] = useState("");
   const [sendingProgress, setSendingProgress] = useState(false);
   const [progressFile, setProgressFile] = useState<File | null>(null);
+  // Copy / carry-over ke sprint berikutnya (admin)
+  const [showCopy, setShowCopy] = useState(false);
+  const [copyTargetSprint, setCopyTargetSprint] = useState("");
+  const [copying, setCopying] = useState(false);
   // Bump untuk memaksa ActivityTimeline reload setelah ada reply baru
   const [timelineKey, setTimelineKey] = useState(0);
 
@@ -211,6 +220,181 @@ export default function TicketDetailPage() {
     saveField({ product_id: productId || null, project_id: null });
   };
 
+  // ─── Labels ──────────────────────────────────────────
+  const ticketLabels = ticket.labels ?? [];
+  const availableLabels = allLabels.filter(
+    (l) => !ticketLabels.some((tl) => tl.id === l.id),
+  );
+
+  // Tiket ber-label "Carry Over" → double-click subject menambahkan awalan
+  // "#CarryOver - " (sekali saja) agar admin tak perlu mengetiknya manual.
+  const hasCarryOver = ticketLabels.some(
+    (l) => l.name.toLowerCase() === "carry over",
+  );
+  const CARRY_OVER_PREFIX = "#CarryOver - ";
+  const applyCarryOverPrefix = () => {
+    if (!hasCarryOver) return;
+    if (subject.trimStart().startsWith(CARRY_OVER_PREFIX)) return;
+    const next = CARRY_OVER_PREFIX + subject;
+    setSubject(next);
+    void saveField({ subject: next.trim() });
+  };
+
+  const handleAddLabel = async (labelId: string) => {
+    if (!labelId) return;
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error: insertErr } = await supabase
+        .from("ticket_labels")
+        .insert({ ticket_id: ticket.id, label_id: labelId });
+      if (insertErr) throw insertErr;
+      await refresh();
+    } catch (err) {
+      console.error("Failed to add label:", err);
+      alert("Gagal menambah label. Coba lagi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveLabel = async (labelId: string) => {
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error: deleteErr } = await supabase
+        .from("ticket_labels")
+        .delete()
+        .eq("ticket_id", ticket.id)
+        .eq("label_id", labelId);
+      if (deleteErr) throw deleteErr;
+      await refresh();
+    } catch (err) {
+      console.error("Failed to remove label:", err);
+      alert("Gagal menghapus label. Coba lagi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── Copy / Carry Over ke sprint berikutnya ──────────
+  // Sprint "berikutnya" = sprint dengan start_date paling awal yang masih
+  // lebih besar dari sprint tiket ini (perbandingan string ISO YYYY-MM-DD).
+  const nextSprintId = (() => {
+    const currentStart = ticket.sprint?.start_date;
+    if (!currentStart) return "";
+    const later = sprints
+      .filter((s) => s.start_date > currentStart)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date));
+    return later[0]?.id ?? "";
+  })();
+
+  const openCopyModal = () => {
+    setCopyTargetSprint(nextSprintId);
+    setShowCopy(true);
+  };
+
+  const handleCopyTicket = async () => {
+    if (!ticket.product_id) {
+      alert("Tiket ini tidak punya product, tidak bisa membuat ID baru.");
+      return;
+    }
+    setCopying(true);
+    try {
+      const supabase = createClient();
+
+      // 1. Alokasikan ticket ID baru (atomik, race-safe).
+      const { ticketId, sequence } = await generateTicketId(ticket.product_id);
+
+      // 2. Buat tiket salinan di sprint tujuan. State di-reset ke "todo" dan
+      //    progress (done_date / actual_manhours) dikosongkan — ini pekerjaan
+      //    yang dibawa ke sprint berikutnya.
+      const { data: newTicket, error: createErr } = await supabase
+        .from("tickets")
+        .insert({
+          ticket_id: ticketId,
+          sequence,
+          subject: ticket.subject,
+          description: ticket.description,
+          category: ticket.category,
+          state: "todo",
+          priority: ticket.priority,
+          client_id: ticket.client_id,
+          product_id: ticket.product_id,
+          project_id: ticket.project_id,
+          sprint_id: copyTargetSprint || null,
+          assigned_to: ticket.assigned_to,
+          reported_to: ticket.reported_to,
+          manhours_estimate: ticket.manhours_estimate,
+          actual_manhours: 0,
+          need_qa: ticket.need_qa,
+          start_date: ticket.start_date,
+          due_date: ticket.due_date,
+          division: ticket.division,
+          created_by: session?.profile?.id || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      if (createErr) throw createErr;
+
+      // 3. Pastikan label "Carry Over" ada (buat kalau belum).
+      let carryLabelId: string | null =
+        allLabels.find((l) => l.name.toLowerCase() === "carry over")?.id ?? null;
+      if (!carryLabelId) {
+        const { data: created, error: labelErr } = await supabase
+          .from("labels")
+          .insert({ name: "Carry Over", color: "#eab308" })
+          .select()
+          .single();
+        if (labelErr) {
+          // Kemungkinan sudah dibuat orang lain (unique name) — ambil ulang.
+          const { data: found } = await supabase
+            .from("labels")
+            .select("id")
+            .eq("name", "Carry Over")
+            .maybeSingle();
+          carryLabelId = found?.id ?? null;
+        } else {
+          carryLabelId = created.id;
+        }
+      }
+
+      // 4. Salin label lama + tambahkan "Carry Over".
+      const labelIds = new Set<string>(ticketLabels.map((l) => l.id));
+      if (carryLabelId) labelIds.add(carryLabelId);
+      if (labelIds.size > 0) {
+        await supabase.from("ticket_labels").insert(
+          Array.from(labelIds).map((label_id) => ({
+            ticket_id: newTicket.id,
+            label_id,
+          })),
+        );
+      }
+
+      // 5. Catat di activity log tiket baru.
+      void supabase.from("activity_logs").insert({
+        ticket_id: newTicket.id,
+        user_id: session?.profile?.id || null,
+        action_type: "created",
+        message: `Carry over dari ${ticket.ticket_id}`,
+        created_at: new Date().toISOString(),
+      });
+
+      // 6. Pindah ke tiket baru.
+      router.push(`/gawean/${newTicket.id}`);
+    } catch (err) {
+      console.error("Failed to copy ticket:", err);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : (err as { message?: string })?.message ?? "Unknown error";
+      alert(`Gagal menyalin tiket: ${msg}`);
+      setCopying(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto p-4 md:p-8">
@@ -225,14 +409,26 @@ export default function TicketDetailPage() {
             >
               Back to Tickets
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<MessageSquarePlus className="w-4 h-4" />}
-              onClick={() => setShowProgress(true)}
-            >
-              Progress
-            </Button>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Copy className="w-4 h-4" />}
+                  onClick={openCopyModal}
+                >
+                  Copy
+                </Button>
+              )}
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<MessageSquarePlus className="w-4 h-4" />}
+                onClick={() => setShowProgress(true)}
+              >
+                Progress
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 mb-2 flex-wrap">
@@ -248,11 +444,17 @@ export default function TicketDetailPage() {
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
+            onDoubleClick={applyCarryOverPrefix}
             onBlur={() => {
               if (subject.trim() && subject !== ticket.subject) {
                 void saveField({ subject: subject.trim() });
               }
             }}
+            title={
+              hasCarryOver
+                ? "Klik 2x untuk menambahkan awalan #CarryOver -"
+                : undefined
+            }
             className="text-2xl font-bold text-slate-900 w-full bg-transparent border-b border-transparent hover:border-slate-200 focus:border-indigo-500 focus:outline-none"
           />
         </div>
@@ -395,6 +597,55 @@ export default function TicketDetailPage() {
                 />
               </div>
 
+              {/* Labels — editable (chips + dropdown) */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-slate-500 mb-1">
+                  Label
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {ticketLabels.map((l) => (
+                    <span
+                      key={l.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: `${l.color}22`,
+                        color: l.color,
+                        border: `1px solid ${l.color}55`,
+                      }}
+                    >
+                      {l.name}
+                      <button
+                        onClick={() => handleRemoveLabel(l.id)}
+                        title="Hapus label"
+                        className="hover:opacity-60"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {availableLabels.length > 0 ? (
+                    <select
+                      value=""
+                      onChange={(e) => handleAddLabel(e.target.value)}
+                      className="px-2.5 py-1 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-600"
+                    >
+                      <option value="">+ Tambah label</option>
+                      {availableLabels.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    ticketLabels.length === 0 && (
+                      <span className="text-xs text-slate-400">
+                        Belum ada label. Buat di Config › Labels.
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+
               {/* Description — editable (rich text) */}
               <div className="mt-6">
                 <label className="block text-sm font-medium text-slate-500 mb-1">
@@ -500,6 +751,65 @@ export default function TicketDetailPage() {
                 disabled={!progressText.trim() && !progressFile}
               >
                 Send
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Copy / Carry Over Modal (admin) */}
+      {showCopy && (
+        <Modal
+          isOpen={showCopy}
+          onClose={() => setShowCopy(false)}
+          title="Copy ke Sprint Berikutnya"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Salin tiket <span className="font-mono">{ticket.ticket_id}</span>{" "}
+              menjadi tiket baru di sprint tujuan. Semua field & label ikut
+              tersalin, dan label{" "}
+              <span className="font-medium text-amber-600">Carry Over</span>{" "}
+              ditambahkan otomatis.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Sprint Tujuan
+              </label>
+              <select
+                value={copyTargetSprint}
+                onChange={(e) => setCopyTargetSprint(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              >
+                <option value="">-- Tanpa Sprint --</option>
+                {sprints.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.id === nextSprintId ? " (berikutnya)" : ""}
+                  </option>
+                ))}
+              </select>
+              {ticket.sprint?.name && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Sprint saat ini: {ticket.sprint.name}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => setShowCopy(false)}
+                disabled={copying}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleCopyTicket}
+                loading={copying}
+                icon={<Copy className="w-4 h-4" />}
+              >
+                Copy Tiket
               </Button>
             </div>
           </div>

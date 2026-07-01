@@ -15,11 +15,12 @@ import { useClients } from "@/hooks/useClients";
 import { useProducts } from "@/hooks/useProducts";
 import { useProjects } from "@/hooks/useProjects";
 import { useSprints } from "@/hooks/useSprints";
+import { useLabels } from "@/hooks/useLabels";
 import { useUsers } from "@/hooks/useUsers";
 import { useSession } from "@/hooks/useSession";
-import type { Client, Product, Project, Sprint, User } from "@/types";
+import type { Client, Product, Project, Sprint, Label, User } from "@/types";
 
-type Tab = "clients" | "products" | "projects" | "sprints" | "users";
+type Tab = "clients" | "products" | "projects" | "sprints" | "labels" | "users";
 
 export default function ConfigPage() {
   const [activeTab, setActiveTab] = useState<Tab>("clients");
@@ -30,8 +31,8 @@ export default function ConfigPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900">Configuration</h1>
           <p className="text-slate-600 mt-1">
-            Manage master data for tickets: clients, products, projects, and
-            sprints
+            Manage master data for tickets: clients, products, projects,
+            sprints, and labels
           </p>
         </div>
 
@@ -43,6 +44,7 @@ export default function ConfigPage() {
               { id: "products", label: "Products" },
               { id: "projects", label: "Projects" },
               { id: "sprints", label: "Sprints" },
+              { id: "labels", label: "Labels" },
               { id: "users", label: "Users & Telegram" },
             ].map((tab) => (
               <button
@@ -64,6 +66,7 @@ export default function ConfigPage() {
             {activeTab === "products" && <ProductsTab />}
             {activeTab === "projects" && <ProjectsTab />}
             {activeTab === "sprints" && <SprintsTab />}
+            {activeTab === "labels" && <LabelsTab />}
             {activeTab === "users" && <UsersTab />}
           </div>
         </div>
@@ -830,6 +833,209 @@ function ProjectsTab() {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => setShowModal(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleSave} loading={saving}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ==================== LABELS TAB ====================
+
+function LabelsTab() {
+  const { labels, loading, createLabel, updateLabel, deleteLabel } =
+    useLabels();
+  const [showModal, setShowModal] = useState(false);
+  const [editingLabel, setEditingLabel] = useState<Label | null>(null);
+  const [formData, setFormData] = useState({ name: "", color: "#6366f1" });
+  const [saving, setSaving] = useState(false);
+
+  const handleAdd = () => {
+    setEditingLabel(null);
+    setFormData({ name: "", color: "#6366f1" });
+    setShowModal(true);
+  };
+
+  const handleEdit = (label: Label) => {
+    setEditingLabel(label);
+    setFormData({ name: label.name, color: label.color || "#6366f1" });
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      alert("Name is required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (editingLabel) {
+        await updateLabel(editingLabel.id, formData);
+      } else {
+        await createLabel(formData);
+      }
+      setShowModal(false);
+    } catch (err: any) {
+      alert(`Failed: ${err?.message || "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (label: Label) => {
+    if (!confirm(`Delete label "${label.name}"?`)) return;
+
+    try {
+      await deleteLabel(label.id);
+    } catch (err: any) {
+      alert(`Failed to delete: ${err?.message || "Unknown error"}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold text-slate-900">Labels</h2>
+        <Button variant="primary" size="sm" icon={<Plus className="w-4 h-4" />} onClick={handleAdd}>
+          Add Label
+        </Button>
+      </div>
+
+      {labels.length === 0 ? (
+        <p className="text-slate-500 text-center py-8">
+          No labels yet. Add one to tag tickets (e.g., &quot;Carry Over&quot;).
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-y border-slate-200">
+              <tr>
+                <th className="px-4 py-3 text-left font-medium text-slate-700">
+                  Label
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-slate-700">
+                  Color
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-slate-700">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {labels.map((label) => (
+                <tr key={label.id} className="border-b border-slate-100">
+                  <td className="px-4 py-3">
+                    <span
+                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: `${label.color}22`,
+                        color: label.color,
+                        border: `1px solid ${label.color}55`,
+                      }}
+                    >
+                      {label.name}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-2 text-slate-600">
+                      <span
+                        className="inline-block w-4 h-4 rounded border border-slate-200"
+                        style={{ backgroundColor: label.color }}
+                      />
+                      <span className="font-mono text-xs">{label.color}</span>
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right space-x-2">
+                    <button
+                      onClick={() => handleEdit(label)}
+                      className="text-indigo-600 hover:text-indigo-700"
+                    >
+                      <Pencil className="w-4 h-4 inline" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(label)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4 inline" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showModal && (
+        <Modal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          title={editingLabel ? "Edit Label" : "Add Label"}
+        >
+          <div className="space-y-4">
+            <Input
+              label="Name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              required
+              placeholder="e.g., Carry Over"
+            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Color
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={formData.color}
+                  onChange={(e) =>
+                    setFormData({ ...formData, color: e.target.value })
+                  }
+                  className="h-10 w-14 rounded border border-slate-300 bg-white p-1"
+                />
+                <Input
+                  value={formData.color}
+                  onChange={(e) =>
+                    setFormData({ ...formData, color: e.target.value })
+                  }
+                  className="font-mono"
+                  maxLength={7}
+                />
+                <span
+                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap"
+                  style={{
+                    backgroundColor: `${formData.color}22`,
+                    color: formData.color,
+                    border: `1px solid ${formData.color}55`,
+                  }}
+                >
+                  {formData.name.trim() || "Preview"}
+                </span>
+              </div>
             </div>
             <div className="flex gap-2 justify-end pt-2">
               <Button
