@@ -6,10 +6,14 @@
 //
 // Main ticket list dengan filter, search, pagination, dan
 // "Group By" gaya Odoo (kelompokkan tiket per field).
+//
+// State filter/pagination/groupBy disimpan di URL search
+// params agar tidak hilang saat navigasi ke detail lalu
+// kembali (browser back).
 // =====================================================
 
-import { Fragment, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Fragment, Suspense, useCallback, useMemo, useState } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { PlusCircle, ChevronRight, ChevronDown } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useTickets } from "@/hooks/useTickets";
@@ -21,7 +25,15 @@ import {
   GROUP_DEF_BY_KEY,
   GROUP_FETCH_LIMIT,
 } from "@/lib/ticket-grouping";
-import type { Ticket, TicketFilters, PaginationParams } from "@/types";
+import type {
+  Ticket,
+  TicketFilters,
+  TicketState,
+  TicketPriority,
+  TicketCategory,
+  DuePreset,
+  PaginationParams,
+} from "@/types";
 
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return "-";
@@ -32,43 +44,193 @@ const formatDate = (dateStr: string | null | undefined) => {
   });
 };
 
-export default function GaweanPage() {
+// ─── URL search params helpers ────────────────────────
+
+const DUE_PRESET_VALUES = ["today", "this_week", "this_month", "this_year"];
+
+function parseFiltersFromParams(sp: URLSearchParams): TicketFilters {
+  const stateRaw = sp.get("s");
+  const priorityRaw = sp.get("p");
+  const categoryRaw = sp.get("c");
+  const dueRaw = sp.get("due");
+  const hasAnyParams = Array.from(sp.entries()).length > 0;
+
+  return {
+    search: sp.get("q") ?? "",
+    state: stateRaw
+      ? (stateRaw.split(",").filter(Boolean) as TicketState[])
+      : [],
+    priority: priorityRaw
+      ? (priorityRaw.split(",").filter(Boolean) as TicketPriority[])
+      : [],
+    category: categoryRaw
+      ? (categoryRaw.split(",").filter(Boolean) as TicketCategory[])
+      : [],
+    assign_to_me:
+      hasAnyParams ? sp.has("me") : true,
+    not_closed: sp.has("nc"),
+    overdue: sp.has("od"),
+    due_preset: (dueRaw && DUE_PRESET_VALUES.includes(dueRaw)
+      ? dueRaw
+      : undefined) as DuePreset | undefined,
+    due_date_from: sp.get("due_f") || undefined,
+    due_date_to: sp.get("due_t") || undefined,
+    done_date_from: sp.get("done_f") || undefined,
+    done_date_to: sp.get("done_t") || undefined,
+    created_from: sp.get("cr_f") || undefined,
+    created_to: sp.get("cr_t") || undefined,
+    assignee_name: sp.get("as") || undefined,
+    reporter_name: sp.get("rp") || undefined,
+    client_id: sp.get("cl") || undefined,
+    product_id: sp.get("pr") || undefined,
+    project_id: sp.get("pj") || undefined,
+    sprint_id: sp.get("sp") || undefined,
+  };
+}
+
+function parsePaginationFromParams(sp: URLSearchParams): PaginationParams {
+  return {
+    page: Math.max(1, parseInt(sp.get("pg") ?? "1", 10) || 1),
+    pageSize: DEFAULT_PAGE_SIZE,
+    sortBy: sp.get("sort") || "created_at",
+    sortOrder: sp.get("o") === "asc" ? "asc" : "desc",
+  };
+}
+
+function serializeToParams(
+  filters: TicketFilters,
+  pagination: PaginationParams,
+  groupBy: string | null,
+): URLSearchParams {
+  const sp = new URLSearchParams();
+
+  if (filters.search) sp.set("q", filters.search);
+  if (filters.assign_to_me) sp.set("me", "1");
+  if (filters.not_closed) sp.set("nc", "1");
+  if (filters.overdue) sp.set("od", "1");
+  if (filters.state?.length) sp.set("s", filters.state.join(","));
+  if (filters.priority?.length) sp.set("p", filters.priority.join(","));
+  if (filters.category?.length) sp.set("c", filters.category.join(","));
+  if (filters.due_preset) sp.set("due", filters.due_preset);
+  if (filters.due_date_from) sp.set("due_f", filters.due_date_from);
+  if (filters.due_date_to) sp.set("due_t", filters.due_date_to);
+  if (filters.done_date_from) sp.set("done_f", filters.done_date_from);
+  if (filters.done_date_to) sp.set("done_t", filters.done_date_to);
+  if (filters.created_from) sp.set("cr_f", filters.created_from);
+  if (filters.created_to) sp.set("cr_t", filters.created_to);
+  if (filters.assignee_name) sp.set("as", filters.assignee_name);
+  if (filters.reporter_name) sp.set("rp", filters.reporter_name);
+  if (filters.client_id) sp.set("cl", filters.client_id);
+  if (filters.product_id) sp.set("pr", filters.product_id);
+  if (filters.project_id) sp.set("pj", filters.project_id);
+  if (filters.sprint_id) sp.set("sp", filters.sprint_id);
+
+  if (pagination.page > 1) sp.set("pg", String(pagination.page));
+  if (pagination.sortBy !== "created_at") sp.set("sort", pagination.sortBy);
+  if (pagination.sortOrder !== "desc") sp.set("o", pagination.sortOrder);
+
+  if (groupBy) sp.set("grp", groupBy);
+
+  return sp;
+}
+
+// ─── Inner component (needs Suspense for useSearchParams) ──
+
+function GaweanPageInner() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { session } = useSession();
   const currentUserId = session?.profile?.id;
   const isAdmin = Boolean(session?.profile?.is_admin);
 
-  // Filters state — default "Assign To Me" aktif saat halaman dibuka (gaya ERP)
-  const [filters, setFilters] = useState<TicketFilters>({
-    search: "",
-    state: [],
-    priority: [],
-    category: [],
-    assign_to_me: true,
-  });
-
-  // Pagination state — default: tiket terbaru (created_at) tampil paling atas
-  const [pagination, setPagination] = useState<PaginationParams>({
-    page: 1,
-    pageSize: DEFAULT_PAGE_SIZE,
-    sortBy: "created_at",
-    sortOrder: "desc",
-  });
-
-  // Group By — null artinya tidak mengelompok (tampil tabel biasa).
-  const [groupBy, setGroupBy] = useState<string | null>(null);
+  // Baca state dari URL search params — rekomputasi hanya saat URL berubah.
+  const filters = useMemo(
+    () => parseFiltersFromParams(searchParams),
+    [searchParams],
+  );
+  const pagination = useMemo(
+    () => parsePaginationFromParams(searchParams),
+    [searchParams],
+  );
+  const groupBy = searchParams.get("grp") || null;
   const grouping = groupBy !== null;
 
-  // Grup yang sedang dilipat (collapsed). Default semua terbuka.
+  // Collapsed group — local state (tidak perlu survive navigasi).
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  // Saat grouping aktif, fetch banyak sekaligus (tanpa paginasi) lalu
-  // kelompokkan di klien. Selain itu pakai paginasi normal.
+  // Helper: tulis state ke URL (replace, bukan push).
+  const pushUrl = useCallback(
+    (
+      f: TicketFilters,
+      p: PaginationParams,
+      g: string | null,
+    ) => {
+      const sp = serializeToParams(f, p, g);
+      const qs = sp.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router],
+  );
+
+  // ─── Event handlers ─────────────────────────────────
+
+  const patchFilters = useCallback(
+    (patch: Partial<TicketFilters>) => {
+      pushUrl({ ...filters, ...patch }, { ...pagination, page: 1 }, groupBy);
+    },
+    [filters, pagination, groupBy, pushUrl],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    router.replace(pathname, { scroll: false });
+  }, [pathname, router]);
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      pushUrl(filters, { ...pagination, page }, groupBy);
+    },
+    [filters, pagination, groupBy, pushUrl],
+  );
+
+  const handleSort = useCallback(
+    (sortBy: string) => {
+      const newOrder =
+        pagination.sortBy === sortBy && pagination.sortOrder === "asc"
+          ? "desc"
+          : "asc";
+      pushUrl(
+        filters,
+        { ...pagination, sortBy, sortOrder: newOrder, page: 1 },
+        groupBy,
+      );
+    },
+    [filters, pagination, groupBy, pushUrl],
+  );
+
+  const handleGroupByChange = useCallback(
+    (key: string | null) => {
+      pushUrl(filters, { ...pagination, page: 1 }, key);
+      setCollapsed(new Set());
+    },
+    [filters, pagination, pushUrl],
+  );
+
+  const toggleGroup = (id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // ─── Derived data ───────────────────────────────────
+
   const effectivePagination: PaginationParams = grouping
     ? { ...pagination, page: 1, pageSize: GROUP_FETCH_LIMIT }
     : pagination;
 
-  // Fetch tickets with current filters & pagination
   const { tickets, loading, error, total, totalPages } = useTickets(
     {
       ...filters,
@@ -82,56 +244,21 @@ export default function GaweanPage() {
     [grouping, tickets, groupBy],
   );
 
-  // Merge sebagian filter + selalu reset ke halaman 1
-  const patchFilters = (patch: Partial<TicketFilters>) => {
-    setFilters((prev) => ({ ...prev, ...patch }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
-  const clearAllFilters = () => {
-    setFilters({ search: "", state: [], priority: [], category: [], assign_to_me: false });
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
-  const handlePageChange = (page: number) => {
-    setPagination((prev) => ({ ...prev, page }));
-  };
-
-  const handleGroupByChange = (key: string | null) => {
-    setGroupBy(key);
-    setCollapsed(new Set());
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
-  const toggleGroup = (id: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleSort = (sortBy: string) => {
-    setPagination((prev) => ({
-      ...prev,
-      sortBy,
-      sortOrder:
-        prev.sortBy === sortBy && prev.sortOrder === "asc" ? "desc" : "asc",
-    }));
-  };
-
   const groupLabel = groupBy ? GROUP_DEF_BY_KEY[groupBy]?.label : "";
   const groupedCount = grouping
     ? groups.reduce((sum, g) => sum + g.tickets.length, 0)
     : 0;
+
+  // ─── Render ─────────────────────────────────────────
 
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Gawean (Tickets)</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            Gawean (Tickets)
+          </h1>
           <p className="text-sm text-slate-500 mt-1">
             Kelola semua tiket pekerjaan tim
           </p>
@@ -164,7 +291,8 @@ export default function GaweanPage() {
           {groups.length} grup, {groupedCount} tiket
           {total > GROUP_FETCH_LIMIT && (
             <span className="ml-1 text-amber-600">
-              (hanya {GROUP_FETCH_LIMIT} dari {total} tiket yang dikelompokkan)
+              (hanya {GROUP_FETCH_LIMIT} dari {total} tiket yang
+              dikelompokkan)
             </span>
           )}
         </div>
@@ -279,7 +407,9 @@ export default function GaweanPage() {
                           <TicketRow
                             key={ticket.id}
                             ticket={ticket}
-                            onClick={() => router.push(`/gawean/${ticket.id}`)}
+                            onClick={() =>
+                              router.push(`/gawean/${ticket.id}`)
+                            }
                           />
                         ))}
                     </Fragment>
@@ -311,6 +441,20 @@ export default function GaweanPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Export dengan Suspense wrapper (wajib untuk useSearchParams) ──
+
+export default function GaweanPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 text-center text-slate-500">Memuat...</div>
+      }
+    >
+      <GaweanPageInner />
+    </Suspense>
   );
 }
 
