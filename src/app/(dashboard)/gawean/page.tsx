@@ -51,6 +51,7 @@ interface PersistedState {
 let persisted: PersistedState | null = null;
 
 function loadPersisted(): PersistedState | null {
+  if (typeof window === "undefined") return null;
   if (persisted) return persisted;
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -105,18 +106,33 @@ function defaultPagination(): PaginationParams {
 
 export default function GaweanPage() {
   const router = useRouter();
-  const { session } = useSession();
+  const { session, loading: sessionLoading } = useSession();
   const currentUserId = session?.profile?.id;
   const isAdmin = Boolean(session?.profile?.is_admin);
 
   // Restore dari module-level state or sessionStorage
   const [state, setState] = useState<PersistedState>(() => {
-    return loadPersisted() ?? {
+    if (typeof window !== "undefined") {
+      return loadPersisted() ?? {
+        filters: defaultFilters(),
+        pagination: defaultPagination(),
+        groupBy: null,
+      };
+    }
+    return {
       filters: defaultFilters(),
       pagination: defaultPagination(),
       groupBy: null,
     };
   });
+
+  // Pastikan sinkron dengan sessionStorage setelah mount (menghindari hydration mismatch)
+  useEffect(() => {
+    const loaded = loadPersisted();
+    if (loaded) {
+      setState(loaded);
+    }
+  }, []);
 
   const { filters, pagination, groupBy } = state;
   const grouping = groupBy !== null;
@@ -198,13 +214,23 @@ export default function GaweanPage() {
     ? { ...pagination, page: 1, pageSize: GROUP_FETCH_LIMIT }
     : pagination;
 
-  const { tickets, loading, error, total, totalPages } = useTickets(
+  const {
+    tickets,
+    loading: ticketsLoading,
+    error,
+    total,
+    totalPages,
+  } = useTickets(
     {
       ...filters,
-      assigned_to: filters.assign_to_me ? currentUserId : filters.assigned_to,
+      assigned_to: filters.assign_to_me
+        ? currentUserId || "00000000-0000-0000-0000-000000000000"
+        : filters.assigned_to,
     },
     effectivePagination,
   );
+
+  const loading = ticketsLoading || sessionLoading;
 
   const groups = useMemo(
     () => (grouping ? groupTickets(tickets, groupBy) : []),

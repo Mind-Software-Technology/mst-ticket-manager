@@ -123,6 +123,11 @@ export default function DashboardLayout({
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={() => {
+                        if (item.href === "/gawean") {
+                          try { sessionStorage.removeItem("gawean_v2"); } catch {}
+                        }
+                      }}
                       className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                         isActive(item.href)
                           ? "bg-indigo-50 text-indigo-700"
@@ -195,6 +200,11 @@ export default function DashboardLayout({
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => {
+                    if (item.href === "/gawean") {
+                      try { sessionStorage.removeItem("gawean_v2"); } catch {}
+                    }
+                  }}
                   className={`flex items-center whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                     isActive(item.href)
                       ? "bg-indigo-50 text-indigo-700"
