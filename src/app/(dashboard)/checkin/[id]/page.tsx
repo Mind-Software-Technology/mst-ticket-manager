@@ -364,11 +364,15 @@ function TicketPickerModal({
   onSelect: (ticket: Ticket) => void;
 }) {
   const [search, setSearch] = useState("");
-  // Hanya tiket milik user login (assignee) dengan state selain done.
+  const [filterType, setFilterType] = useState<"all" | "assigned" | "reported">("all");
+
+  // Filter tiket milik user login (assignee atau reporter) dengan state selain done.
   const { tickets, loading } = useTickets(
     {
       search,
-      assigned_to: assigneeId,
+      involved_user: filterType === "all" ? assigneeId : undefined,
+      assigned_to: filterType === "assigned" ? assigneeId : undefined,
+      reported_to: filterType === "reported" ? assigneeId : undefined,
       state: [
         "backlog",
         "todo",
@@ -387,12 +391,24 @@ function TicketPickerModal({
   return (
     <Modal isOpen onClose={onClose} title="Add: Tickets">
       <div className="space-y-4">
-        {/* Debounced (300ms) — hindari query per ketukan ke useTickets */}
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Cari tiket berdasarkan subject..."
-        />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari tiket berdasarkan subject..."
+            />
+          </div>
+          <select
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as any)}
+          >
+            <option value="all">Semua (Terkait)</option>
+            <option value="assigned">Hanya Assignee</option>
+            <option value="reported">Hanya Reporter</option>
+          </select>
+        </div>
 
         <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-lg">
           {loading ? (

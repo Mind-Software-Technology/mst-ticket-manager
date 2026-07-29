@@ -230,6 +230,9 @@ export interface TicketFilters {
   priority?: TicketPriority[];
   category?: TicketCategory[];
   assigned_to?: string;
+  reported_to?: string;
+  /** Filter tiket di mana user adalah assignee ATAU reporter */
+  involved_user?: string;
   client_id?: string;
   product_id?: string;
   project_id?: string;

@@ -108,6 +108,14 @@ export function useTickets(
         query = query.eq("assigned_to", filters.assigned_to);
       }
 
+      if (filters.reported_to) {
+        query = query.eq("reported_to", filters.reported_to);
+      }
+
+      if (filters.involved_user) {
+        query = query.or(`assigned_to.eq.${filters.involved_user},reported_to.eq.${filters.involved_user}`);
+      }
+
       if (assigneeIds) {
         query = query.in("assigned_to", assigneeIds);
       }
@@ -194,6 +202,8 @@ export function useTickets(
     filters.priority?.join(","),
     filters.category?.join(","),
     filters.assigned_to,
+    filters.reported_to,
+    filters.involved_user,
     filters.assignee_name,
     filters.reporter_name,
     filters.due_date_from,
