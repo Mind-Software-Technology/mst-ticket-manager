@@ -52,11 +52,7 @@ export default function CheckinListPage() {
             );
             return (
               <div
-                className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg ${
-                  isCheckedInToday 
-                    ? "bg-orange-50 border-orange-200" 
-                    : "bg-slate-50 border-slate-200"
-                }`}
+                className="flex items-center gap-1.5"
                 title="Streak dihitung hari kerja (Senin-Jumat) saja"
               >
                 <Image
@@ -67,7 +63,7 @@ export default function CheckinListPage() {
                   className="object-contain drop-shadow-sm"
                 />
                 <span className={`text-sm font-bold ${
-                  isCheckedInToday ? "text-orange-700" : "text-slate-500"
+                  isCheckedInToday ? "text-orange-600" : "text-slate-500"
                 }`}>
                   {myStreak} hari beruntun
                 </span>
