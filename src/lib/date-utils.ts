@@ -159,6 +159,32 @@ export function toISODate(date: Date = new Date()): string {
 }
 
 /**
+ * Batas awal/akhir "hari ini" versi WIB (UTC+7), dikembalikan sebagai ISO
+ * string UTC — dipakai untuk query Supabase (kolom timestamptz) yang perlu
+ * konsisten dengan "hari ini" versi lokal Indonesia, bukan UTC server.
+ */
+export function wibDayBoundsUtc(now: Date = new Date()): {
+  startUtcIso: string;
+  endUtcIso: string;
+  todayStr: string;
+} {
+  const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+  const wibNow = new Date(now.getTime() + WIB_OFFSET_MS);
+  const todayStr = `${wibNow.getUTCFullYear()}-${String(
+    wibNow.getUTCMonth() + 1
+  ).padStart(2, "0")}-${String(wibNow.getUTCDate()).padStart(2, "0")}`;
+
+  const startUtc = new Date(`${todayStr}T00:00:00+07:00`);
+  const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000);
+
+  return {
+    startUtcIso: startUtc.toISOString(),
+    endUtcIso: endUtc.toISOString(),
+    todayStr,
+  };
+}
+
+/**
  * Rentang tanggal {from, to} (inklusif, format YYYY-MM-DD) untuk preset cepat.
  * Minggu dihitung Senin–Minggu.
  */

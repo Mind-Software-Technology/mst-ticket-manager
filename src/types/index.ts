@@ -64,6 +64,8 @@ export interface User {
   /** Kode link Telegram acak sekali-pakai (analysis #3b). */
   telegram_link_code?: string | null;
   telegram_link_expires_at?: string | null;
+  /** Nomor WhatsApp format Fonnte: 628xxxxxxxxxx. */
+  whatsapp_number: string | null;
   created_at: string;
 }
 

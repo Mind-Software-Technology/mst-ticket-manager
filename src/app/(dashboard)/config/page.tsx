@@ -8,15 +8,17 @@
 // Simplified implementation dengan tabs dan inline modals.
 // =====================================================
 
-import { useState } from "react";
-import { Plus, Pencil, Trash2, Loader2, Send, Copy, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Pencil, Trash2, Loader2, Send, Copy, Check, BellRing, Clock } from "lucide-react";
 import { Button, Input, Modal } from "@/components/ui";
+import { createClient } from "@/utils/supabase/client";
 import { useClients } from "@/hooks/useClients";
 import { useProducts } from "@/hooks/useProducts";
 import { useProjects } from "@/hooks/useProjects";
 import { useSprints } from "@/hooks/useSprints";
 import { useLabels } from "@/hooks/useLabels";
 import { useUsers } from "@/hooks/useUsers";
+import { useCheckins } from "@/hooks/useCheckins";
 import { useSession } from "@/hooks/useSession";
 import type { Client, Product, Project, Sprint, Label, User } from "@/types";
 
@@ -79,9 +81,56 @@ export default function ConfigPage() {
 
 function UsersTab() {
   const { users, loading, updateUser } = useUsers();
+  const { checkins: todaysCheckins } = useCheckins(true);
   const { session } = useSession();
   const isAdmin = Boolean(session?.profile.is_admin);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [waDraft, setWaDraft] = useState<Record<string, string>>({});
+  const [savingWaId, setSavingWaId] = useState<string | null>(null);
+  const [remindingId, setRemindingId] = useState<string | null>(null);
+
+  const checkedInTodayIds = new Set(
+    todaysCheckins.map((c) => c.employee_id).filter(Boolean) as string[],
+  );
+
+  const handleSaveWa = async (user: User) => {
+    const value = (waDraft[user.id] ?? user.whatsapp_number ?? "").trim();
+    setSavingWaId(user.id);
+    try {
+      await updateUser(user.id, { whatsapp_number: value || null } as Partial<User>);
+      setWaDraft((d) => {
+        const next = { ...d };
+        delete next[user.id];
+        return next;
+      });
+    } catch (err: any) {
+      alert(`Gagal menyimpan nomor WA: ${err?.message || "Unknown error"}`);
+    } finally {
+      setSavingWaId(null);
+    }
+  };
+
+  const handleRemind = async (user: User) => {
+    setRemindingId(user.id);
+    try {
+      const res = await fetch("/api/checkin/remind", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Gagal mengirim reminder: ${data?.error || "Unknown error"}`);
+        return;
+      }
+      alert(data.message || "Reminder terkirim");
+    } catch (err) {
+      console.error("[config] remind error:", err);
+      alert("Gagal mengirim reminder. Coba lagi.");
+    } finally {
+      setRemindingId(null);
+    }
+  };
 
   const handleCopyLink = async (user: User) => {
     try {
@@ -168,6 +217,9 @@ function UsersTab() {
         </p>
       )}
 
+      {/* WhatsApp reminder settings */}
+      <ReminderHourSetting isAdmin={isAdmin} />
+
       {users.length === 0 ? (
         <p className="text-slate-500 text-center py-8">
           Belum ada user.
@@ -188,6 +240,12 @@ function UsersTab() {
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-slate-700">
                   Telegram Status
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-slate-700">
+                  Nomor WhatsApp
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-slate-700">
+                  Check-In Hari Ini
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-slate-700">
                   Actions
@@ -216,6 +274,53 @@ function UsersTab() {
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-slate-100 text-slate-500 font-medium">
                         <span className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
                         Belum terhubung
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isAdmin ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={waDraft[user.id] ?? user.whatsapp_number ?? ""}
+                          onChange={(e) =>
+                            setWaDraft((d) => ({ ...d, [user.id]: e.target.value }))
+                          }
+                          placeholder="628xxxxxxxxxx"
+                          className="w-36 px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        />
+                        {waDraft[user.id] !== undefined &&
+                          waDraft[user.id] !== (user.whatsapp_number ?? "") && (
+                            <button
+                              onClick={() => handleSaveWa(user)}
+                              disabled={savingWaId === user.id}
+                              className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Simpan nomor WhatsApp"
+                            >
+                              {savingWaId === user.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          )}
+                      </div>
+                    ) : (
+                      <span className="text-slate-600 text-xs">
+                        {user.whatsapp_number || "-"}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {checkedInTodayIds.has(user.id) ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-green-100 text-green-700 font-medium">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                        Sudah check-in
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-amber-100 text-amber-700 font-medium">
+                        <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                        Belum check-in
                       </span>
                     )}
                   </td>
@@ -250,6 +355,21 @@ function UsersTab() {
                           )}
                         </button>
                       )}
+                      {!checkedInTodayIds.has(user.id) && user.whatsapp_number && (
+                        <button
+                          onClick={() => handleRemind(user)}
+                          disabled={remindingId === user.id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50"
+                          title="Kirim reminder WA sekarang"
+                        >
+                          {remindingId === user.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <BellRing className="w-3.5 h-3.5" />
+                          )}
+                          Ingatkan
+                        </button>
+                      )}
                       </div>
                     ) : (
                       <span className="text-xs text-slate-400">—</span>
@@ -261,6 +381,101 @@ function UsersTab() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// ==================== REMINDER HOUR SETTING ====================
+
+const REMINDER_HOUR_KEY = "checkin_reminder_hour";
+
+function ReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
+  const [hour, setHour] = useState<string>("10");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", REMINDER_HOUR_KEY)
+        .maybeSingle();
+      if (!cancelled && data?.value) setHour(data.value);
+      if (!cancelled) setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert({ key: REMINDER_HOUR_KEY, value: hour, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      alert(`Gagal menyimpan jam reminder: ${err?.message || "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+      <div className="flex gap-3 items-start flex-wrap">
+        <Clock className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-amber-800 flex-1 min-w-[240px]">
+          <p className="font-medium mb-1">Jam Reminder WhatsApp Otomatis</p>
+          <p className="text-amber-700 mb-3">
+            Setiap hari jam segini, user yang belum check-in akan otomatis
+            dikirimi WA reminder. Selain ini, admin tetap bisa kirim reminder
+            tambahan kapan saja lewat tombol &quot;Ingatkan&quot; di tabel bawah.
+          </p>
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+          ) : isAdmin ? (
+            <div className="flex items-center gap-2">
+              <select
+                value={hour}
+                onChange={(e) => setHour(e.target.value)}
+                className="px-2.5 py-1.5 text-sm border border-amber-300 rounded-lg bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>
+                    {String(h).padStart(2, "0")}:00 WIB
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : saved ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : null}
+                {saved ? "Tersimpan" : "Simpan"}
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-amber-600">
+              Reminder otomatis jam <strong>{hour}:00 WIB</strong>. Hanya
+              admin yang bisa mengubah jam ini.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
