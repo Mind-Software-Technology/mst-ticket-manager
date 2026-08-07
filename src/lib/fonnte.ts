@@ -40,6 +40,8 @@ export async function sendWhatsAppMessage(
   return { ok: Boolean(data.status), detail: data.reason || data.detail };
 }
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://mst-ticket-manager.vercel.app";
+
 /**
  * Buat pesan reminder check-in belum dikerjakan.
  */
@@ -49,5 +51,7 @@ export function formatCheckinReminder(userName: string): string {
     ``,
     `Kamu belum melakukan *check-in* hari ini di MST Ticket Manager.`,
     `Yuk isi check-in untuk menandai fokus kerja hari ini. 🙏`,
+    ``,
+    `${APP_URL}/checkin/new`,
   ].join("\n");
 }
