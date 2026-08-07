@@ -26,8 +26,7 @@ export default function NotesPage() {
   useEffect(() => {
     if (!session) return;
     
-    // Protect route: Only Nashwa
-    if (session.profile.name !== "Nashwa") {
+    if (!session) {
       router.replace("/gawean");
       return;
     }
@@ -41,6 +40,7 @@ export default function NotesPage() {
       const { data, error } = await supabase
         .from("user_notes")
         .select("*")
+        .eq("user_id", session?.authId)
         .order("created_at", { ascending: false });
         
       if (error) {
@@ -131,7 +131,7 @@ export default function NotesPage() {
     }
   }
 
-  if (!session || session.profile.name !== "Nashwa") {
+  if (!session) {
     return null; // Akan dialihkan di useEffect
   }
 
@@ -143,7 +143,7 @@ export default function NotesPage() {
             <Lightbulb className="w-8 h-8 text-amber-500" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-slate-800">Ide Box Nashwa</h1>
+            <h1 className="text-3xl font-bold text-slate-800">Ide Box {session.profile.name}</h1>
             <p className="text-slate-500 mt-1">Tempat untuk menumpahkan segala kreativitas dan corat-coret.</p>
           </div>
         </div>

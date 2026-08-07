@@ -85,9 +85,7 @@ export default function DashboardLayout({
     { href: "/gawean", label: "Gawean", icon: CheckSquare },
     { href: "/checkin", label: "Check In", icon: CalendarCheck },
     { href: "/config", label: "Config", icon: Settings },
-    ...(profile.name === "Nashwa"
-      ? [{ href: "/notes", label: "Catatan Ide", icon: Lightbulb }]
-      : []),
+    { href: "/notes", label: "Catatan Ide", icon: Lightbulb },
   ];
 
   const isActive = (href: string) =>

@@ -47,6 +47,7 @@ export default function CreateTicketPage() {
   const { users, loading: loadingUsers } = useUsers(true); // Active users only
 
   const isAdmin = !!session?.profile?.is_admin;
+  const canCreateTicket = isAdmin || session?.email === "gema@mst.id";
 
   const [saving, setSaving] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
@@ -568,8 +569,8 @@ export default function CreateTicketPage() {
             </div>
           </div>
 
-          {/* Card: Attachment (admin only) */}
-          {isAdmin && (
+          {/* Card: Attachment (admin & authorized users) */}
+          {canCreateTicket && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 mb-1">
                 <Paperclip className="w-4 h-4 text-slate-400" />

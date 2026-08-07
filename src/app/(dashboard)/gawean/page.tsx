@@ -109,6 +109,7 @@ export default function GaweanPage() {
   const { session, loading: sessionLoading } = useSession();
   const currentUserId = session?.profile?.id;
   const isAdmin = Boolean(session?.profile?.is_admin);
+  const canCreateTicket = isAdmin || session?.email === "gema@mst.id";
 
   // Restore dari module-level state or sessionStorage
   const [state, setState] = useState<PersistedState>(() => {
@@ -256,7 +257,7 @@ export default function GaweanPage() {
             Kelola semua tiket pekerjaan tim
           </p>
         </div>
-        {isAdmin && (
+        {canCreateTicket && (
           <Button
             variant="primary"
             icon={<PlusCircle className="w-4 h-4" />}
