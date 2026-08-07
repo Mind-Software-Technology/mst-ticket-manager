@@ -23,6 +23,8 @@ interface UseCheckinDetailResult {
   refresh: () => Promise<void>;
   addItems: (items: NewFocusItem[]) => Promise<void>;
   deleteCheckin: () => Promise<void>;
+  updateItemDescription: (itemId: string, description: string) => Promise<void>;
+  updateYesterdayProblem: (value: string) => Promise<void>;
 }
 
 export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
@@ -118,6 +120,29 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
     await fetchCheckin();
   };
 
+  // Edit teks fokus (item) yang sudah tersimpan.
+  const updateItemDescription = async (itemId: string, description: string) => {
+    const supabase = createClient();
+    const { error: updErr } = await supabase
+      .from("checkin_items")
+      .update({ description: description.trim() || null })
+      .eq("id", itemId);
+    if (updErr) throw updErr;
+    await fetchCheckin();
+  };
+
+  // Edit teks "Yesterday Problem".
+  const updateYesterdayProblem = async (value: string) => {
+    if (!checkin) return;
+    const supabase = createClient();
+    const { error: updErr } = await supabase
+      .from("checkins")
+      .update({ yesterday_problem: value.trim() || null })
+      .eq("id", checkin.id);
+    if (updErr) throw updErr;
+    await fetchCheckin();
+  };
+
   const deleteCheckin = async () => {
     if (!checkin) return;
     const supabase = createClient();
@@ -137,5 +162,7 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
     refresh: fetchCheckin,
     addItems,
     deleteCheckin,
+    updateItemDescription,
+    updateYesterdayProblem,
   };
 }

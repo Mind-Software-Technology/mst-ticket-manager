@@ -10,7 +10,7 @@
 
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, Loader2, Pencil, Check, X } from "lucide-react";
 import { Button, Input, Modal, Badge, EmptyState, SearchInput } from "@/components/ui";
 import { useSession } from "@/hooks/useSession";
 import { useCheckinDetail } from "@/hooks/useCheckinDetail";
@@ -29,13 +29,30 @@ export default function CheckinDetailPage() {
   const checkinId = params?.id as string;
 
   const { session } = useSession();
-  const { checkin, loading, error, addItems, deleteCheckin } =
-    useCheckinDetail(checkinId);
+  const {
+    checkin,
+    loading,
+    error,
+    addItems,
+    deleteCheckin,
+    updateItemDescription,
+    updateYesterdayProblem,
+  } = useCheckinDetail(checkinId);
 
   const [drafts, setDrafts] = useState<DraftItem[]>([]);
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Edit teks item yang sudah tersimpan
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editItemText, setEditItemText] = useState("");
+  const [savingItem, setSavingItem] = useState(false);
+
+  // Edit "Yesterday Problem"
+  const [editingProblem, setEditingProblem] = useState(false);
+  const [editProblemText, setEditProblemText] = useState("");
+  const [savingProblem, setSavingProblem] = useState(false);
 
   const canManage =
     !!checkin &&
@@ -105,6 +122,57 @@ export default function CheckinDetailPage() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ─── Edit item tersimpan ───────────────────────────
+  const startEditItem = (itemId: string, currentText: string) => {
+    setEditingItemId(itemId);
+    setEditItemText(currentText);
+  };
+
+  const cancelEditItem = () => {
+    setEditingItemId(null);
+    setEditItemText("");
+  };
+
+  const handleSaveItem = async (itemId: string) => {
+    setSavingItem(true);
+    try {
+      await updateItemDescription(itemId, editItemText);
+      cancelEditItem();
+    } catch (err) {
+      console.error("Failed to update item:", err);
+      alert(
+        `Gagal menyimpan perubahan: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`,
+      );
+    } finally {
+      setSavingItem(false);
+    }
+  };
+
+  // ─── Edit "Yesterday Problem" ──────────────────────
+  const startEditProblem = () => {
+    setEditProblemText(checkin?.yesterday_problem || "");
+    setEditingProblem(true);
+  };
+
+  const handleSaveProblem = async () => {
+    setSavingProblem(true);
+    try {
+      await updateYesterdayProblem(editProblemText);
+      setEditingProblem(false);
+    } catch (err) {
+      console.error("Failed to update yesterday problem:", err);
+      alert(
+        `Gagal menyimpan perubahan: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`,
+      );
+    } finally {
+      setSavingProblem(false);
     }
   };
 
@@ -190,12 +258,54 @@ export default function CheckinDetailPage() {
             />
           </div>
           <div className="mt-4">
-            <label className="block text-xs text-slate-500 mb-1">
-              Yesterday Problem
-            </label>
-            <p className="text-sm text-slate-900 whitespace-pre-wrap">
-              {checkin.yesterday_problem || "-"}
-            </p>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs text-slate-500">
+                Yesterday Problem
+              </label>
+              {canManage && !editingProblem && (
+                <button
+                  type="button"
+                  onClick={startEditProblem}
+                  className="text-slate-400 hover:text-indigo-600 transition-colors"
+                  title="Edit"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {editingProblem ? (
+              <div className="space-y-2">
+                <textarea
+                  value={editProblemText}
+                  onChange={(e) => setEditProblemText(e.target.value)}
+                  autoFocus
+                  rows={3}
+                  className="w-full text-sm border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setEditingProblem(false)}
+                    disabled={savingProblem}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSaveProblem}
+                    loading={savingProblem}
+                  >
+                    Simpan
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-900 whitespace-pre-wrap">
+                {checkin.yesterday_problem || "-"}
+              </p>
+            )}
           </div>
         </div>
 
@@ -235,28 +345,85 @@ export default function CheckinDetailPage() {
                   key={item.id}
                   className="border border-slate-200 rounded-lg p-3 bg-slate-50"
                 >
-                  {item.ticket ? (
-                    <div
-                      className="flex items-center gap-2 flex-wrap cursor-pointer hover:text-indigo-600"
-                      onClick={() => router.push(`/gawean/${item.ticket?.id}`)}
-                    >
-                      <span className="font-mono text-xs font-semibold text-indigo-600">
-                        {item.ticket.ticket_id}
-                      </span>
-                      <span className="text-sm text-slate-700">
-                        {item.ticket.subject}
-                      </span>
-                      <Badge variant="state" state={item.ticket.state} />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      {item.ticket ? (
+                        <div
+                          className="flex items-center gap-2 flex-wrap cursor-pointer hover:text-indigo-600"
+                          onClick={() => router.push(`/gawean/${item.ticket?.id}`)}
+                        >
+                          <span className="font-mono text-xs font-semibold text-indigo-600">
+                            {item.ticket.ticket_id}
+                          </span>
+                          <span className="text-sm text-slate-700">
+                            {item.ticket.subject}
+                          </span>
+                          <Badge variant="state" state={item.ticket.state} />
+                        </div>
+                      ) : editingItemId !== item.id ? (
+                        <span className="text-sm text-slate-700 whitespace-pre-wrap">
+                          {item.description}
+                        </span>
+                      ) : null}
+                    </div>
+                    {canManage && editingItemId !== item.id && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          startEditItem(item.id, item.description || "")
+                        }
+                        className="text-slate-400 hover:text-indigo-600 transition-colors flex-shrink-0"
+                        title="Edit"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {editingItemId === item.id ? (
+                    <div className="mt-2 space-y-2">
+                      <Input
+                        value={editItemText}
+                        onChange={(e) => setEditItemText(e.target.value)}
+                        autoFocus
+                        placeholder={
+                          item.ticket
+                            ? "Deskripsi tambahan (opsional)"
+                            : "Tulis action item..."
+                        }
+                      />
+                      <div className="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={cancelEditItem}
+                          disabled={savingItem}
+                          className="text-slate-500 hover:text-slate-700 hover:bg-white p-1.5 rounded-lg transition-colors disabled:opacity-40"
+                          title="Batal"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveItem(item.id)}
+                          disabled={savingItem || (!item.ticket && !editItemText.trim())}
+                          className="text-emerald-600 hover:text-emerald-700 hover:bg-white p-1.5 rounded-lg transition-colors disabled:opacity-40"
+                          title="Simpan"
+                        >
+                          {savingItem ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <span className="text-sm text-slate-700">
-                      {item.description}
-                    </span>
-                  )}
-                  {item.ticket && item.description && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      {item.description}
-                    </p>
+                    item.ticket &&
+                    item.description && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        {item.description}
+                      </p>
+                    )
                   )}
                 </li>
               ))}
