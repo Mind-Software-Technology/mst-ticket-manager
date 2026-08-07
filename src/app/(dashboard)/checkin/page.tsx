@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { PlusCircle, Flame } from "lucide-react";
 import { useCheckins } from "@/hooks/useCheckins";
 import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
@@ -44,17 +45,35 @@ export default function CheckinListPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {!streakLoading && session && (
-            <div
-              className="flex items-center gap-1.5 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg"
-              title="Streak dihitung hari kerja (Senin-Jumat) saja"
-            >
-              <Flame className="w-4 h-4 text-orange-500" />
-              <span className="text-sm font-semibold text-orange-700">
-                {myStreak} hari beruntun
-              </span>
-            </div>
-          )}
+          {!streakLoading && session && (() => {
+            const isCheckedInToday = checkins.some(c => 
+              c.employee_id === session.profile.id && 
+              new Date(c.created_at).toDateString() === new Date().toDateString()
+            );
+            return (
+              <div
+                className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg ${
+                  isCheckedInToday 
+                    ? "bg-orange-50 border-orange-200" 
+                    : "bg-slate-50 border-slate-200"
+                }`}
+                title="Streak dihitung hari kerja (Senin-Jumat) saja"
+              >
+                <Image
+                  src={isCheckedInToday ? "/streak-active.png" : "/streak-inactive.png"}
+                  alt="Streak"
+                  width={24}
+                  height={24}
+                  className="object-contain drop-shadow-sm"
+                />
+                <span className={`text-sm font-bold ${
+                  isCheckedInToday ? "text-orange-700" : "text-slate-500"
+                }`}>
+                  {myStreak} hari beruntun
+                </span>
+              </div>
+            );
+          })()}
           <Button
             variant="primary"
             icon={<PlusCircle className="w-4 h-4" />}

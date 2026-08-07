@@ -9,6 +9,7 @@
 // =====================================================
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Plus, Pencil, Trash2, Loader2, Send, Copy, Check, BellRing, Clock, Flame } from "lucide-react";
 import { Button, Input, Modal } from "@/components/ui";
 import { createClient } from "@/utils/supabase/client";
@@ -331,14 +332,16 @@ function UsersTab() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {getStreak(user.id) > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-sm font-semibold text-orange-600">
-                        <Flame className="w-3.5 h-3.5" />
-                        {getStreak(user.id)}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 text-sm">-</span>
-                    )}
+                    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${checkedInTodayIds.has(user.id) ? 'text-orange-600' : 'text-slate-400'}`}>
+                      <Image
+                        src={checkedInTodayIds.has(user.id) ? "/streak-active.png" : "/streak-inactive.png"}
+                        alt="Streak"
+                        width={20}
+                        height={20}
+                        className="object-contain"
+                      />
+                      {getStreak(user.id)}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     {isAdmin ? (
