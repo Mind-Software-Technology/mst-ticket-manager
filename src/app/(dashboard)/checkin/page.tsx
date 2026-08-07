@@ -52,20 +52,30 @@ export default function CheckinListPage() {
             );
             return (
               <div
-                className="flex items-center gap-1.5 cursor-pointer"
+                className="flex items-center gap-1.5 cursor-pointer group"
                 title="Streak dihitung hari kerja (Senin-Jumat) saja"
               >
-                <div className={isCheckedInToday ? "animate-bounce" : "opacity-75"}>
-                  <Image
-                    src={isCheckedInToday ? "/streak-active.png" : "/streak-inactive.png"}
-                    alt="Streak"
-                    width={40}
-                    height={40}
-                    className="object-contain drop-shadow-md hover:scale-110 transition-transform duration-300"
-                  />
+                <div className="relative">
+                  {/* Efek Glow di belakang icon saat hover */}
+                  <div className={`absolute -inset-1 rounded-full blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-500 ${isCheckedInToday ? 'bg-orange-500/50' : 'bg-slate-400/50'}`}></div>
+                  
+                  {/* Icon dengan efek pulse lambat dan rotasi saat hover */}
+                  <div className={`relative ${isCheckedInToday ? "animate-[pulse_2.5s_ease-in-out_infinite]" : "opacity-75 grayscale-[0.5]"}`}>
+                    <Image
+                      src={isCheckedInToday ? "/streak-active.png" : "/streak-inactive.png"}
+                      alt="Streak"
+                      width={44}
+                      height={44}
+                      className="object-contain drop-shadow-xl hover:scale-110 hover:rotate-[6deg] transition-all duration-300"
+                    />
+                  </div>
                 </div>
-                <span className={`text-xl font-black ${
-                  isCheckedInToday ? "text-orange-600" : "text-slate-500"
+                
+                {/* Angka dengan gradient api (fiery gradient) dan gaya gamified */}
+                <span className={`text-3xl font-black italic tracking-tighter transition-all duration-300 ${
+                  isCheckedInToday 
+                    ? "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600 text-transparent bg-clip-text drop-shadow-sm group-hover:scale-110 group-hover:-rotate-3" 
+                    : "text-slate-400 group-hover:scale-110"
                 }`}>
                   {myStreak}
                 </span>
