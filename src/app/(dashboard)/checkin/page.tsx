@@ -52,20 +52,22 @@ export default function CheckinListPage() {
             );
             return (
               <div
-                className="flex items-center gap-1.5"
+                className="flex items-center gap-1.5 cursor-pointer"
                 title="Streak dihitung hari kerja (Senin-Jumat) saja"
               >
-                <Image
-                  src={isCheckedInToday ? "/streak-active.png" : "/streak-inactive.png"}
-                  alt="Streak"
-                  width={24}
-                  height={24}
-                  className="object-contain drop-shadow-sm"
-                />
-                <span className={`text-sm font-bold ${
+                <div className={isCheckedInToday ? "animate-bounce" : "opacity-75"}>
+                  <Image
+                    src={isCheckedInToday ? "/streak-active.png" : "/streak-inactive.png"}
+                    alt="Streak"
+                    width={40}
+                    height={40}
+                    className="object-contain drop-shadow-md hover:scale-110 transition-transform duration-300"
+                  />
+                </div>
+                <span className={`text-xl font-black ${
                   isCheckedInToday ? "text-orange-600" : "text-slate-500"
                 }`}>
-                  {myStreak} hari beruntun
+                  {myStreak}
                 </span>
               </div>
             );
