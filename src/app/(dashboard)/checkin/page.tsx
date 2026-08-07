@@ -52,27 +52,27 @@ export default function CheckinListPage() {
             );
             return (
               <div
-                className="flex items-center gap-1.5 cursor-pointer group"
+                className="flex items-center cursor-pointer group"
                 title="Streak dihitung hari kerja (Senin-Jumat) saja"
               >
                 <div className="relative">
                   {/* Efek Glow di belakang icon saat hover */}
                   <div className={`absolute -inset-1 rounded-full blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-500 ${isCheckedInToday ? 'bg-orange-500/50' : 'bg-slate-400/50'}`}></div>
                   
-                  {/* Icon dengan efek pulse lambat dan rotasi saat hover */}
-                  <div className={`relative ${isCheckedInToday ? "animate-[pulse_2.5s_ease-in-out_infinite]" : "opacity-75 grayscale-[0.5]"}`}>
+                  {/* Icon dengan efek bounce dan rotasi saat hover */}
+                  <div className={`relative ${isCheckedInToday ? "animate-bounce" : "opacity-75 grayscale-[0.5]"}`}>
                     <Image
                       src={isCheckedInToday ? "/streak-active.png" : "/streak-inactive.png"}
                       alt="Streak"
-                      width={44}
-                      height={44}
+                      width={56}
+                      height={56}
                       className="object-contain drop-shadow-xl hover:scale-110 hover:rotate-[6deg] transition-all duration-300"
                     />
                   </div>
                 </div>
                 
                 {/* Angka dengan gradient api (fiery gradient) dan gaya gamified */}
-                <span className={`text-3xl font-black italic tracking-tighter transition-all duration-300 ${
+                <span className={`inline-block -ml-2 py-1 pr-1.5 text-3xl font-black italic tracking-tighter transition-all duration-300 ${
                   isCheckedInToday 
                     ? "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600 text-transparent bg-clip-text drop-shadow-sm group-hover:scale-110 group-hover:-rotate-3" 
                     : "text-slate-400 group-hover:scale-110"
