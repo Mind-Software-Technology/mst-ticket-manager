@@ -19,6 +19,7 @@ import { useSprints } from "@/hooks/useSprints";
 import { useLabels } from "@/hooks/useLabels";
 import { useUsers } from "@/hooks/useUsers";
 import { useCheckins } from "@/hooks/useCheckins";
+import { useClientHealth } from "@/hooks/useClientHealth";
 import { useSession } from "@/hooks/useSession";
 import type { Client, Product, Project, Sprint, Label, User } from "@/types";
 
@@ -485,6 +486,7 @@ function ReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
 function ClientsTab() {
   const { clients, loading, createClient, updateClient, deleteClient } =
     useClients();
+  const { getHealth, loading: healthLoading } = useClientHealth();
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({ name: "", description: "" });
@@ -566,6 +568,9 @@ function ClientsTab() {
                 <th className="px-4 py-3 text-left font-medium text-slate-700">
                   Description
                 </th>
+                <th className="px-4 py-3 text-left font-medium text-slate-700">
+                  Health
+                </th>
                 <th className="px-4 py-3 text-right font-medium text-slate-700">
                   Actions
                 </th>
@@ -579,6 +584,12 @@ function ClientsTab() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     {client.description || "-"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <ClientHealthBadge
+                      health={getHealth(client.id)}
+                      loading={healthLoading}
+                    />
                   </td>
                   <td className="px-4 py-3 text-right space-x-2">
                     <button
@@ -649,6 +660,48 @@ function ClientsTab() {
         </Modal>
       )}
     </div>
+  );
+}
+
+// ==================== CLIENT HEALTH BADGE ====================
+
+function ClientHealthBadge({
+  health,
+  loading,
+}: {
+  health: import("@/hooks/useClientHealth").ClientHealth;
+  loading: boolean;
+}) {
+  if (loading) {
+    return <Loader2 className="w-4 h-4 animate-spin text-slate-400" />;
+  }
+
+  const CONFIG: Record<
+    string,
+    { label: string; dot: string; bg: string; text: string }
+  > = {
+    green: { label: "Sehat", dot: "bg-green-500", bg: "bg-green-100", text: "text-green-700" },
+    yellow: { label: "Perlu Perhatian", dot: "bg-amber-500", bg: "bg-amber-100", text: "text-amber-700" },
+    red: { label: "Kritis", dot: "bg-red-500", bg: "bg-red-100", text: "text-red-700" },
+    unknown: { label: "Belum Ada Tiket", dot: "bg-slate-400", bg: "bg-slate-100", text: "text-slate-500" },
+  };
+
+  const cfg = CONFIG[health.level];
+  const detail =
+    health.level === "unknown"
+      ? undefined
+      : `${health.overdueCount} tiket overdue dari ${health.openCount} tiket aktif${
+          health.maxOverdueDays > 0 ? ` (terlama ${health.maxOverdueDays} hari)` : ""
+        }`;
+
+  return (
+    <span
+      title={detail}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full font-medium ${cfg.bg} ${cfg.text}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+      {cfg.label}
+    </span>
   );
 }
 
