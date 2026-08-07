@@ -50,7 +50,7 @@ export function formatCheckinReminder(userName: string): string {
     `Halo *${userName}*,`,
     ``,
     `Kamu belum melakukan *check-in* hari ini di MST Ticket Manager.`,
-    `Yuk isi check-in untuk menandai fokus kerja hari ini. 🙏`,
+    `Yuk isi check-in di link berikut untuk menandai fokus kerja hari ini. 🙏`,
     ``,
     `${APP_URL}/checkin/new`,
   ].join("\n");
