@@ -10,14 +10,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Flame } from "lucide-react";
 import { useCheckins } from "@/hooks/useCheckins";
+import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
+import { useSession } from "@/hooks/useSession";
 import { Button, Badge, EmptyState } from "@/components/ui";
 
 export default function CheckinListPage() {
   const router = useRouter();
   const [todayOnly, setTodayOnly] = useState(true);
   const { checkins, loading, error } = useCheckins(todayOnly);
+  const { session } = useSession();
+  const { getStreak, loading: streakLoading } = useCheckinStreaks();
+  const myStreak = session ? getStreak(session.profile.id) : 0;
 
   const formatDateTime = (dateStr: string) =>
     new Date(dateStr).toLocaleString("id-ID", {
@@ -38,13 +43,26 @@ export default function CheckinListPage() {
             Daily standup — fokus pekerjaan tim hari ini
           </p>
         </div>
-        <Button
-          variant="primary"
-          icon={<PlusCircle className="w-4 h-4" />}
-          onClick={() => router.push("/checkin/new")}
-        >
-          New
-        </Button>
+        <div className="flex items-center gap-3">
+          {!streakLoading && session && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg"
+              title="Streak dihitung hari kerja (Senin-Jumat) saja"
+            >
+              <Flame className="w-4 h-4 text-orange-500" />
+              <span className="text-sm font-semibold text-orange-700">
+                {myStreak} hari beruntun
+              </span>
+            </div>
+          )}
+          <Button
+            variant="primary"
+            icon={<PlusCircle className="w-4 h-4" />}
+            onClick={() => router.push("/checkin/new")}
+          >
+            New
+          </Button>
+        </div>
       </div>
 
       {/* Quick filter */}

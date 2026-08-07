@@ -9,7 +9,7 @@
 // =====================================================
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Loader2, Send, Copy, Check, BellRing, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Send, Copy, Check, BellRing, Clock, Flame } from "lucide-react";
 import { Button, Input, Modal } from "@/components/ui";
 import { createClient } from "@/utils/supabase/client";
 import { useClients } from "@/hooks/useClients";
@@ -19,6 +19,7 @@ import { useSprints } from "@/hooks/useSprints";
 import { useLabels } from "@/hooks/useLabels";
 import { useUsers } from "@/hooks/useUsers";
 import { useCheckins } from "@/hooks/useCheckins";
+import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
 import { useClientHealth } from "@/hooks/useClientHealth";
 import { useSession } from "@/hooks/useSession";
 import type { Client, Product, Project, Sprint, Label, User } from "@/types";
@@ -83,6 +84,7 @@ export default function ConfigPage() {
 function UsersTab() {
   const { users, loading, updateUser } = useUsers();
   const { checkins: todaysCheckins } = useCheckins(true);
+  const { getStreak } = useCheckinStreaks();
   const { session } = useSession();
   const isAdmin = Boolean(session?.profile.is_admin);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -248,6 +250,9 @@ function UsersTab() {
                 <th className="px-4 py-3 text-left font-medium text-slate-700">
                   Check-In Hari Ini
                 </th>
+                <th className="px-4 py-3 text-left font-medium text-slate-700">
+                  Streak
+                </th>
                 <th className="px-4 py-3 text-right font-medium text-slate-700">
                   Actions
                 </th>
@@ -323,6 +328,16 @@ function UsersTab() {
                         <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
                         Belum check-in
                       </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {getStreak(user.id) > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-sm font-semibold text-orange-600">
+                        <Flame className="w-3.5 h-3.5" />
+                        {getStreak(user.id)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-sm">-</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
