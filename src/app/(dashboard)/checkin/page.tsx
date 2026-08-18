@@ -22,8 +22,36 @@ export default function CheckinListPage() {
   const [todayOnly, setTodayOnly] = useState(true);
   const { checkins, loading, error } = useCheckins(todayOnly);
   const { session } = useSession();
-  const { getStreak, loading: streakLoading } = useCheckinStreaks();
-  const myStreak = session ? getStreak(session.profile.id) : 0;
+  const { getStreakData, loading: streakLoading, refresh: refreshStreaks } = useCheckinStreaks();
+  const myStreakData = session ? getStreakData(session.profile.id) : { streak: 0, missedDate: null };
+  const myStreak = myStreakData.streak;
+  
+  const [restoring, setRestoring] = useState(false);
+
+  const handleRestoreStreak = async () => {
+    if (!session || !myStreakData.missedDate) return;
+    
+    setRestoring(true);
+    try {
+      const res = await fetch("/api/checkin/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          employeeId: session.profile.id, 
+          missedDate: myStreakData.missedDate 
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal memulihkan streak");
+      
+      alert("Streak berhasil dipulihkan!");
+      refreshStreaks();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   const formatDateTime = (dateStr: string) =>
     new Date(dateStr).toLocaleString("id-ID", {
@@ -51,38 +79,54 @@ export default function CheckinListPage() {
               new Date(c.created_at).toDateString() === new Date().toDateString()
             );
             return (
-              <div
-                className="flex items-center cursor-pointer group"
-                title="Streak dihitung hari kerja (Senin-Jumat) saja"
-              >
-                <div className="relative">
-                  {/* Efek Glow di belakang icon saat hover */}
-                  <div className={`absolute -inset-1 rounded-full blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-500 ${isCheckedInToday ? 'bg-orange-500/50' : 'bg-slate-400/50'}`}></div>
-                  
-                  {/* Icon dengan efek bounce dan rotasi saat hover */}
-                  <div className={`relative ${isCheckedInToday ? "animate-bounce" : "opacity-75 grayscale-[0.5]"}`}>
-                    <Image
-                      src={isCheckedInToday ? "/streak-active.png" : "/streak-inactive.png"}
-                      alt="Streak"
-                      width={56}
-                      height={56}
-                      className="object-contain drop-shadow-xl hover:scale-110 hover:rotate-[6deg] transition-all duration-300"
-                    />
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center cursor-pointer group"
+                  title="Streak dihitung hari kerja (Senin-Jumat) saja"
+                >
+                  <div className="relative">
+                    {/* Efek Glow di belakang icon saat hover */}
+                    <div className={`absolute -inset-1 rounded-full blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-500 ${isCheckedInToday ? 'bg-orange-500/50' : 'bg-slate-400/50'}`}></div>
+                    
+                    {/* Icon dengan efek bounce dan rotasi saat hover */}
+                    <div className={`relative ${isCheckedInToday ? "animate-bounce" : "opacity-75 grayscale-[0.5]"}`}>
+                      <Image
+                        src={isCheckedInToday ? "/streak-active.png" : "/streak-inactive.png"}
+                        alt="Streak"
+                        width={56}
+                        height={56}
+                        className="object-contain drop-shadow-xl hover:scale-110 hover:rotate-[6deg] transition-all duration-300"
+                      />
+                    </div>
                   </div>
+                  
+                  {/* Angka dengan gradient api (fiery gradient) dan gaya gamified */}
+                  <span className={`inline-block -ml-2 py-1 pr-1.5 text-3xl font-black italic tracking-tighter transition-all duration-300 ${
+                    isCheckedInToday 
+                      ? "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600 text-transparent bg-clip-text drop-shadow-sm group-hover:scale-110 group-hover:-rotate-3" 
+                      : "text-slate-400 group-hover:scale-110"
+                  }`}>
+                    {myStreak}
+                  </span>
                 </div>
                 
-                {/* Angka dengan gradient api (fiery gradient) dan gaya gamified */}
-                <span className={`inline-block -ml-2 py-1 pr-1.5 text-3xl font-black italic tracking-tighter transition-all duration-300 ${
-                  isCheckedInToday 
-                    ? "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600 text-transparent bg-clip-text drop-shadow-sm group-hover:scale-110 group-hover:-rotate-3" 
-                    : "text-slate-400 group-hover:scale-110"
-                }`}>
-                  {myStreak}
-                </span>
+                {/* Tombol Pemulihan */}
+                {myStreak === 0 && myStreakData.missedDate && (
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    className="text-xs bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200 ml-2"
+                    onClick={handleRestoreStreak}
+                    disabled={restoring}
+                  >
+                    {restoring ? "Memulihkan..." : "Pulihkan Streak"}
+                  </Button>
+                )}
               </div>
             );
           })()}
           <Button
+
             variant="primary"
             icon={<PlusCircle className="w-4 h-4" />}
             onClick={() => router.push("/checkin/new")}

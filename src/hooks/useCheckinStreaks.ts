@@ -12,7 +12,8 @@ import { createClient as createSupabaseClient } from "@/utils/supabase/client";
 import { toISODate } from "@/lib/date-utils";
 import { computeWeekdayStreak } from "@/lib/streak";
 
-type StreakMap = Record<string, number>;
+type StreakData = { streak: number; missedDate: string | null };
+type StreakMap = Record<string, StreakData>;
 
 // 90 hari cukup buat nutup streak terpanjang yang realistis (~9 minggu kerja)
 // tanpa nge-fetch seluruh histori check-in.
@@ -60,7 +61,8 @@ export function useCheckinStreaks() {
     void fetchStreaks();
   }, [fetchStreaks]);
 
-  const getStreak = (userId: string): number => streaks[userId] || 0;
+  const getStreakData = (userId: string): StreakData => streaks[userId] || { streak: 0, missedDate: null };
+  const getStreak = (userId: string): number => getStreakData(userId).streak;
 
-  return { streaks, getStreak, loading, refresh: fetchStreaks };
+  return { streaks, getStreak, getStreakData, loading, refresh: fetchStreaks };
 }
