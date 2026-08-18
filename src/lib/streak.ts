@@ -21,10 +21,15 @@ import { toISODate } from "@/lib/date-utils";
  */
 export function computeWeekdayStreak(
   checkedInDates: Set<string>,
-  today: Date = new Date()
+  today: Date = new Date(),
+  maxRestoresPerMonth: number = 5
 ): number {
   let streak = 0;
+  let restoresUsedThisMonth = 0;
   const cursor = new Date(today);
+  let currentMonth = cursor.getMonth();
+  let currentYear = cursor.getFullYear();
+  
   const todayStr = toISODate(today);
   let toleratedToday = false;
 
@@ -32,6 +37,15 @@ export function computeWeekdayStreak(
   for (let i = 0; i < 3650; i++) {
     const dateStr = toISODate(cursor);
     const dow = cursor.getDay(); // 0 = Minggu, 6 = Sabtu
+
+    // Cek apakah bulan/tahun berubah saat iterasi mundur
+    const m = cursor.getMonth();
+    const y = cursor.getFullYear();
+    if (m !== currentMonth || y !== currentYear) {
+      currentMonth = m;
+      currentYear = y;
+      restoresUsedThisMonth = 0; // reset jatah restore karena masuk bulan yang berbeda
+    }
 
     // Jika ada check-in pada hari ini (baik hari kerja maupun weekend), hitung!
     if (checkedInDates.has(dateStr)) {
@@ -53,7 +67,14 @@ export function computeWeekdayStreak(
       continue;
     }
 
-    // Jika hari kerja lampau tidak ada check-in, streak terputus.
+    // Jika hari kerja lampau tidak ada check-in, tapi masih punya jatah restore bulan ini
+    if (restoresUsedThisMonth < maxRestoresPerMonth) {
+      restoresUsedThisMonth++;
+      cursor.setDate(cursor.getDate() - 1);
+      continue;
+    }
+
+    // Jika hari kerja lampau tidak ada check-in dan jatah restore bulan ini habis, streak terputus.
     break;
   }
 
