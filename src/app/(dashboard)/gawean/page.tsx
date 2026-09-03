@@ -139,6 +139,7 @@ export default function GaweanPage() {
   const grouping = groupBy !== null;
 
   // Collapsed group — tidak perlu survive navigasi.
+  // Default: SEMUA grup tertutup, baru dibuka kalau diklik.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   // Simpan ke module-level + sessionStorage tiap state berubah
@@ -178,7 +179,8 @@ export default function GaweanPage() {
       groupBy: key,
       pagination: { ...prev.pagination, page: 1 },
     }));
-    setCollapsed(new Set());
+    // Reset collapsed — akan diisi ulang oleh useEffect saat groups terbentuk
+    setCollapsed(new Set(["__reset__"]));
   };
 
   const toggleGroup = (id: string) => {
@@ -237,6 +239,22 @@ export default function GaweanPage() {
     () => (grouping ? groupTickets(tickets, groupBy) : []),
     [grouping, tickets, groupBy],
   );
+
+  // Setiap kali daftar grup berubah, pastikan semua grup default tertutup
+  useEffect(() => {
+    if (!grouping || groups.length === 0) return;
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const g of groups) {
+        if (!next.has(g.id)) {
+          next.add(g.id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [grouping, groups]);
 
   const groupLabel = groupBy ? GROUP_DEF_BY_KEY[groupBy]?.label : "";
   const groupedCount = grouping
