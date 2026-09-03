@@ -96,7 +96,8 @@ export function useTickets(
           assignee:users!tickets_assigned_to_fkey(id, name, email, role),
           reporter:users!tickets_reported_to_fkey(id, name, email, role),
           sprint:sprints(id, name, start_date, end_date),
-          additional_assignees:ticket_assignees(user:users(id, name, email, role))
+          additional_assignees:ticket_assignees(user:users(id, name, email, role)),
+          additional_reporters:ticket_reporters(user:users(id, name, email, role))
         `,
           { count: "exact" },
         );

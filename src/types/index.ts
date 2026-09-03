@@ -151,6 +151,8 @@ export interface Ticket {
   activity_logs?: ActivityLog[];
   /** Assignee tambahan (fitur multi-assignee saat create), di luar `assignee` (assignee utama). */
   additional_assignees?: User[];
+  /** Reporter tambahan (fitur multi-reporter saat create), di luar `reporter` (reporter utama). */
+  additional_reporters?: User[];
 }
 
 export type TicketRequestStatus = "pending" | "approved" | "rejected";

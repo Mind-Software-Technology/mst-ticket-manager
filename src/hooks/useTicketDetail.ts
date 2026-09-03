@@ -55,7 +55,8 @@ export function useTicketDetail(
           sprint:sprints(id, name, start_date, end_date),
           labels:ticket_labels(label:labels(*)),
           attachments:ticket_attachments(*),
-          additional_assignees:ticket_assignees(user:users(id, name, email, role))
+          additional_assignees:ticket_assignees(user:users(id, name, email, role)),
+          additional_reporters:ticket_reporters(user:users(id, name, email, role))
         `,
         )
         .eq("id", ticketId)

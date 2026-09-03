@@ -97,6 +97,23 @@ export default function CreateTicketPage() {
     }));
   };
 
+  const toggleReporter = (userId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      reported_to: prev.reported_to.includes(userId)
+        ? prev.reported_to.filter((id) => id !== userId)
+        : [...prev.reported_to, userId],
+    }));
+  };
+
+  // Reporter pertama di array = reporter utama (disimpan ke tickets.reported_to).
+  const makePrimaryReporter = (userId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      reported_to: [userId, ...prev.reported_to.filter((id) => id !== userId)],
+    }));
+  };
+
   // Form state — kalau ada request_id, prefill dari query params (lihat
   // handleApproveRequest di admin/page.tsx).
   const [formData, setFormData] = useState({
@@ -110,7 +127,13 @@ export default function CreateTicketPage() {
     state: "backlog" as TicketState,
     priority: (searchParams.get("priority") as TicketPriority) || "normal",
     assigned_to: [] as string[],
-    reported_to: searchParams.get("reported_to") || session?.profile?.id || "",
+    reported_to: (
+      searchParams.get("reported_to")
+        ? [searchParams.get("reported_to")!]
+        : session?.profile?.id
+        ? [session.profile.id]
+        : []
+    ) as string[],
     manhours_estimate: "",
     start_date: "",
     due_date: "",
@@ -182,7 +205,7 @@ export default function CreateTicketPage() {
           project_id: formData.project_id || null,
           sprint_id: formData.sprint_id || null,
           assigned_to: formData.assigned_to[0] || null,
-          reported_to: formData.reported_to || null,
+          reported_to: formData.reported_to[0] || null,
           manhours_estimate: parseFloat(formData.manhours_estimate) || 0,
           actual_manhours: 0,
           start_date: formData.start_date || null,
@@ -211,6 +234,22 @@ export default function CreateTicketPage() {
           );
         if (assigneesError) {
           console.error("Failed to save assignees:", assigneesError);
+        }
+      }
+
+      // Simpan semua reporter ke tabel junction.
+      // reported_to (kolom lama) tetap berisi reporter pertama saja.
+      if (formData.reported_to.length > 0) {
+        const { error: reportersError } = await supabase
+          .from("ticket_reporters")
+          .insert(
+            formData.reported_to.map((userId) => ({
+              ticket_id: newTicket.id,
+              user_id: userId,
+            })),
+          );
+        if (reportersError) {
+          console.error("Failed to save reporters:", reportersError);
         }
       }
 
@@ -608,17 +647,69 @@ export default function CreateTicketPage() {
                 )}
               </div>
 
-              <Select
-                label="Reporter"
-                value={formData.reported_to}
-                onChange={(e) =>
-                  setFormData({ ...formData, reported_to: e.target.value })
-                }
-                options={[
-                  { value: "", label: "-- No Reporter --" },
-                  ...users.map((u) => ({ value: u.id, label: u.name })),
-                ]}
-              />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Reporter (Optional, bisa lebih dari satu)
+                </label>
+                {users.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    Belum ada user aktif.
+                  </p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-300 divide-y divide-slate-100">
+                    {users.map((u) => {
+                      const isChecked = formData.reported_to.includes(u.id);
+                      const isPrimary = formData.reported_to[0] === u.id;
+                      return (
+                        <div
+                          key={u.id}
+                          className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"
+                        >
+                          <label className="flex items-center gap-2 flex-1 cursor-pointer min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleReporter(u.id)}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="text-slate-700 truncate">{u.name}</span>
+                          </label>
+                          {isChecked && (
+                            <button
+                              type="button"
+                              onClick={() => makePrimaryReporter(u.id)}
+                              title={
+                                isPrimary
+                                  ? "Reporter utama"
+                                  : "Jadikan reporter utama"
+                              }
+                              className={`flex items-center gap-1 flex-shrink-0 text-xs px-1.5 py-0.5 rounded ${
+                                isPrimary
+                                  ? "text-amber-600"
+                                  : "text-slate-400 hover:text-amber-500"
+                              }`}
+                            >
+                              <Star
+                                className="w-3.5 h-3.5"
+                                fill={isPrimary ? "currentColor" : "none"}
+                              />
+                              {isPrimary && "Utama"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {formData.reported_to.length > 0 && (
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    {formData.reported_to.length} orang dipilih — reporter utama:{" "}
+                    <span className="font-medium text-slate-700">
+                      {users.find((u) => u.id === formData.reported_to[0])?.name}
+                    </span>
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
