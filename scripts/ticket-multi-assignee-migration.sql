@@ -6,9 +6,10 @@
 -- supaya form Create Ticket bisa pilih lebih dari satu assignee.
 --
 -- `tickets.assigned_to` TETAP dipakai apa adanya (tidak dihapus) sebagai
--- "assignee utama" — dipakai oleh halaman lain (detail/edit, filter,
--- grouping, dashboard admin, reminder cron) yang masih single-assignee.
--- Assignee tambahan (lebih dari 1) hanya tersimpan di ticket_assignees.
+-- "assignee utama". List tiket ("My Tickets") & filter Assignee sudah
+-- di-update untuk juga mencocokkan ticket_assignees, jadi tiket tetap
+-- otomatis muncul untuk SEMUA assignee, bukan cuma assignee utama.
+-- Grouping & dashboard admin masih berbasis assigned_to saja (belum diubah).
 --
 -- JALANKAN di Supabase SQL Editor. Idempotent.
 -- =====================================================================

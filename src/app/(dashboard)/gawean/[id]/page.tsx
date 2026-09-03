@@ -277,6 +277,51 @@ export default function TicketDetailPage() {
     }
   };
 
+  // ─── Assignee tambahan (multi-assignee) ─────────────
+  const additionalAssignees = ticket.additional_assignees ?? [];
+  const availableAssigneeUsers = users.filter(
+    (u) =>
+      u.id !== ticket.assigned_to &&
+      !additionalAssignees.some((a) => a.id === u.id),
+  );
+
+  const handleAddAssignee = async (userId: string) => {
+    if (!userId) return;
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error: insertErr } = await supabase
+        .from("ticket_assignees")
+        .insert({ ticket_id: ticket.id, user_id: userId });
+      if (insertErr) throw insertErr;
+      await refresh();
+    } catch (err) {
+      console.error("Failed to add assignee:", err);
+      alert("Gagal menambah assignee. Coba lagi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveAssignee = async (userId: string) => {
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error: deleteErr } = await supabase
+        .from("ticket_assignees")
+        .delete()
+        .eq("ticket_id", ticket.id)
+        .eq("user_id", userId);
+      if (deleteErr) throw deleteErr;
+      await refresh();
+    } catch (err) {
+      console.error("Failed to remove assignee:", err);
+      alert("Gagal menghapus assignee. Coba lagi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // ─── Copy / Carry Over ke sprint berikutnya ──────────
   // Sprint "berikutnya" = sprint dengan start_date paling awal yang masih
   // lebih besar dari sprint tiket ini (perbandingan string ISO YYYY-MM-DD).
@@ -522,6 +567,50 @@ export default function TicketDetailPage() {
                   ]}
                   onChange={(v) => saveField({ assigned_to: v || null })}
                 />
+
+                {/* Assignee tambahan — editable (chips + dropdown) */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-500 mb-1">
+                    Assignee Tambahan
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {additionalAssignees.map((u) => (
+                      <span
+                        key={u.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200"
+                      >
+                        {u.name}
+                        <button
+                          onClick={() => handleRemoveAssignee(u.id)}
+                          title="Hapus assignee"
+                          className="hover:opacity-60"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                    {availableAssigneeUsers.length > 0 ? (
+                      <select
+                        value=""
+                        onChange={(e) => handleAddAssignee(e.target.value)}
+                        className="px-2.5 py-1 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-600"
+                      >
+                        <option value="">+ Tambah assignee</option>
+                        {availableAssigneeUsers.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      additionalAssignees.length === 0 && (
+                        <span className="text-xs text-slate-400">
+                          Tidak ada user lain untuk ditambahkan.
+                        </span>
+                      )
+                    )}
+                  </div>
+                </div>
 
                 {/* Client — editable */}
                 <InlineSelect

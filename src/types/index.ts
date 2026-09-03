@@ -149,6 +149,8 @@ export interface Ticket {
   labels?: Label[];
   attachments?: TicketAttachment[];
   activity_logs?: ActivityLog[];
+  /** Assignee tambahan (fitur multi-assignee saat create), di luar `assignee` (assignee utama). */
+  additional_assignees?: User[];
 }
 
 export interface TicketAttachment {

@@ -54,7 +54,8 @@ export function useTicketDetail(
           reporter:users!tickets_reported_to_fkey(id, name, email, role),
           sprint:sprints(id, name, start_date, end_date),
           labels:ticket_labels(label:labels(*)),
-          attachments:ticket_attachments(*)
+          attachments:ticket_attachments(*),
+          additional_assignees:ticket_assignees(user:users(id, name, email, role))
         `,
         )
         .eq("id", ticketId)
@@ -81,6 +82,14 @@ export function useTicketDetail(
       const ticketData = data as any;
       if (ticketData.labels) {
         ticketData.labels = ticketData.labels.map((tl: any) => tl.label);
+      }
+
+      // Flatten & filter additional_assignees (ticket_assignees → users),
+      // buang assignee utama (assigned_to) supaya tidak dobel tampil.
+      if (ticketData.additional_assignees) {
+        ticketData.additional_assignees = ticketData.additional_assignees
+          .map((ta: any) => ta.user)
+          .filter((u: any) => u && u.id !== ticketData.assigned_to);
       }
 
       setTicket(ticketData as Ticket);

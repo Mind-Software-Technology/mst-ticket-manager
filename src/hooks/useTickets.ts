@@ -56,6 +56,19 @@ export function useTickets(
         }
       }
 
+      // Assignee tambahan (fitur multi-assignee) tersimpan di tabel junction
+      // ticket_assignees, di luar kolom assigned_to (assignee utama). Supaya
+      // tiket tetap muncul untuk semua orang yang di-assign, cari dulu
+      // ticket_id mana saja yang punya user ini sebagai assignee tambahan.
+      const lookupExtraAssignedTicketIds = async (userId: string) => {
+        const { data, error: lookupErr } = await supabase
+          .from("ticket_assignees")
+          .select("ticket_id")
+          .eq("user_id", userId);
+        if (lookupErr) throw lookupErr;
+        return (data ?? []).map((r) => r.ticket_id as string);
+      };
+
       let reporterIds: string[] | null = null;
       if (filters.reporter_name?.trim()) {
         const { data: matched, error: lookupErr } = await supabase
@@ -105,7 +118,14 @@ export function useTickets(
       }
 
       if (filters.assigned_to) {
-        query = query.eq("assigned_to", filters.assigned_to);
+        const extraTicketIds = await lookupExtraAssignedTicketIds(filters.assigned_to);
+        if (extraTicketIds.length > 0) {
+          query = query.or(
+            `assigned_to.eq.${filters.assigned_to},id.in.(${extraTicketIds.join(",")})`,
+          );
+        } else {
+          query = query.eq("assigned_to", filters.assigned_to);
+        }
       }
 
       if (filters.reported_to) {
@@ -113,7 +133,15 @@ export function useTickets(
       }
 
       if (filters.involved_user) {
-        query = query.or(`assigned_to.eq.${filters.involved_user},reported_to.eq.${filters.involved_user}`);
+        const extraTicketIds = await lookupExtraAssignedTicketIds(filters.involved_user);
+        const orParts = [
+          `assigned_to.eq.${filters.involved_user}`,
+          `reported_to.eq.${filters.involved_user}`,
+        ];
+        if (extraTicketIds.length > 0) {
+          orParts.push(`id.in.(${extraTicketIds.join(",")})`);
+        }
+        query = query.or(orParts.join(","));
       }
 
       if (assigneeIds) {
