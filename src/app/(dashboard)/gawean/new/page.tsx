@@ -8,7 +8,7 @@
 // =====================================================
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Plus, Loader2, Paperclip, X } from "lucide-react";
 import { Button, Input, Select, EmptyState, RichTextEditor } from "@/components/ui";
 import { DESCRIPTION_TEMPLATE, isEmptyHtml } from "@/lib/rich-text";
@@ -37,7 +37,13 @@ import type { TicketState, TicketPriority, TicketCategory } from "@/types";
 
 export default function CreateTicketPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { session } = useSession();
+
+  // Diisi otomatis kalau datang dari "Buat Tiket" atas pengajuan tiket
+  // (lihat admin/page.tsx → handleApproveRequest). request_id dipakai
+  // untuk menandai pengajuan sebagai "approved" setelah tiket dibuat.
+  const requestId = searchParams.get("request_id");
 
   // Hooks untuk master data
   const { clients, loading: loadingClients } = useClients();
@@ -81,19 +87,20 @@ export default function CreateTicketPage() {
     }));
   };
 
-  // Form state
+  // Form state — kalau ada request_id, prefill dari query params (lihat
+  // handleApproveRequest di admin/page.tsx).
   const [formData, setFormData] = useState({
-    client_id: "",
-    product_id: "",
+    client_id: searchParams.get("client_id") || "",
+    product_id: searchParams.get("product_id") || "",
     project_id: "",
     sprint_id: "",
-    subject: "",
-    description: DESCRIPTION_TEMPLATE,
-    category: "development" as TicketCategory,
+    subject: searchParams.get("subject") || "",
+    description: searchParams.get("description") || DESCRIPTION_TEMPLATE,
+    category: (searchParams.get("category") as TicketCategory) || "development",
     state: "backlog" as TicketState,
-    priority: "normal" as TicketPriority,
+    priority: (searchParams.get("priority") as TicketPriority) || "normal",
     assigned_to: [] as string[],
-    reported_to: session?.profile?.id || "",
+    reported_to: searchParams.get("reported_to") || session?.profile?.id || "",
     manhours_estimate: "",
     start_date: "",
     due_date: "",
@@ -223,6 +230,23 @@ export default function CreateTicketPage() {
         message: `Ticket created: ${ticketId}`,
         created_at: new Date().toISOString(),
       });
+
+      // Kalau tiket ini dibuat dari pengajuan (ticket request), tandai
+      // pengajuannya "approved" & link ke tiket yang baru dibuat.
+      if (requestId) {
+        const { error: requestUpdateError } = await supabase
+          .from("ticket_requests")
+          .update({
+            status: "approved",
+            created_ticket_id: newTicket.id,
+            reviewed_by: session?.profile?.id || null,
+            reviewed_at: new Date().toISOString(),
+          })
+          .eq("id", requestId);
+        if (requestUpdateError) {
+          console.error("Failed to update ticket request:", requestUpdateError);
+        }
+      }
 
       // Redirect to ticket detail
       router.push(`/gawean/${newTicket.id}`);

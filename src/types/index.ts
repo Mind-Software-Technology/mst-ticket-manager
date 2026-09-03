@@ -153,6 +153,29 @@ export interface Ticket {
   additional_assignees?: User[];
 }
 
+export type TicketRequestStatus = "pending" | "approved" | "rejected";
+
+/** Pengajuan tiket dari user yang tidak bisa create ticket langsung. */
+export interface TicketRequest {
+  id: string;
+  requested_by: string;
+  subject: string;
+  description: string | null;
+  priority: TicketPriority;
+  category: TicketCategory | null;
+  client_id: string | null;
+  product_id: string | null;
+  status: TicketRequestStatus;
+  created_ticket_id: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  // Relasi (populated via join)
+  requester?: User | null;
+  client?: Client | null;
+  product?: Product | null;
+}
+
 export interface TicketAttachment {
   id: string;
   ticket_id: string;

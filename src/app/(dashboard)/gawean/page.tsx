@@ -257,13 +257,21 @@ export default function GaweanPage() {
             Kelola semua tiket pekerjaan tim
           </p>
         </div>
-        {canCreateTicket && (
+        {canCreateTicket ? (
           <Button
             variant="primary"
             icon={<PlusCircle className="w-4 h-4" />}
             onClick={() => router.push("/gawean/new")}
           >
             Buat Tiket Baru
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            icon={<PlusCircle className="w-4 h-4" />}
+            onClick={() => router.push("/gawean/request")}
+          >
+            Ajukan Tiket Baru
           </Button>
         )}
       </div>
@@ -360,9 +368,13 @@ export default function GaweanPage() {
                       action={
                         <Button
                           variant="primary"
-                          onClick={() => router.push("/gawean/new")}
+                          onClick={() =>
+                            router.push(
+                              canCreateTicket ? "/gawean/new" : "/gawean/request",
+                            )
+                          }
                         >
-                          Buat Tiket Pertama
+                          {canCreateTicket ? "Buat Tiket Pertama" : "Ajukan Tiket Pertama"}
                         </Button>
                       }
                     />

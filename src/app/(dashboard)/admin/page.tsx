@@ -9,8 +9,9 @@
 // =====================================================
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Edit2, Trash2, Loader2 } from "lucide-react";
+import { Edit2, Trash2, Loader2, Inbox, Check, X } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useUsers } from "@/hooks/useUsers";
 import { useSprints } from "@/hooks/useSprints";
@@ -18,8 +19,8 @@ import { useProducts } from "@/hooks/useProducts";
 import { RichTextEditor, SearchInput, Pagination } from "@/components/ui";
 import { isEmptyHtml } from "@/lib/rich-text";
 import { toISODate } from "@/lib/date-utils";
-import { DEFAULT_PAGE_SIZE, MANHOURS_OPTIONS } from "@/lib/constants";
-import type { Ticket } from "@/types";
+import { DEFAULT_PAGE_SIZE, MANHOURS_OPTIONS, TICKET_PRIORITY_BY_VALUE } from "@/lib/constants";
+import type { Ticket, TicketRequest } from "@/types";
 
 // ─── Constants ────────────────────────────────────────
 
@@ -138,6 +139,7 @@ function computeNextTicketId(
 // ═══════════════════════════════════════════════════════
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const { session } = useSession();
   const { users } = useUsers();
   const { sprints } = useSprints();
@@ -160,6 +162,11 @@ export default function AdminDashboard() {
   const userRole = session?.profile.is_admin ? "Admin" : "Viewer";
 
   const [formData, setFormData] = useState<TicketFormState>(INITIAL_FORM);
+
+  // ─── Ticket Requests (pengajuan tiket dari user non-admin) ──
+  const [ticketRequests, setTicketRequests] = useState<TicketRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
 
   // ─── Fetch Tickets (paginated + server-side filter) ─
 
@@ -268,6 +275,33 @@ export default function AdminDashboard() {
     [],
   );
 
+  const fetchTicketRequests = useCallback(async () => {
+    setLoadingRequests(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("ticket_requests")
+        .select(
+          `
+          *,
+          requester:users!ticket_requests_requested_by_fkey(id, name, email),
+          client:clients(id, name),
+          product:products(id, name, prefix)
+        `,
+        )
+        .eq("status", "pending")
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      setTicketRequests((data as TicketRequest[]) || []);
+    } catch (err) {
+      console.error("[admin] fetch ticket requests error:", err);
+      setTicketRequests([]);
+    } finally {
+      setLoadingRequests(false);
+    }
+  }, []);
+
   useEffect(() => {
     void fetchTickets();
   }, [fetchTickets]);
@@ -275,6 +309,48 @@ export default function AdminDashboard() {
   useEffect(() => {
     void fetchStats();
   }, [fetchStats]);
+
+  useEffect(() => {
+    if (userRole === "Admin") void fetchTicketRequests();
+  }, [userRole, fetchTicketRequests]);
+
+  // Klik "Buat Tiket" — arahkan ke form create dengan data ke-prefill dari
+  // pengajuan. Request baru ditandai "approved" setelah tiketnya jadi
+  // dibuat (lihat gawean/new/page.tsx).
+  const handleApproveRequest = (reqItem: TicketRequest) => {
+    const params = new URLSearchParams({ request_id: reqItem.id });
+    if (reqItem.subject) params.set("subject", reqItem.subject);
+    if (reqItem.description) params.set("description", reqItem.description);
+    if (reqItem.priority) params.set("priority", reqItem.priority);
+    if (reqItem.category) params.set("category", reqItem.category);
+    if (reqItem.client_id) params.set("client_id", reqItem.client_id);
+    if (reqItem.product_id) params.set("product_id", reqItem.product_id);
+    if (reqItem.requested_by) params.set("reported_to", reqItem.requested_by);
+    router.push(`/gawean/new?${params.toString()}`);
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    if (!confirm("Tolak pengajuan tiket ini?")) return;
+    setProcessingRequestId(requestId);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("ticket_requests")
+        .update({
+          status: "rejected",
+          reviewed_by: session?.profile?.id || null,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", requestId);
+      if (error) throw error;
+      await fetchTicketRequests();
+    } catch (err) {
+      console.error("[admin] reject request error:", err);
+      alert("Gagal menolak pengajuan. Coba lagi.");
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
 
   // ─── Stats ────────────────────────────────────────
 
@@ -433,6 +509,84 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Ticket Requests — pengajuan tiket dari user non-admin */}
+      {userRole === "Admin" && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6 md:mb-8">
+          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
+            <Inbox className="w-4 h-4 text-slate-500" />
+            <h3 className="font-semibold text-slate-800">
+              Pengajuan Tiket Baru
+            </h3>
+            {ticketRequests.length > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-indigo-600 text-white text-xs font-semibold">
+                {ticketRequests.length}
+              </span>
+            )}
+          </div>
+
+          {loadingRequests ? (
+            <div className="p-6 text-center text-slate-500 text-sm">
+              Memuat pengajuan...
+            </div>
+          ) : ticketRequests.length === 0 ? (
+            <div className="p-6 text-center text-slate-500 text-sm">
+              Tidak ada pengajuan tiket yang menunggu.
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {ticketRequests.map((reqItem) => (
+                <li
+                  key={reqItem.id}
+                  className="p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">
+                      {reqItem.subject}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Diajukan oleh{" "}
+                      <span className="font-medium">
+                        {reqItem.requester?.name || "?"}
+                      </span>
+                      {" · "}
+                      {TICKET_PRIORITY_BY_VALUE[reqItem.priority]?.label ??
+                        reqItem.priority}
+                      {reqItem.client?.name && ` · ${reqItem.client.name}`}
+                      {reqItem.product?.name && ` · ${reqItem.product.name}`}
+                    </p>
+                    {reqItem.description && (
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                        {reqItem.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleApproveRequest(reqItem)}
+                      disabled={processingRequestId === reqItem.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Buat Tiket
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRejectRequest(reqItem.id)}
+                      disabled={processingRequestId === reqItem.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-60 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Tolak
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Ticket Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
