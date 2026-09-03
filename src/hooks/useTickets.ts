@@ -95,7 +95,8 @@ export function useTickets(
           project:projects(id, name),
           assignee:users!tickets_assigned_to_fkey(id, name, email, role),
           reporter:users!tickets_reported_to_fkey(id, name, email, role),
-          sprint:sprints(id, name, start_date, end_date)
+          sprint:sprints(id, name, start_date, end_date),
+          additional_assignees:ticket_assignees(user:users(id, name, email, role))
         `,
           { count: "exact" },
         );
@@ -203,7 +204,16 @@ export function useTickets(
 
       if (fetchError) throw fetchError;
 
-      setTickets((data as Ticket[]) || []);
+      // Flatten & filter additional_assignees (ticket_assignees → users),
+      // buang assignee utama (assigned_to) supaya tidak dobel tampil.
+      const rows = ((data as any[]) || []).map((row) => ({
+        ...row,
+        additional_assignees: (row.additional_assignees ?? [])
+          .map((ta: any) => ta.user)
+          .filter((u: any) => u && u.id !== row.assigned_to),
+      }));
+
+      setTickets(rows as Ticket[]);
       setTotal(count || 0);
     } catch (err: any) {
       console.error("[useTickets] fetch error:", err);

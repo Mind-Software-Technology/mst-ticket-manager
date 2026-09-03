@@ -471,7 +471,11 @@ function TicketRow({
         <span className="text-slate-700">{ticket.reporter?.name || "-"}</span>
       </td>
       <td className="p-4">
-        <span className="text-slate-700">{ticket.assignee?.name || "-"}</span>
+        <span className="text-slate-700">
+          {[ticket.assignee?.name, ...(ticket.additional_assignees ?? []).map((u) => u.name)]
+            .filter(Boolean)
+            .join(", ") || "-"}
+        </span>
       </td>
       <td className="p-4 text-slate-600">{formatDate(ticket.due_date)}</td>
       <td className="p-4 text-center">
