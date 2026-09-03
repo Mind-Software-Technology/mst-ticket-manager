@@ -72,6 +72,15 @@ export default function CreateTicketPage() {
     setAttachmentFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const toggleAssignee = (userId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      assigned_to: prev.assigned_to.includes(userId)
+        ? prev.assigned_to.filter((id) => id !== userId)
+        : [...prev.assigned_to, userId],
+    }));
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     client_id: "",
@@ -83,7 +92,7 @@ export default function CreateTicketPage() {
     category: "development" as TicketCategory,
     state: "backlog" as TicketState,
     priority: "normal" as TicketPriority,
-    assigned_to: "",
+    assigned_to: [] as string[],
     reported_to: session?.profile?.id || "",
     manhours_estimate: "",
     start_date: "",
@@ -155,7 +164,7 @@ export default function CreateTicketPage() {
           product_id: formData.product_id || null,
           project_id: formData.project_id || null,
           sprint_id: formData.sprint_id || null,
-          assigned_to: formData.assigned_to || null,
+          assigned_to: formData.assigned_to[0] || null,
           reported_to: formData.reported_to || null,
           manhours_estimate: parseFloat(formData.manhours_estimate) || 0,
           actual_manhours: 0,
@@ -170,6 +179,23 @@ export default function CreateTicketPage() {
         .single();
 
       if (createError) throw createError;
+
+      // Simpan semua assignee (bisa lebih dari satu) di tabel junction.
+      // assigned_to (kolom lama) tetap berisi assignee pertama saja, dipakai
+      // halaman lain yang masih single-assignee.
+      if (formData.assigned_to.length > 0) {
+        const { error: assigneesError } = await supabase
+          .from("ticket_assignees")
+          .insert(
+            formData.assigned_to.map((userId) => ({
+              ticket_id: newTicket.id,
+              user_id: userId,
+            })),
+          );
+        if (assigneesError) {
+          console.error("Failed to save assignees:", assigneesError);
+        }
+      }
 
       // Upload lampiran (kalau ada). Tiket sudah dibuat, jadi kegagalan
       // upload tidak membatalkan tiket — cukup beri tahu user.
@@ -484,17 +510,38 @@ export default function CreateTicketPage() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                label="Assignee (Optional)"
-                value={formData.assigned_to}
-                onChange={(e) =>
-                  setFormData({ ...formData, assigned_to: e.target.value })
-                }
-                options={[
-                  { value: "", label: "-- Unassigned --" },
-                  ...users.map((u) => ({ value: u.id, label: u.name })),
-                ]}
-              />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Assignee (Optional, bisa lebih dari satu)
+                </label>
+                {users.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    Belum ada user aktif.
+                  </p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-300 divide-y divide-slate-100">
+                    {users.map((u) => (
+                      <label
+                        key={u.id}
+                        className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.assigned_to.includes(u.id)}
+                          onChange={() => toggleAssignee(u.id)}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-slate-700">{u.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {formData.assigned_to.length > 0 && (
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    {formData.assigned_to.length} orang dipilih
+                  </p>
+                )}
+              </div>
 
               <Select
                 label="Reporter"
