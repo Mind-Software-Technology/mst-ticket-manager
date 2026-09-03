@@ -212,6 +212,9 @@ export function useTickets(
         additional_assignees: (row.additional_assignees ?? [])
           .map((ta: any) => ta.user)
           .filter((u: any) => u && u.id !== row.assigned_to),
+        additional_reporters: (row.additional_reporters ?? [])
+          .map((tr: any) => tr.user)
+          .filter((u: any) => u && u.id !== row.reported_to),
       }));
 
       setTickets(rows as Ticket[]);

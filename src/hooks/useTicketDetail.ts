@@ -93,6 +93,14 @@ export function useTicketDetail(
           .filter((u: any) => u && u.id !== ticketData.assigned_to);
       }
 
+      // Flatten & filter additional_reporters (ticket_reporters → users),
+      // buang reporter utama (reported_to) supaya tidak dobel tampil.
+      if (ticketData.additional_reporters) {
+        ticketData.additional_reporters = ticketData.additional_reporters
+          .map((tr: any) => tr.user)
+          .filter((u: any) => u && u.id !== ticketData.reported_to);
+      }
+
       setTicket(ticketData as Ticket);
     } catch (err: any) {
       // Enhanced error handling
