@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Plus, Loader2, Paperclip, X } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Paperclip, X, Star } from "lucide-react";
 import { Button, Input, Select, EmptyState, RichTextEditor } from "@/components/ui";
 import { DESCRIPTION_TEMPLATE, isEmptyHtml } from "@/lib/rich-text";
 import { useClients } from "@/hooks/useClients";
@@ -84,6 +84,16 @@ export default function CreateTicketPage() {
       assigned_to: prev.assigned_to.includes(userId)
         ? prev.assigned_to.filter((id) => id !== userId)
         : [...prev.assigned_to, userId],
+    }));
+  };
+
+  // Assignee pertama di array = assignee utama (disimpan ke tickets.assigned_to,
+  // tampil pertama di mana-mana). Klik "Jadikan utama" memindahkan orang itu
+  // ke urutan pertama.
+  const makePrimaryAssignee = (userId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      assigned_to: [userId, ...prev.assigned_to.filter((id) => id !== userId)],
     }));
   };
 
@@ -544,25 +554,56 @@ export default function CreateTicketPage() {
                   </p>
                 ) : (
                   <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-300 divide-y divide-slate-100">
-                    {users.map((u) => (
-                      <label
-                        key={u.id}
-                        className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.assigned_to.includes(u.id)}
-                          onChange={() => toggleAssignee(u.id)}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="text-slate-700">{u.name}</span>
-                      </label>
-                    ))}
+                    {users.map((u) => {
+                      const isChecked = formData.assigned_to.includes(u.id);
+                      const isPrimary = formData.assigned_to[0] === u.id;
+                      return (
+                        <div
+                          key={u.id}
+                          className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"
+                        >
+                          <label className="flex items-center gap-2 flex-1 cursor-pointer min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleAssignee(u.id)}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="text-slate-700 truncate">{u.name}</span>
+                          </label>
+                          {isChecked && (
+                            <button
+                              type="button"
+                              onClick={() => makePrimaryAssignee(u.id)}
+                              title={
+                                isPrimary
+                                  ? "Assignee utama"
+                                  : "Jadikan assignee utama"
+                              }
+                              className={`flex items-center gap-1 flex-shrink-0 text-xs px-1.5 py-0.5 rounded ${
+                                isPrimary
+                                  ? "text-amber-600"
+                                  : "text-slate-400 hover:text-amber-500"
+                              }`}
+                            >
+                              <Star
+                                className="w-3.5 h-3.5"
+                                fill={isPrimary ? "currentColor" : "none"}
+                              />
+                              {isPrimary && "Utama"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {formData.assigned_to.length > 0 && (
                   <p className="mt-1.5 text-xs text-slate-500">
-                    {formData.assigned_to.length} orang dipilih
+                    {formData.assigned_to.length} orang dipilih — assignee utama:{" "}
+                    <span className="font-medium text-slate-700">
+                      {users.find((u) => u.id === formData.assigned_to[0])?.name}
+                    </span>
                   </p>
                 )}
               </div>
