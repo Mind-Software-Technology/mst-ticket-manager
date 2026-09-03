@@ -61,6 +61,7 @@ const CATEGORY_OPTIONS = [
   { value: "qa_testing", label: "QA & Testing" },
   { value: "coordination_management", label: "Coordination & Management" },
   { value: "internal_learning", label: "Internal Learning" },
+  { value: "marketing", label: "Marketing" },
 ];
 
 // ─── Task Form State ──────────────────────────────────

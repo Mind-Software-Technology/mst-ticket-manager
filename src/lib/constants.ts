@@ -62,6 +62,7 @@ export const TICKET_CATEGORIES: CategoryConfig[] = [
   { value: "coordination_management",   label: "Coordination & Management" },
   { value: "design_ui_ux",              label: "Design (UI/UX)" },
   { value: "internal_learning",         label: "Internal & Learning" },
+  { value: "marketing",                 label: "Marketing" },
 ];
 
 export const TICKET_CATEGORY_BY_VALUE: Record<TicketCategory, CategoryConfig> =

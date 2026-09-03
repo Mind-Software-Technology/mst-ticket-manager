@@ -30,7 +30,8 @@ export type TicketCategory =
   | "qa_testing"
   | "coordination_management"
   | "design_ui_ux"
-  | "internal_learning";
+  | "internal_learning"
+  | "marketing";
 
 export type CheckinStatus = "draft" | "approved";
 
