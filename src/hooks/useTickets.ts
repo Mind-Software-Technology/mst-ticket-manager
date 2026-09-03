@@ -69,6 +69,15 @@ export function useTickets(
         return (data ?? []).map((r) => r.ticket_id as string);
       };
 
+      const lookupExtraReportedTicketIds = async (userId: string) => {
+        const { data, error: lookupErr } = await supabase
+          .from("ticket_reporters")
+          .select("ticket_id")
+          .eq("user_id", userId);
+        if (lookupErr) throw lookupErr;
+        return (data ?? []).map((r) => r.ticket_id as string);
+      };
+
       let reporterIds: string[] | null = null;
       if (filters.reporter_name?.trim()) {
         const { data: matched, error: lookupErr } = await supabase
@@ -131,17 +140,26 @@ export function useTickets(
       }
 
       if (filters.reported_to) {
-        query = query.eq("reported_to", filters.reported_to);
+        const extraTicketIds = await lookupExtraReportedTicketIds(filters.reported_to);
+        if (extraTicketIds.length > 0) {
+          query = query.or(
+            `reported_to.eq.${filters.reported_to},id.in.(${extraTicketIds.join(",")})`,
+          );
+        } else {
+          query = query.eq("reported_to", filters.reported_to);
+        }
       }
 
       if (filters.involved_user) {
-        const extraTicketIds = await lookupExtraAssignedTicketIds(filters.involved_user);
+        const extraAssignedIds = await lookupExtraAssignedTicketIds(filters.involved_user);
+        const extraReportedIds = await lookupExtraReportedTicketIds(filters.involved_user);
+        const allExtraIds = Array.from(new Set([...extraAssignedIds, ...extraReportedIds]));
         const orParts = [
           `assigned_to.eq.${filters.involved_user}`,
           `reported_to.eq.${filters.involved_user}`,
         ];
-        if (extraTicketIds.length > 0) {
-          orParts.push(`id.in.(${extraTicketIds.join(",")})`);
+        if (allExtraIds.length > 0) {
+          orParts.push(`id.in.(${allExtraIds.join(",")})`);
         }
         query = query.or(orParts.join(","));
       }

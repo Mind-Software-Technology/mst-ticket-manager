@@ -90,6 +90,7 @@ function defaultFilters(): TicketFilters {
     priority: [],
     category: [],
     assign_to_me: true,
+    report_to_me: false,
   };
 }
 
@@ -229,6 +230,9 @@ export default function GaweanPage() {
       assigned_to: filters.assign_to_me
         ? currentUserId || "00000000-0000-0000-0000-000000000000"
         : filters.assigned_to,
+      reported_to: filters.report_to_me
+        ? currentUserId || "00000000-0000-0000-0000-000000000000"
+        : filters.reported_to,
     },
     effectivePagination,
   );

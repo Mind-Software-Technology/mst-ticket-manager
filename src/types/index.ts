@@ -269,6 +269,7 @@ export interface TicketFilters {
   sprint_id?: string;
   /** Quick-filter shorthand untuk `assigned_to = current user` */
   assign_to_me?: boolean;
+  report_to_me?: boolean;
 
   // ─── Custom filter "contains" (gaya Odoo) ──────────
   /** Free-text: cocokkan nama assignee (case-insensitive, contains). */

@@ -168,6 +168,8 @@ export function TicketFilterBar({
 
   if (filters.assign_to_me)
     chips.push({ key: "me", label: "Assign To Me", onRemove: () => onChange({ assign_to_me: false }) });
+  if (filters.report_to_me)
+    chips.push({ key: "report_me", label: "Report To Me", onRemove: () => onChange({ report_to_me: false }) });
   if (filters.not_closed)
     chips.push({ key: "notclose", label: "Not Close", onRemove: () => onChange({ not_closed: false }) });
   if (filters.overdue)
@@ -259,6 +261,14 @@ export function TicketFilterBar({
             onClick={() => onChange({ assign_to_me: !filters.assign_to_me, assigned_to: undefined })}
           >
             Assign To Me
+          </Button>
+
+          <Button
+            variant={filters.report_to_me ? "primary" : "secondary"}
+            size="md"
+            onClick={() => onChange({ report_to_me: !filters.report_to_me, reported_to: undefined })}
+          >
+            Report To Me
           </Button>
 
           <div className="relative" ref={wrapperRef}>
