@@ -15,7 +15,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, ChevronRight, ChevronDown } from "lucide-react";
+import { PlusCircle, ChevronRight, ChevronDown, Wallet } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useTickets } from "@/hooks/useTickets";
 import { Badge, Button, Pagination, EmptyState } from "@/components/ui";
@@ -294,23 +294,38 @@ export default function GaweanPage() {
             Kelola semua tiket pekerjaan tim
           </p>
         </div>
-        {canCreateTicket ? (
+        <div className="flex items-center gap-2">
           <Button
-            variant="primary"
-            icon={<PlusCircle className="w-4 h-4" />}
-            onClick={() => router.push("/gawean/new")}
+            variant="secondary"
+            icon={<Wallet className="w-4 h-4" />}
+            onClick={() =>
+              window.open(
+                "https://mst-pengajuan-modal.vercel.app/",
+                "_blank",
+                "noopener,noreferrer"
+              )
+            }
           >
-            Buat Tiket Baru
+            Pengajuan Modal
           </Button>
-        ) : (
-          <Button
-            variant="primary"
-            icon={<PlusCircle className="w-4 h-4" />}
-            onClick={() => router.push("/gawean/request")}
-          >
-            Ajukan Tiket Baru
-          </Button>
-        )}
+          {canCreateTicket ? (
+            <Button
+              variant="primary"
+              icon={<PlusCircle className="w-4 h-4" />}
+              onClick={() => router.push("/gawean/new")}
+            >
+              Buat Tiket Baru
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              icon={<PlusCircle className="w-4 h-4" />}
+              onClick={() => router.push("/gawean/request")}
+            >
+              Ajukan Tiket Baru
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Toolbar: Search + Filters + Group By (gaya Odoo) */}
