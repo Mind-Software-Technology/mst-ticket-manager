@@ -740,15 +740,90 @@ export default function TicketDetailPage() {
                   onChange={(v) => saveField({ project_id: v || null })}
                 />
 
-                <ReadOnlyField
-                  label="Divisi"
-                  value={ticket.division || ticket.assignee?.division}
-                />
-                <ReadOnlyField label="Sprint" value={ticket.sprint?.name} />
-                <ReadOnlyField
-                  label="Due Date"
-                  value={formatDate(ticket.due_date)}
-                />
+                {/* Divisi — editable oleh admin */}
+                {isAdmin ? (
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">
+                      Divisi
+                    </label>
+                    <input
+                      type="text"
+                      defaultValue={ticket.division || ""}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v !== (ticket.division || "")) {
+                          saveField({ division: v || null });
+                        }
+                      }}
+                      placeholder={ticket.assignee?.division || "-"}
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    />
+                  </div>
+                ) : (
+                  <ReadOnlyField
+                    label="Divisi"
+                    value={ticket.division || ticket.assignee?.division}
+                  />
+                )}
+
+                {/* Sprint — editable oleh admin */}
+                {isAdmin ? (
+                  <InlineSelect
+                    label="Sprint"
+                    value={ticket.sprint_id || ""}
+                    options={[
+                      { value: "", label: "-- Tanpa Sprint --" },
+                      ...sprints.map((s) => ({ value: s.id, label: s.name })),
+                    ]}
+                    onChange={(v) => saveField({ sprint_id: v || null })}
+                  />
+                ) : (
+                  <ReadOnlyField label="Sprint" value={ticket.sprint?.name} />
+                )}
+
+                {/* Start Date — editable oleh admin */}
+                {isAdmin ? (
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={ticket.start_date || ""}
+                      onChange={(e) =>
+                        saveField({ start_date: e.target.value || null })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    />
+                  </div>
+                ) : (
+                  <ReadOnlyField
+                    label="Start Date"
+                    value={formatDate(ticket.start_date)}
+                  />
+                )}
+
+                {/* Due Date — editable oleh admin */}
+                {isAdmin ? (
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">
+                      Due Date
+                    </label>
+                    <input
+                      type="date"
+                      value={ticket.due_date || ""}
+                      onChange={(e) =>
+                        saveField({ due_date: e.target.value || null })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    />
+                  </div>
+                ) : (
+                  <ReadOnlyField
+                    label="Due Date"
+                    value={formatDate(ticket.due_date)}
+                  />
+                )}
 
                 {/* Done Date — editable */}
                 <div>
