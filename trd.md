@@ -288,7 +288,8 @@ CREATE TYPE ticket_category AS ENUM (
     'qa_testing',
     'coordination_management',
     'design_ui_ux',
-    'internal_learning'
+    'internal_learning',
+    'marketing'
 );
 
 -- Check-in Status
