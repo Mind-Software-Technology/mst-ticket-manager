@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useSession } from "@/hooks/useSession";
+import { PengajuanModalBell } from "@/components/PengajuanModalBell";
 
 export default function DashboardLayout({
   children,
@@ -141,8 +142,11 @@ export default function DashboardLayout({
               </nav>
             </div>
 
-            {/* User menu */}
-            <div className="relative flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <PengajuanModalBell />
+
+              {/* User menu */}
+              <div className="relative flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setUserMenuOpen((v) => !v)}
@@ -196,6 +200,7 @@ export default function DashboardLayout({
                   </div>
                 </>
               )}
+              </div>
             </div>
           </div>
 
