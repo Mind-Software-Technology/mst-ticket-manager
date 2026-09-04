@@ -20,7 +20,7 @@ import { useSession } from "@/hooks/useSession";
 import { useTickets } from "@/hooks/useTickets";
 import { Badge, Button, Pagination, EmptyState } from "@/components/ui";
 import { TicketFilterBar } from "@/components/TicketFilterBar";
-import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import { DEFAULT_PAGE_SIZE, TICKET_STATES, TICKET_STATE_BY_VALUE } from "@/lib/constants";
 import {
   groupTickets,
   GROUP_DEF_BY_KEY,
@@ -212,6 +212,20 @@ export default function GaweanPage() {
     router.push(`/gawean/${ticketId}`);
   };
 
+  // Ganti state tiket langsung dari list, tanpa buka detail
+  const [changingStateId, setChangingStateId] = useState<string | null>(null);
+  const handleStateChange = async (ticketId: string, newState: string) => {
+    setChangingStateId(ticketId);
+    try {
+      await updateTicketState(ticketId, newState);
+    } catch (err) {
+      console.error("Failed to update ticket state:", err);
+      alert("Gagal mengubah state. Coba lagi.");
+    } finally {
+      setChangingStateId(null);
+    }
+  };
+
   // ─── Derived data ───────────────────────────────────
 
   const effectivePagination: PaginationParams = grouping
@@ -224,6 +238,7 @@ export default function GaweanPage() {
     error,
     total,
     totalPages,
+    updateTicketState,
   } = useTickets(
     {
       ...filters,
@@ -436,6 +451,10 @@ export default function GaweanPage() {
                             key={ticket.id}
                             ticket={ticket}
                             onClick={() => navigateToDetail(ticket.id)}
+                            onStateChange={(newState) =>
+                              handleStateChange(ticket.id, newState)
+                            }
+                            changingState={changingStateId === ticket.id}
                           />
                         ))}
                     </Fragment>
@@ -448,6 +467,10 @@ export default function GaweanPage() {
                     key={ticket.id}
                     ticket={ticket}
                     onClick={() => navigateToDetail(ticket.id)}
+                    onStateChange={(newState) =>
+                      handleStateChange(ticket.id, newState)
+                    }
+                    changingState={changingStateId === ticket.id}
                   />
                 ))
               )}
@@ -475,10 +498,15 @@ export default function GaweanPage() {
 function TicketRow({
   ticket,
   onClick,
+  onStateChange,
+  changingState,
 }: {
   ticket: Ticket;
   onClick: () => void;
+  onStateChange: (newState: string) => void;
+  changingState: boolean;
 }) {
+  const stateConfig = TICKET_STATE_BY_VALUE[ticket.state];
   return (
     <tr
       onClick={onClick}
@@ -515,8 +543,19 @@ function TicketRow({
       <td className="p-4 text-center">
         <span className="text-slate-600">{ticket.manhours_estimate || 0}h</span>
       </td>
-      <td className="p-4">
-        <Badge variant="state" state={ticket.state} />
+      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+        <select
+          value={ticket.state}
+          disabled={changingState}
+          onChange={(e) => onStateChange(e.target.value)}
+          className={`text-xs font-medium rounded-full pl-2.5 pr-6 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-wait ${stateConfig?.color ?? "bg-slate-100"} ${stateConfig?.textColor ?? "text-slate-700"}`}
+        >
+          {TICKET_STATES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
       </td>
     </tr>
   );
