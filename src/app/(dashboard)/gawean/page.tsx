@@ -390,8 +390,8 @@ export default function GaweanPage() {
                     Priority
                   </button>
                 </th>
-                <th className="p-4 font-medium">Reported To</th>
                 <th className="p-4 font-medium">Assignee</th>
+                <th className="p-4 font-medium">Reported To</th>
                 <th className="p-4 font-medium">
                   <button
                     onClick={() => handleSort("due_date")}
@@ -545,14 +545,14 @@ function TicketRow({
         <Badge variant="priority" priority={ticket.priority} />
       </td>
       <td className="p-4">
-        <span className="text-slate-700">{ticket.reporter?.name || "-"}</span>
-      </td>
-      <td className="p-4">
         <span className="text-slate-700">
           {[ticket.assignee?.name, ...(ticket.additional_assignees ?? []).map((u) => u.name)]
             .filter(Boolean)
             .join(", ") || "-"}
         </span>
+      </td>
+      <td className="p-4">
+        <span className="text-slate-700">{ticket.reporter?.name || "-"}</span>
       </td>
       <td className="p-4 text-slate-600">{formatDate(ticket.due_date)}</td>
       <td className="p-4 text-center">
