@@ -5,20 +5,40 @@
 // Sprint 2 / Activity Log
 //
 // Timeline vertikal untuk menampilkan history perubahan ticket.
+// Komentar (action_type = "comment") bisa di-edit inline oleh
+// penulisnya sendiri atau admin.
 // =====================================================
 
-import { Clock, GitCommit, MessageSquare, User } from "lucide-react";
+import { useState } from "react";
+import { Clock, GitCommit, MessageSquare, User, Pencil, Check, X } from "lucide-react";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
 import type { ActivityLog } from "@/types";
-import { Badge } from "./ui";
+import { Badge, RichTextEditor } from "./ui";
 import { TICKET_STATE_BY_VALUE } from "@/lib/constants";
+import { createClient } from "@/utils/supabase/client";
+import { isEmptyHtml, toEditorHtml } from "@/lib/rich-text";
 
 interface ActivityTimelineProps {
   ticketId: string;
+  /** ID profil pengguna yang sedang login — untuk menentukan siapa yang boleh edit. */
+  currentUserId?: string | null;
+  /** Apakah pengguna adalah admin (admin boleh edit semua komentar). */
+  isAdmin?: boolean;
 }
 
-export function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
+export function ActivityTimeline({
+  ticketId,
+  currentUserId,
+  isAdmin = false,
+}: ActivityTimelineProps) {
   const { logs, loading, error } = useActivityLogs(ticketId);
+
+  // ID log yang sedang dalam mode edit.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // Draft teks saat sedang edit.
+  const [editDraft, setEditDraft] = useState("");
+  // Sedang menyimpan?
+  const [saving, setSaving] = useState(false);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -56,10 +76,58 @@ export function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
   // Deteksi apakah string berisi HTML (mulai dengan tag).
   const isHtml = (str: string) => /^\s*</.test(str);
 
+  // Apakah pengguna ini boleh mengedit log tertentu?
+  const canEdit = (log: ActivityLog) =>
+    log.action_type === "comment" &&
+    (isAdmin || (!!currentUserId && log.user_id === currentUserId));
+
+  // Mulai mode edit untuk log tertentu.
+  const startEdit = (log: ActivityLog) => {
+    setEditingId(log.id);
+    // Konversi pesan lama (plain text / HTML) ke format editor.
+    setEditDraft(toEditorHtml(log.message ?? ""));
+  };
+
+  // Batalkan edit.
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditDraft("");
+  };
+
+  // Simpan hasil edit ke Supabase.
+  const saveEdit = async (log: ActivityLog) => {
+    if (isEmptyHtml(editDraft) && !log.image_url) return;
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error: updateErr } = await supabase
+        .from("activity_logs")
+        .update({
+          message: isEmptyHtml(editDraft) ? null : editDraft,
+        })
+        .eq("id", log.id);
+      if (updateErr) throw updateErr;
+
+      // Mutasi lokal agar UI langsung update tanpa reload penuh.
+      log.message = isEmptyHtml(editDraft) ? null : editDraft;
+      setEditingId(null);
+      setEditDraft("");
+    } catch (err) {
+      console.error("[ActivityTimeline] save edit error:", err);
+      alert("Gagal menyimpan perubahan. Coba lagi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const renderActivityMessage = (log: ActivityLog) => {
     if (log.action_type === "state_change") {
-      const oldState = log.old_value ? TICKET_STATE_BY_VALUE[log.old_value as keyof typeof TICKET_STATE_BY_VALUE] : null;
-      const newState = log.new_value ? TICKET_STATE_BY_VALUE[log.new_value as keyof typeof TICKET_STATE_BY_VALUE] : null;
+      const oldState = log.old_value
+        ? TICKET_STATE_BY_VALUE[log.old_value as keyof typeof TICKET_STATE_BY_VALUE]
+        : null;
+      const newState = log.new_value
+        ? TICKET_STATE_BY_VALUE[log.new_value as keyof typeof TICKET_STATE_BY_VALUE]
+        : null;
       return (
         <div className="flex items-center gap-1.5 flex-wrap">
           {oldState && <Badge variant="state" state={oldState.value} />}
@@ -73,7 +141,8 @@ export function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
     if (log.action_type === "field_update") {
       return (
         <div className="text-slate-600">
-          updated <span className="font-medium text-slate-900">{log.field_changed}</span>
+          updated{" "}
+          <span className="font-medium text-slate-900">{log.field_changed}</span>
           {log.old_value && log.new_value && (
             <>
               {" from "}
@@ -150,32 +219,83 @@ export function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
 
   return (
     <div className="space-y-4 p-4">
-      {logs.map((log, idx) => (
-        <div key={log.id} className="flex gap-3">
-          {/* Timeline dot */}
-          <div className="flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
-              {getActivityIcon(log.action_type)}
-            </div>
-            {idx < logs.length - 1 && (
-              <div className="w-0.5 h-full bg-slate-200 mt-2" />
-            )}
-          </div>
+      {logs.map((log, idx) => {
+        const isEditing = editingId === log.id;
 
-          {/* Content */}
-          <div className="flex-1 pb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium text-slate-900">
-                {log.user?.name || "System"}
-              </span>
-              <span className="text-xs text-slate-400">
-                {formatDate(log.created_at)}
-              </span>
+        return (
+          <div key={log.id} className="flex gap-3 group">
+            {/* Timeline dot */}
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                {getActivityIcon(log.action_type)}
+              </div>
+              {idx < logs.length - 1 && (
+                <div className="w-0.5 h-full bg-slate-200 mt-2" />
+              )}
             </div>
-            <div className="text-sm">{renderActivityMessage(log)}</div>
+
+            {/* Content */}
+            <div className="flex-1 pb-4 min-w-0">
+              {/* Header: nama + waktu + tombol edit */}
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium text-slate-900">
+                  {log.user?.name || "System"}
+                </span>
+                <span className="text-xs text-slate-400">
+                  {formatDate(log.created_at)}
+                </span>
+                {/* Tombol Edit — muncul saat hover, hanya untuk komentar milik sendiri / admin */}
+                {canEdit(log) && !isEditing && (
+                  <button
+                    type="button"
+                    title="Edit pesan"
+                    onClick={() => startEdit(log)}
+                    className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Body: mode tampil atau mode edit */}
+              {isEditing ? (
+                <div className="space-y-2">
+                  <RichTextEditor
+                    value={editDraft}
+                    onChange={setEditDraft}
+                    placeholder="Edit pesan..."
+                    minHeightClass="min-h-[100px]"
+                  />
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      disabled={saving}
+                      title="Batalkan"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void saveEdit(log)}
+                      disabled={saving || (isEmptyHtml(editDraft) && !log.image_url)}
+                      title="Simpan"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      {saving ? "Menyimpan..." : "Simpan"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm">{renderActivityMessage(log)}</div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -950,7 +950,12 @@ export default function TicketDetailPage() {
                 </Button>
               </div>
               <div className="max-h-[calc(100vh-12rem)] overflow-y-auto">
-                <ActivityTimeline key={timelineKey} ticketId={ticket.id} />
+                <ActivityTimeline
+                  key={timelineKey}
+                  ticketId={ticket.id}
+                  currentUserId={session?.profile?.id ?? null}
+                  isAdmin={isAdmin}
+                />
               </div>
             </div>
           </div>
