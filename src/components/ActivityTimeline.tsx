@@ -53,6 +53,9 @@ export function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
     }
   };
 
+  // Deteksi apakah string berisi HTML (mulai dengan tag).
+  const isHtml = (str: string) => /^\s*</.test(str);
+
   const renderActivityMessage = (log: ActivityLog) => {
     if (log.action_type === "state_change") {
       const oldState = log.old_value ? TICKET_STATE_BY_VALUE[log.old_value as keyof typeof TICKET_STATE_BY_VALUE] : null;
@@ -90,7 +93,18 @@ export function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
     if (log.message || log.image_url) {
       return (
         <div className="space-y-2">
-          {log.message && <div className="text-slate-600">{log.message}</div>}
+          {log.message && (
+            isHtml(log.message) ? (
+              // Pesan rich text (HTML dari TipTap) — render dengan styling prose.
+              <div
+                className="tiptap-content tiptap-readonly text-slate-600"
+                dangerouslySetInnerHTML={{ __html: log.message }}
+              />
+            ) : (
+              // Pesan lama (plain text) — tampilkan apa adanya.
+              <div className="text-slate-600 whitespace-pre-wrap">{log.message}</div>
+            )
+          )}
           {log.image_url && (
             <a href={log.image_url} target="_blank" rel="noopener noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element */}

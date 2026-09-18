@@ -107,7 +107,7 @@ export default function TicketDetailPage() {
 
   const handleSendProgress = async () => {
     if (!ticket) return;
-    if (!progressText.trim() && !progressFile) return;
+    if (isEmptyHtml(progressText) && !progressFile) return;
     setSendingProgress(true);
     try {
       const supabase = createClient();
@@ -133,7 +133,8 @@ export default function TicketDetailPage() {
           ticket_id: ticket.id,
           user_id: session?.profile?.id || null,
           action_type: "comment",
-          message: progressText.trim() || null,
+          // Simpan sebagai HTML (rich text). Null jika kosong.
+          message: isEmptyHtml(progressText) ? null : progressText,
           image_url: imageUrl,
           created_at: new Date().toISOString(),
         });
@@ -968,13 +969,12 @@ export default function TicketDetailPage() {
               Tulis apa yang sudah kamu kerjakan. Pesan akan muncul di log
               aktivitas tiket ini.
             </p>
-            <textarea
+            {/* Rich text editor — mendukung bold, italic, heading, numbering, dst. */}
+            <RichTextEditor
               value={progressText}
-              onChange={(e) => setProgressText(e.target.value)}
-              rows={5}
-              autoFocus
+              onChange={setProgressText}
               placeholder="Contoh: Sudah selesai implementasi endpoint & self-test."
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              minHeightClass="min-h-[160px]"
             />
             <div>
               <input
@@ -1001,7 +1001,7 @@ export default function TicketDetailPage() {
                 variant="primary"
                 onClick={handleSendProgress}
                 loading={sendingProgress}
-                disabled={!progressText.trim() && !progressFile}
+                disabled={isEmptyHtml(progressText) && !progressFile}
               >
                 Send
               </Button>

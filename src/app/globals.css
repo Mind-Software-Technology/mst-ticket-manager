@@ -80,3 +80,21 @@ body {
   height: 0;
   pointer-events: none;
 }
+
+/* ===== Read-only view (Activity Log / Timeline) ===== */
+/* Margin lebih ketat agar tampil compact di sidebar. */
+.tiptap-readonly p {
+  margin: 0.2rem 0;
+}
+.tiptap-readonly h2 {
+  font-size: 1rem;
+  margin: 0.6rem 0 0.3rem;
+}
+.tiptap-readonly h3 {
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0.25rem;
+}
+.tiptap-readonly ul,
+.tiptap-readonly ol {
+  margin: 0.3rem 0;
+}
