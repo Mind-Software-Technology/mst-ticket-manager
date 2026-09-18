@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Clock, MessageSquarePlus, Copy, X } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquarePlus, Copy, X, GitFork } from "lucide-react";
 import { useTicketDetail } from "@/hooks/useTicketDetail";
 import { useUsers } from "@/hooks/useUsers";
 import { useClients } from "@/hooks/useClients";
@@ -59,6 +59,9 @@ export default function TicketDetailPage() {
   const [showCopy, setShowCopy] = useState(false);
   const [copyTargetSprint, setCopyTargetSprint] = useState("");
   const [copying, setCopying] = useState(false);
+  // Split per assignee (admin)
+  const [showSplit, setShowSplit] = useState(false);
+  const [splitting, setSplitting] = useState(false);
   // Bump untuk memaksa ActivityTimeline reload setelah ada reply baru
   const [timelineKey, setTimelineKey] = useState(0);
 
@@ -486,6 +489,128 @@ export default function TicketDetailPage() {
     }
   };
 
+  // ─── Split tiket per assignee ────────────────────────
+  // Buat 1 tiket baru untuk setiap additional_assignee, salin semua field,
+  // label, dan activity log dari tiket asli. Tiket asli tidak berubah.
+  const handleSplitTicket = async () => {
+    if (!ticket.product_id) {
+      alert("Tiket ini tidak punya product, tidak bisa membuat ID baru.");
+      return;
+    }
+    const targets = ticket.additional_assignees ?? [];
+    if (targets.length === 0) return;
+
+    setSplitting(true);
+    try {
+      const supabase = createClient();
+
+      // Ambil semua activity log tiket asli untuk di-copy.
+      const { data: sourceLogs } = await supabase
+        .from("activity_logs")
+        .select("*")
+        .eq("ticket_id", ticket.id)
+        .order("created_at", { ascending: true });
+
+      // Label tiket asli.
+      const sourceLabelIds = (ticket.labels ?? []).map((l) => l.id);
+
+      // Buat tiket baru untuk setiap assignee tambahan secara serial
+      // (agar ticket_id urutannya benar dan tidak race).
+      const newTicketIds: string[] = [];
+      for (const assignee of targets) {
+        // 1. Alokasikan ticket ID baru.
+        const { ticketId: newTid, sequence: newSeq } = await generateTicketId(
+          ticket.product_id,
+        );
+
+        // 2. Buat tiket.
+        const { data: newTicket, error: createErr } = await supabase
+          .from("tickets")
+          .insert({
+            ticket_id: newTid,
+            sequence: newSeq,
+            subject: ticket.subject,
+            description: ticket.description,
+            category: ticket.category,
+            state: ticket.state,
+            priority: ticket.priority,
+            client_id: ticket.client_id,
+            product_id: ticket.product_id,
+            project_id: ticket.project_id,
+            sprint_id: ticket.sprint_id,
+            assigned_to: assignee.id,
+            reported_to: ticket.reported_to,
+            manhours_estimate: ticket.manhours_estimate,
+            actual_manhours: ticket.actual_manhours,
+            need_qa: ticket.need_qa,
+            start_date: ticket.start_date,
+            due_date: ticket.due_date,
+            done_date: ticket.done_date,
+            division: ticket.division,
+            created_by: session?.profile?.id || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+        if (createErr) throw createErr;
+
+        // 3. Salin semua label.
+        if (sourceLabelIds.length > 0) {
+          await supabase.from("ticket_labels").insert(
+            sourceLabelIds.map((label_id) => ({
+              ticket_id: newTicket.id,
+              label_id,
+            })),
+          );
+        }
+
+        // 4. Salin semua activity log.
+        if (sourceLogs && sourceLogs.length > 0) {
+          await supabase.from("activity_logs").insert(
+            sourceLogs.map((log) => ({
+              ticket_id: newTicket.id,
+              user_id: log.user_id,
+              action_type: log.action_type,
+              field_changed: log.field_changed,
+              old_value: log.old_value,
+              new_value: log.new_value,
+              message: log.message,
+              image_url: log.image_url ?? null,
+              created_at: log.created_at,
+            })),
+          );
+        }
+
+        // 5. Catat log "split" di tiket baru.
+        await supabase.from("activity_logs").insert({
+          ticket_id: newTicket.id,
+          user_id: session?.profile?.id || null,
+          action_type: "created",
+          message: `Split dari tiket ${ticket.ticket_id} untuk assignee ${assignee.name}`,
+          created_at: new Date().toISOString(),
+        });
+
+        newTicketIds.push(newTicket.id);
+      }
+
+      setShowSplit(false);
+      alert(
+        `Berhasil membuat ${newTicketIds.length} tiket baru:\n` +
+          newTicketIds.map((_, i) => `• Untuk ${targets[i].name}`).join("\n"),
+      );
+    } catch (err) {
+      console.error("Failed to split ticket:", err);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : (err as { message?: string })?.message ?? "Unknown error";
+      alert(`Gagal split tiket: ${msg}`);
+    } finally {
+      setSplitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto p-4 md:p-8">
@@ -509,6 +634,17 @@ export default function TicketDetailPage() {
                   onClick={openCopyModal}
                 >
                   Copy
+                </Button>
+              )}
+              {/* Tombol Split — hanya admin dan hanya jika ada additional_assignees */}
+              {isAdmin && (ticket.additional_assignees?.length ?? 0) > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<GitFork className="w-4 h-4" />}
+                  onClick={() => setShowSplit(true)}
+                >
+                  Split
                 </Button>
               )}
               <Button
@@ -1068,6 +1204,61 @@ export default function TicketDetailPage() {
                 icon={<Copy className="w-4 h-4" />}
               >
                 Copy Tiket
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Split per Assignee Modal (admin) */}
+      {showSplit && (
+        <Modal
+          isOpen={showSplit}
+          onClose={() => setShowSplit(false)}
+          title="Split Tiket per Assignee"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Buat tiket terpisah untuk setiap assignee tambahan. Semua field,
+              label, dan activity log akan di-duplikasi ke setiap tiket baru.
+              Tiket asli{" "}
+              <span className="font-mono">{ticket.ticket_id}</span>{" "}
+              tidak berubah.
+            </p>
+            {/* Daftar assignee yang akan dibuatkan tiket */}
+            <div className="rounded-lg border border-slate-200 divide-y divide-slate-100">
+              {(ticket.additional_assignees ?? []).map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-3 px-4 py-2.5"
+                >
+                  <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {a.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium text-slate-800">
+                    {a.name}
+                  </span>
+                  <span className="ml-auto text-xs text-slate-400">
+                    → tiket baru
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => setShowSplit(false)}
+                disabled={splitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSplitTicket}
+                loading={splitting}
+                icon={<GitFork className="w-4 h-4" />}
+              >
+                Split {ticket.additional_assignees?.length ?? 0} Tiket
               </Button>
             </div>
           </div>
