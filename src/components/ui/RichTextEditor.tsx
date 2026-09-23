@@ -84,27 +84,34 @@ export function RichTextEditor({
       attributes: {
         class: `tiptap-content ${minHeightClass} w-full px-3 py-2 focus:outline-none`,
       },
-      handlePaste(_, event) {
-        // Tangkap paste gambar dari clipboard (Ctrl+V screenshot / copy gambar)
-        const items = event.clipboardData?.items;
-        if (!items) return false;
-        for (let i = 0; i < items.length; i++) {
-          const item = items[i];
-          if (item.type.startsWith('image/')) {
-            const file = item.getAsFile();
-            if (file) {
-              onImagePasteRef.current?.(file);
-              // Cegah TipTap memasukkan gambar sebagai data URL ke konten
-              return true;
-            }
-          }
-        }
-        return false;
-      },
     },
     onUpdate: ({ editor }) => onChangeRef.current?.(editor.getHTML()),
     onBlur: ({ editor }) => onBlurRef.current?.(editor.getHTML()),
   });
+
+  // Pasang event listener paste langsung ke DOM editor agar menangkap gambar
+  // dari clipboard (Ctrl+V screenshot) tanpa bergantung handlePaste TipTap.
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+    const handler = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault(); // cegah TipTap embed gambar sebagai data URL
+            onImagePasteRef.current?.(file);
+            break;
+          }
+        }
+      }
+    };
+    dom.addEventListener('paste', handler);
+    return () => dom.removeEventListener('paste', handler);
+  }, [editor]);
 
   // Sinkron bila value berubah dari luar (mis. data tiket selesai dimuat).
   useEffect(() => {
