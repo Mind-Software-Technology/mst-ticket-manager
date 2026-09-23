@@ -1118,12 +1118,29 @@ export default function TicketDetailPage() {
               aktivitas tiket ini.
             </p>
             {/* Rich text editor — mendukung bold, italic, heading, numbering, dst. */}
-            <RichTextEditor
-              value={progressText}
-              onChange={setProgressText}
-              placeholder="Contoh: Sudah selesai implementasi endpoint & self-test."
-              minHeightClass="min-h-[160px]"
-            />
+            <div
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (let i = 0; i < items.length; i++) {
+                  const item = items[i];
+                  if (item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) {
+                      setProgressFile(file);
+                      break;
+                    }
+                  }
+                }
+              }}
+            >
+              <RichTextEditor
+                value={progressText}
+                onChange={setProgressText}
+                placeholder="Contoh: Sudah selesai implementasi endpoint & self-test."
+                minHeightClass="min-h-[160px]"
+              />
+            </div>
             <div>
               <input
                 type="file"
