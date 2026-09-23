@@ -38,6 +38,8 @@ interface RichTextEditorProps {
   onChange?: (html: string) => void;
   /** Dipanggil saat editor kehilangan fokus, dengan HTML terbaru. */
   onBlur?: (html: string) => void;
+  /** Dipanggil saat user paste gambar dari clipboard ke editor. */
+  onImagePaste?: (file: File) => void;
   editable?: boolean;
   placeholder?: string;
   /** Tailwind class untuk tinggi minimum area edit. */
@@ -48,6 +50,7 @@ export function RichTextEditor({
   value,
   onChange,
   onBlur,
+  onImagePaste,
   editable = true,
   placeholder = "Tulis sesuatu...",
   minHeightClass = "min-h-[180px]",
@@ -55,9 +58,11 @@ export function RichTextEditor({
   // Ref agar callback terbaru selalu dipakai (hindari stale closure).
   const onChangeRef = useRef(onChange);
   const onBlurRef = useRef(onBlur);
+  const onImagePasteRef = useRef(onImagePaste);
   useEffect(() => {
     onChangeRef.current = onChange;
     onBlurRef.current = onBlur;
+    onImagePasteRef.current = onImagePaste;
   });
 
   const editor = useEditor({
@@ -78,6 +83,23 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: `tiptap-content ${minHeightClass} w-full px-3 py-2 focus:outline-none`,
+      },
+      handlePaste(_, event) {
+        // Tangkap paste gambar dari clipboard (Ctrl+V screenshot / copy gambar)
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              onImagePasteRef.current?.(file);
+              // Cegah TipTap memasukkan gambar sebagai data URL ke konten
+              return true;
+            }
+          }
+        }
+        return false;
       },
     },
     onUpdate: ({ editor }) => onChangeRef.current?.(editor.getHTML()),

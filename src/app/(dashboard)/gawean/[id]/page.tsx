@@ -1118,29 +1118,13 @@ export default function TicketDetailPage() {
               aktivitas tiket ini.
             </p>
             {/* Rich text editor — mendukung bold, italic, heading, numbering, dst. */}
-            <div
-              onPaste={(e) => {
-                const items = e.clipboardData?.items;
-                if (!items) return;
-                for (let i = 0; i < items.length; i++) {
-                  const item = items[i];
-                  if (item.type.startsWith('image/')) {
-                    const file = item.getAsFile();
-                    if (file) {
-                      setProgressFile(file);
-                      break;
-                    }
-                  }
-                }
-              }}
-            >
-              <RichTextEditor
-                value={progressText}
-                onChange={setProgressText}
-                placeholder="Contoh: Sudah selesai implementasi endpoint & self-test."
-                minHeightClass="min-h-[160px]"
-              />
-            </div>
+            <RichTextEditor
+              value={progressText}
+              onChange={setProgressText}
+              onImagePaste={(file) => setProgressFile(file)}
+              placeholder="Contoh: Sudah selesai implementasi endpoint & self-test."
+              minHeightClass="min-h-[160px]"
+            />
             <div>
               <input
                 type="file"
@@ -1148,9 +1132,13 @@ export default function TicketDetailPage() {
                 onChange={(e) => setProgressFile(e.target.files?.[0] || null)}
                 className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
               />
-              {progressFile && (
+              {progressFile ? (
                 <p className="mt-1 text-xs text-slate-500">
                   📎 {progressFile.name}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-400">
+                  💡 Bisa juga paste gambar langsung ke editor (Ctrl+V)
                 </p>
               )}
             </div>
