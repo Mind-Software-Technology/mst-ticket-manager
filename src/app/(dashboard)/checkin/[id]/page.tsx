@@ -350,7 +350,7 @@ export default function CheckinDetailPage() {
                       {item.ticket ? (
                         <div
                           className="flex items-center gap-2 flex-wrap cursor-pointer hover:text-indigo-600"
-                          onClick={() => router.push(`/gawean/${item.ticket?.id}`)}
+                          onClick={() => router.push(`/gawean/${item.ticket?.id}?from=checkin&checkinId=${checkinId}`)}
                         >
                           <span className="font-mono text-xs font-semibold text-indigo-600">
                             {item.ticket.ticket_id}
