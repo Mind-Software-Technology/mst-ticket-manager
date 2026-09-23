@@ -10,7 +10,7 @@
 // =====================================================
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, Clock, MessageSquarePlus, Copy, X, GitFork } from "lucide-react";
 import { useTicketDetail } from "@/hooks/useTicketDetail";
 import { useUsers } from "@/hooks/useUsers";
@@ -38,6 +38,9 @@ export default function TicketDetailPage() {
   const router = useRouter();
   const params = useParams();
   const ticketId = params?.id as string;
+  const searchParams = useSearchParams();
+  const fromCheckin = searchParams?.get("from") === "checkin";
+  const fromCheckinId = searchParams?.get("checkinId") ?? null;
 
   const { session } = useSession();
   const { ticket, loading, error, updateTicket, refresh } =
@@ -621,9 +624,13 @@ export default function TicketDetailPage() {
               variant="ghost"
               size="sm"
               icon={<ArrowLeft className="w-4 h-4" />}
-              onClick={() => router.push("/gawean")}
+              onClick={() =>
+                fromCheckin && fromCheckinId
+                  ? router.push(`/checkin/${fromCheckinId}`)
+                  : router.push("/gawean")
+              }
             >
-              Back to Tickets
+              {fromCheckin && fromCheckinId ? "Back to Check-In" : "Back to Tickets"}
             </Button>
             <div className="flex items-center gap-2">
               {isAdmin && (

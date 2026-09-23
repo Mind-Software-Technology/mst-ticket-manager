@@ -230,7 +230,7 @@ export default function CheckinListPage() {
                                   className="flex items-center gap-2 flex-wrap cursor-pointer hover:text-indigo-600"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    router.push(`/gawean/${item.ticket?.id}`);
+                                    router.push(`/gawean/${item.ticket?.id}?from=checkin&checkinId=${checkin.id}`);
                                   }}
                                 >
                                   <span className="text-slate-400">►</span>
