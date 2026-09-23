@@ -1133,9 +1133,23 @@ export default function TicketDetailPage() {
                 className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
               />
               {progressFile ? (
-                <p className="mt-1 text-xs text-slate-500">
-                  📎 {progressFile.name}
-                </p>
+                <div className="mt-2 relative inline-block group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={URL.createObjectURL(progressFile)}
+                    alt="Preview"
+                    className="max-h-48 max-w-full rounded-lg border border-slate-200 object-contain shadow-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setProgressFile(null)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition-colors shadow"
+                    title="Hapus gambar"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <p className="mt-1 text-xs text-slate-400 truncate max-w-xs">{progressFile.name}</p>
+                </div>
               ) : (
                 <p className="mt-1 text-xs text-slate-400">
                   💡 Bisa juga paste gambar langsung ke editor (Ctrl+V)
