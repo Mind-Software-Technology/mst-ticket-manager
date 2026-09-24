@@ -780,7 +780,8 @@ export default function CreateTicketPage() {
                 Attachment (Optional)
               </h2>
               <p className="text-sm text-slate-500 mb-4">
-                Lampirkan gambar atau video. Maksimal{" "}
+                Lampirkan gambar, video, PDF, atau dokumen Word (doc/docx).
+                Maksimal{" "}
                 {Math.round(MAX_TICKET_ATTACHMENT_SIZE_BYTES / 1024 / 1024)}MB
                 per file.
               </p>

@@ -103,6 +103,7 @@ export const DEFAULT_PAGE_SIZE = 20;
 export const STORAGE_BUCKET_TICKET_ATTACHMENTS = "ticket-attachments";
 export const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10MB (foto chatter)
 
-// Lampiran tiket (image / video) — dipasang admin saat create / di detail.
+// Lampiran tiket (image / video / pdf / doc) — dipasang admin saat create / di detail.
 export const MAX_TICKET_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
-export const ACCEPTED_ATTACHMENT_TYPES = "image/*,video/*";
+export const ACCEPTED_ATTACHMENT_TYPES =
+  "image/*,video/*,.pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";

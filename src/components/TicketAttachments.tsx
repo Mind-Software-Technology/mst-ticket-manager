@@ -1,7 +1,7 @@
 "use client";
 
 // =====================================================
-// TicketAttachments — daftar lampiran tiket (image / video)
+// TicketAttachments — daftar lampiran tiket (image / video / pdf / doc)
 //
 // Semua orang yang melihat tiket bisa download. Admin (canManage)
 // bisa menambah & menghapus lampiran langsung dari halaman detail.
@@ -15,6 +15,7 @@ import {
   Paperclip,
   ImageIcon,
   Video,
+  FileText,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui";
@@ -44,6 +45,19 @@ function isVideo(att: TicketAttachment): boolean {
 }
 function isImage(att: TicketAttachment): boolean {
   return (att.file_type || "").startsWith("image/");
+}
+function isDoc(att: TicketAttachment): boolean {
+  const type = att.file_type || "";
+  const name = (att.file_name || "").toLowerCase();
+  return (
+    type === "application/pdf" ||
+    type === "application/msword" ||
+    type ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    name.endsWith(".pdf") ||
+    name.endsWith(".doc") ||
+    name.endsWith(".docx")
+  );
 }
 
 export function TicketAttachments({
@@ -172,6 +186,10 @@ export function TicketAttachments({
                   <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-slate-500">
                     <Video className="h-5 w-5" />
                   </div>
+                ) : isDoc(att) ? (
+                  <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-slate-500">
+                    <FileText className="h-5 w-5" />
+                  </div>
                 ) : (
                   <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-slate-500">
                     <ImageIcon className="h-5 w-5" />
@@ -186,7 +204,13 @@ export function TicketAttachments({
                 </p>
                 <p className="text-xs text-slate-400">
                   {[
-                    isVideo(att) ? "Video" : isImage(att) ? "Gambar" : "File",
+                    isVideo(att)
+                      ? "Video"
+                      : isImage(att)
+                        ? "Gambar"
+                        : isDoc(att)
+                          ? "Dokumen"
+                          : "File",
                     formatFileSize(att.file_size),
                   ]
                     .filter(Boolean)

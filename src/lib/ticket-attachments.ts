@@ -2,7 +2,7 @@
 // Ticket Attachments — upload / delete helpers
 //
 // Dipakai bersama oleh form create ticket & halaman detail.
-// Upload file (image/video) ke storage bucket `ticket-attachments`,
+// Upload file (image/video/pdf/doc) ke storage bucket `ticket-attachments`,
 // lalu catat metadata-nya di tabel `ticket_attachments`.
 // =====================================================
 
@@ -13,15 +13,29 @@ import {
 } from "@/lib/constants";
 import type { TicketAttachment } from "@/types";
 
-/** Hanya gambar atau video yang diperbolehkan. */
+const ALLOWED_DOC_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const ALLOWED_DOC_EXTENSIONS = [".pdf", ".doc", ".docx"];
+
+/** Gambar, video, PDF, atau dokumen Word yang diperbolehkan. */
 export function isAllowedAttachment(file: File): boolean {
-  return file.type.startsWith("image/") || file.type.startsWith("video/");
+  if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+    return true;
+  }
+  if (ALLOWED_DOC_MIME_TYPES.includes(file.type)) {
+    return true;
+  }
+  const name = file.name.toLowerCase();
+  return ALLOWED_DOC_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
 /** Validasi 1 file; return pesan error (Indonesia) atau null kalau valid. */
 export function validateAttachment(file: File): string | null {
   if (!isAllowedAttachment(file)) {
-    return `${file.name}: hanya file gambar atau video yang diperbolehkan.`;
+    return `${file.name}: hanya file gambar, video, PDF, atau dokumen Word (doc/docx) yang diperbolehkan.`;
   }
   if (file.size > MAX_TICKET_ATTACHMENT_SIZE_BYTES) {
     const limitMb = Math.round(MAX_TICKET_ATTACHMENT_SIZE_BYTES / 1024 / 1024);
