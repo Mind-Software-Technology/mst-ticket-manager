@@ -16,7 +16,7 @@ import type { ActivityLog } from "@/types";
 import { Badge, RichTextEditor } from "./ui";
 import { TICKET_STATE_BY_VALUE } from "@/lib/constants";
 import { createClient } from "@/utils/supabase/client";
-import { isEmptyHtml, toEditorHtml } from "@/lib/rich-text";
+import { escapeHtml, isEmptyHtml, linkifyText, toEditorHtml } from "@/lib/rich-text";
 
 interface ActivityTimelineProps {
   ticketId: string;
@@ -170,8 +170,13 @@ export function ActivityTimeline({
                 dangerouslySetInnerHTML={{ __html: log.message }}
               />
             ) : (
-              // Pesan lama (plain text) — tampilkan apa adanya.
-              <div className="text-slate-600 whitespace-pre-wrap">{log.message}</div>
+              // Pesan lama (plain text) — escape + linkify URL agar bisa diklik.
+              <div
+                className="tiptap-content text-slate-600 whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{
+                  __html: linkifyText(escapeHtml(log.message)),
+                }}
+              />
             )
           )}
           {log.image_url && (

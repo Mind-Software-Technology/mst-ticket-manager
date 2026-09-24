@@ -29,15 +29,35 @@ export function toEditorHtml(value: string | null | undefined): string {
   if (/<\/?[a-z][\s\S]*>/i.test(trimmed)) return trimmed;
 
   // Plain text lama → escape karakter HTML lalu pertahankan baris baru.
-  const escaped = trimmed
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const escaped = escapeHtml(trimmed);
 
   return escaped
     .split(/\n{2,}/)
     .map((block) => `<p>${block.replace(/\n/g, "<br>")}</p>`)
     .join("");
+}
+
+/** Escape karakter HTML dasar pada teks polos. */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// Regex URL: cocok http(s)://... atau www.... — tanpa tanda baca penutup kalimat.
+const URL_PATTERN = /\bhttps?:\/\/[^\s<]+[^\s<.,;:!?)\]'"]|\bwww\.[^\s<]+[^\s<.,;:!?)\]'"]/gi;
+
+/**
+ * Ubah teks polos (sudah di-escape HTML) menjadi HTML dengan URL
+ * otomatis jadi tautan `<a>` yang bisa langsung diklik.
+ * Dipakai untuk pesan lama (plain text) yang belum melewati rich text editor.
+ */
+export function linkifyText(text: string): string {
+  return text.replace(URL_PATTERN, (match) => {
+    const href = match.startsWith("http") ? match : `https://${match}`;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow">${match}</a>`;
+  });
 }
 
 /**
