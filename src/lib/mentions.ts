@@ -9,6 +9,9 @@ import { htmlToPlainText } from "@/lib/rich-text";
 const MENTION_TAG_REGEX = /<span[^>]*data-type="mention"[^>]*>/g;
 const MENTION_ID_REGEX = /data-id="([^"]+)"/;
 
+/** ID mention khusus "@all" — di-expand ke semua user (bukan user id asli). */
+export const ALL_MENTION_ID = "all";
+
 /** Ekstrak ID user yang di-mention (`@nama`) dari HTML komentar/progress reply. */
 export function extractMentionedUserIds(html: string | null | undefined): string[] {
   if (!html) return [];
@@ -37,11 +40,26 @@ export async function notifyMentionedUsers(
     excludeUserId?: string | null;
     /** Batasi hanya ke ID yang benar-benar ada di daftar user aktif, mencegah data sampah. */
     knownUserIds?: Set<string>;
+    /**
+     * Batasi output hanya ke ID di set ini (dipakai saat edit komentar, supaya
+     * hanya user yang BARU di-tag yang dinotif ulang). Beda dari `knownUserIds`:
+     * ini tidak memengaruhi expansion "@all", hanya menyaring hasil akhirnya.
+     */
+    onlyIds?: Set<string>;
   },
 ): Promise<void> {
-  const { ticketId, activityLogId, message, mentionedBy, excludeUserId, knownUserIds } = params;
-  const mentionedIds = extractMentionedUserIds(message).filter(
-    (id) => id !== excludeUserId && (!knownUserIds || knownUserIds.has(id)),
+  const { ticketId, activityLogId, message, mentionedBy, excludeUserId, knownUserIds, onlyIds } = params;
+  const rawIds = extractMentionedUserIds(message);
+  // "@all" men-tag semua user yang dikenal — expand jadi daftar ID user asli.
+  const expandedIds = rawIds.includes(ALL_MENTION_ID) && knownUserIds
+    ? [...rawIds, ...knownUserIds]
+    : rawIds;
+  const mentionedIds = Array.from(new Set(expandedIds)).filter(
+    (id) =>
+      id !== excludeUserId &&
+      id !== ALL_MENTION_ID &&
+      (!knownUserIds || knownUserIds.has(id)) &&
+      (!onlyIds || onlyIds.has(id)),
   );
   if (mentionedIds.length === 0) return;
 

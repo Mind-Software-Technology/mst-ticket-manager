@@ -26,7 +26,7 @@ import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { TicketAttachments } from "@/components/TicketAttachments";
 import { Badge, Button, Modal, RichTextEditor } from "@/components/ui";
 import { toEditorHtml, isEmptyHtml } from "@/lib/rich-text";
-import { notifyMentionedUsers } from "@/lib/mentions";
+import { notifyMentionedUsers, ALL_MENTION_ID } from "@/lib/mentions";
 import {
   TICKET_STATES,
   TICKET_PRIORITIES,
@@ -55,8 +55,12 @@ export default function TicketDetailPage() {
   const { labels: allLabels } = useLabels();
 
   // Daftar user yang bisa di-tag ("@nama") di komentar / progress reply.
+  // "@all" ikut ditawarkan — akan di-expand ke semua user saat notifikasi dikirim.
   const mentionCandidates = useMemo(
-    () => users.map((u) => ({ id: u.id, name: u.name })),
+    () => [
+      { id: ALL_MENTION_ID, name: "All" },
+      ...users.map((u) => ({ id: u.id, name: u.name })),
+    ],
     [users],
   );
   const knownUserIds = useMemo(() => new Set(users.map((u) => u.id)), [users]);

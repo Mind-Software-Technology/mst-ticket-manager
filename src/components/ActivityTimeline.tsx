@@ -17,7 +17,7 @@ import { Badge, RichTextEditor } from "./ui";
 import { TICKET_STATE_BY_VALUE } from "@/lib/constants";
 import { createClient } from "@/utils/supabase/client";
 import { escapeHtml, isEmptyHtml, linkifyText, toEditorHtml } from "@/lib/rich-text";
-import { extractMentionedUserIds, notifyMentionedUsers } from "@/lib/mentions";
+import { ALL_MENTION_ID, extractMentionedUserIds, notifyMentionedUsers } from "@/lib/mentions";
 import type { MentionSuggestionItem } from "./ui/MentionList";
 
 interface ActivityTimelineProps {
@@ -117,11 +117,14 @@ export function ActivityTimeline({
       if (updateErr) throw updateErr;
 
       // Notif hanya untuk user yang BARU di-tag (mencegah spam saat edit kecil).
+      // "@all" yang baru ditambahkan tetap notif ke semua user (bukan cuma yang baru).
       if (newMessage) {
         const oldIds = new Set(extractMentionedUserIds(oldMessage));
-        const newlyMentioned = extractMentionedUserIds(newMessage).filter(
-          (id) => !oldIds.has(id),
-        );
+        const newRawIds = extractMentionedUserIds(newMessage);
+        const allJustAdded = newRawIds.includes(ALL_MENTION_ID) && !oldIds.has(ALL_MENTION_ID);
+        const newlyMentioned = allJustAdded
+          ? newRawIds
+          : newRawIds.filter((id) => !oldIds.has(id));
         if (newlyMentioned.length > 0) {
           await notifyMentionedUsers(supabase, {
             ticketId,
@@ -129,9 +132,8 @@ export function ActivityTimeline({
             message: newMessage,
             mentionedBy: currentUserId ?? null,
             excludeUserId: currentUserId ?? null,
-            knownUserIds: knownUserIds
-              ? new Set(newlyMentioned.filter((id) => knownUserIds.has(id)))
-              : new Set(newlyMentioned),
+            knownUserIds,
+            onlyIds: allJustAdded ? undefined : new Set(newlyMentioned),
           });
         }
       }
