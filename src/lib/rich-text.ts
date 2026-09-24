@@ -60,6 +60,21 @@ export function linkifyText(text: string): string {
   });
 }
 
+/** Ubah HTML jadi teks polos ringkas (untuk excerpt notifikasi, dsb). */
+export function htmlToPlainText(html: string | null | undefined, maxLen = 140): string {
+  if (!html) return "";
+  const text = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen - 1).trimEnd()}…`;
+}
+
 /**
  * True jika HTML editor tidak punya konten teks/visual berarti
  * (mis. "<p></p>"). Dipakai untuk menyimpan `null` ketika kosong.

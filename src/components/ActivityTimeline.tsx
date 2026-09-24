@@ -17,6 +17,8 @@ import { Badge, RichTextEditor } from "./ui";
 import { TICKET_STATE_BY_VALUE } from "@/lib/constants";
 import { createClient } from "@/utils/supabase/client";
 import { escapeHtml, isEmptyHtml, linkifyText, toEditorHtml } from "@/lib/rich-text";
+import { extractMentionedUserIds, notifyMentionedUsers } from "@/lib/mentions";
+import type { MentionSuggestionItem } from "./ui/MentionList";
 
 interface ActivityTimelineProps {
   ticketId: string;
@@ -24,12 +26,18 @@ interface ActivityTimelineProps {
   currentUserId?: string | null;
   /** Apakah pengguna adalah admin (admin boleh edit semua komentar). */
   isAdmin?: boolean;
+  /** Daftar user yang bisa di-tag ("@nama") saat mengedit komentar. */
+  mentionUsers?: MentionSuggestionItem[];
+  /** Set ID user valid — filter supaya notifikasi tidak dikirim ke ID sampah. */
+  knownUserIds?: Set<string>;
 }
 
 export function ActivityTimeline({
   ticketId,
   currentUserId,
   isAdmin = false,
+  mentionUsers = [],
+  knownUserIds,
 }: ActivityTimelineProps) {
   const { logs, loading, error } = useActivityLogs(ticketId);
 
@@ -100,16 +108,36 @@ export function ActivityTimeline({
     setSaving(true);
     try {
       const supabase = createClient();
+      const newMessage = isEmptyHtml(editDraft) ? null : editDraft;
+      const oldMessage = log.message;
       const { error: updateErr } = await supabase
         .from("activity_logs")
-        .update({
-          message: isEmptyHtml(editDraft) ? null : editDraft,
-        })
+        .update({ message: newMessage })
         .eq("id", log.id);
       if (updateErr) throw updateErr;
 
+      // Notif hanya untuk user yang BARU di-tag (mencegah spam saat edit kecil).
+      if (newMessage) {
+        const oldIds = new Set(extractMentionedUserIds(oldMessage));
+        const newlyMentioned = extractMentionedUserIds(newMessage).filter(
+          (id) => !oldIds.has(id),
+        );
+        if (newlyMentioned.length > 0) {
+          await notifyMentionedUsers(supabase, {
+            ticketId,
+            activityLogId: log.id,
+            message: newMessage,
+            mentionedBy: currentUserId ?? null,
+            excludeUserId: currentUserId ?? null,
+            knownUserIds: knownUserIds
+              ? new Set(newlyMentioned.filter((id) => knownUserIds.has(id)))
+              : new Set(newlyMentioned),
+          });
+        }
+      }
+
       // Mutasi lokal agar UI langsung update tanpa reload penuh.
-      log.message = isEmptyHtml(editDraft) ? null : editDraft;
+      log.message = newMessage;
       setEditingId(null);
       setEditDraft("");
     } catch (err) {
@@ -270,6 +298,7 @@ export function ActivityTimeline({
                     onChange={setEditDraft}
                     placeholder="Edit pesan..."
                     minHeightClass="min-h-[100px]"
+                    mentionUsers={mentionUsers}
                   />
                   <div className="flex items-center gap-2 justify-end">
                     <button

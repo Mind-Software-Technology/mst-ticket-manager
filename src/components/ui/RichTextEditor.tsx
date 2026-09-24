@@ -17,6 +17,9 @@ import {
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import Mention from "@tiptap/extension-mention";
+import { createMentionSuggestion } from "@/lib/mention-suggestion";
+import type { MentionSuggestionItem } from "@/components/ui/MentionList";
 import {
   Bold,
   Italic,
@@ -44,6 +47,8 @@ interface RichTextEditorProps {
   placeholder?: string;
   /** Tailwind class untuk tinggi minimum area edit. */
   minHeightClass?: string;
+  /** Daftar user yang bisa di-tag lewat "@nama". Kosongkan untuk menonaktifkan mention. */
+  mentionUsers?: MentionSuggestionItem[];
 }
 
 export function RichTextEditor({
@@ -54,15 +59,20 @@ export function RichTextEditor({
   editable = true,
   placeholder = "Tulis sesuatu...",
   minHeightClass = "min-h-[180px]",
+  mentionUsers = [],
 }: RichTextEditorProps) {
   // Ref agar callback terbaru selalu dipakai (hindari stale closure).
   const onChangeRef = useRef(onChange);
   const onBlurRef = useRef(onBlur);
   const onImagePasteRef = useRef(onImagePaste);
+  // Ref agar suggestion @mention selalu baca daftar user terbaru
+  // tanpa perlu re-create editor (extensions hanya dibuat sekali).
+  const mentionUsersRef = useRef(mentionUsers);
   useEffect(() => {
     onChangeRef.current = onChange;
     onBlurRef.current = onBlur;
     onImagePasteRef.current = onImagePaste;
+    mentionUsersRef.current = mentionUsers;
   });
 
   const editor = useEditor({
@@ -78,6 +88,13 @@ export function RichTextEditor({
         },
       }),
       Placeholder.configure({ placeholder }),
+      Mention.configure({
+        HTMLAttributes: { class: "mention" },
+        // Getter dipanggil lazy saat query suggestion (bukan saat render);
+        // extension ini hanya dibuat sekali oleh useEditor.
+        // eslint-disable-next-line react-hooks/refs
+        suggestion: createMentionSuggestion(() => mentionUsersRef.current),
+      }),
     ],
     content: toEditorHtml(value),
     editorProps: {

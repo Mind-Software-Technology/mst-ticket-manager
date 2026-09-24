@@ -9,7 +9,7 @@
 // ke activity log (chatter) di sisi kanan.
 // =====================================================
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, Clock, MessageSquarePlus, Copy, X, GitFork } from "lucide-react";
 import { useTicketDetail } from "@/hooks/useTicketDetail";
@@ -26,6 +26,7 @@ import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { TicketAttachments } from "@/components/TicketAttachments";
 import { Badge, Button, Modal, RichTextEditor } from "@/components/ui";
 import { toEditorHtml, isEmptyHtml } from "@/lib/rich-text";
+import { notifyMentionedUsers } from "@/lib/mentions";
 import {
   TICKET_STATES,
   TICKET_PRIORITIES,
@@ -52,6 +53,13 @@ export default function TicketDetailPage() {
   const { projects } = useProjects();
   const { sprints } = useSprints();
   const { labels: allLabels } = useLabels();
+
+  // Daftar user yang bisa di-tag ("@nama") di komentar / progress reply.
+  const mentionCandidates = useMemo(
+    () => users.map((u) => ({ id: u.id, name: u.name })),
+    [users],
+  );
+  const knownUserIds = useMemo(() => new Set(users.map((u) => u.id)), [users]);
 
   const [saving, setSaving] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
@@ -133,18 +141,32 @@ export default function TicketDetailPage() {
         imageUrl = pub.publicUrl;
       }
 
-      const { error: insertErr } = await supabase
+      const commentMessage = isEmptyHtml(progressText) ? null : progressText;
+      const { data: inserted, error: insertErr } = await supabase
         .from("activity_logs")
         .insert({
           ticket_id: ticket.id,
           user_id: session?.profile?.id || null,
           action_type: "comment",
           // Simpan sebagai HTML (rich text). Null jika kosong.
-          message: isEmptyHtml(progressText) ? null : progressText,
+          message: commentMessage,
           image_url: imageUrl,
           created_at: new Date().toISOString(),
-        });
+        })
+        .select("id")
+        .single();
       if (insertErr) throw insertErr;
+
+      if (commentMessage) {
+        await notifyMentionedUsers(supabase, {
+          ticketId: ticket.id,
+          activityLogId: inserted?.id ?? null,
+          message: commentMessage,
+          mentionedBy: session?.profile?.id || null,
+          excludeUserId: session?.profile?.id || null,
+          knownUserIds,
+        });
+      }
 
       setProgressText("");
       setProgressFile(null);
@@ -1098,6 +1120,8 @@ export default function TicketDetailPage() {
                   ticketId={ticket.id}
                   currentUserId={session?.profile?.id ?? null}
                   isAdmin={isAdmin}
+                  mentionUsers={mentionCandidates}
+                  knownUserIds={knownUserIds}
                 />
               </div>
             </div>
@@ -1115,15 +1139,17 @@ export default function TicketDetailPage() {
           <div className="space-y-4">
             <p className="text-sm text-slate-500">
               Tulis apa yang sudah kamu kerjakan. Pesan akan muncul di log
-              aktivitas tiket ini.
+              aktivitas tiket ini. Ketik <span className="font-mono">@</span>{" "}
+              untuk men-tag rekan kerja.
             </p>
-            {/* Rich text editor — mendukung bold, italic, heading, numbering, dst. */}
+            {/* Rich text editor — mendukung bold, italic, heading, numbering, @mention, dst. */}
             <RichTextEditor
               value={progressText}
               onChange={setProgressText}
               onImagePaste={(file) => setProgressFile(file)}
               placeholder="Contoh: Sudah selesai implementasi endpoint & self-test."
               minHeightClass="min-h-[160px]"
+              mentionUsers={mentionCandidates}
             />
             <div>
               <input

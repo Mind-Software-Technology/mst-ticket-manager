@@ -22,6 +22,7 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { useSession } from "@/hooks/useSession";
 import { PengajuanModalBell } from "@/components/PengajuanModalBell";
+import { MentionBell } from "@/components/MentionBell";
 import { AppsMenu } from "@/components/AppsMenu";
 
 export default function DashboardLayout({
@@ -146,6 +147,7 @@ export default function DashboardLayout({
             <div className="flex items-center gap-2 flex-shrink-0">
               <AppsMenu />
               <PengajuanModalBell />
+              <MentionBell userId={profile.id} />
 
               {/* User menu */}
               <div className="relative flex-shrink-0">

@@ -72,6 +72,14 @@ body {
   color: #475569; /* slate-600 */
   margin: 0.5rem 0;
 }
+/* @mention chip — dipakai di editor maupun tampilan read-only */
+.mention {
+  color: #4338ca; /* indigo-700 */
+  background: #eef2ff; /* indigo-50 */
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+  font-weight: 500;
+}
 /* Placeholder saat editor kosong */
 .tiptap-content p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
