@@ -111,7 +111,7 @@ export default function CheckinDetailPage() {
     }
     setSaving(true);
     try {
-      await addItems(
+      const sent = await addItems(
         drafts.map((d) => ({
           ticket_id: d.ticket?.id || null,
           description: d.description.trim() || null,
@@ -119,6 +119,7 @@ export default function CheckinDetailPage() {
         })),
       );
       setDrafts([]);
+      if (sent > 0) alert(`Notifikasi tag terkirim (${sent}).`);
     } catch (err) {
       console.error("Failed to add focus:", err);
       alert(
@@ -147,7 +148,7 @@ export default function CheckinDetailPage() {
     try {
       const oldText = checkin?.items?.find((i) => i.id === itemId)?.description;
       const before = findMentionedUserIds(oldText, taggable);
-      await updateItemDescription(
+      const sent = await updateItemDescription(
         itemId,
         editItemText,
         // Hanya yang BARU di-tag di edit ini yang dinotifikasi.
@@ -156,6 +157,13 @@ export default function CheckinDetailPage() {
         ),
       );
       cancelEditItem();
+      if (sent > 0) {
+        alert(`Notifikasi tag terkirim (${sent}).`);
+      } else if (editItemText.includes("@")) {
+        alert(
+          "Tidak ada notifikasi baru: tag tidak terbaca atau orang itu sudah di-tag di teks sebelumnya. Pilih nama dari daftar yang muncul setelah mengetik @.",
+        );
+      }
     } catch (err) {
       console.error("Failed to update item:", err);
       alert(

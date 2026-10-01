@@ -22,13 +22,14 @@ interface UseCheckinDetailResult {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  addItems: (items: NewFocusItem[]) => Promise<void>;
+  /** Mengembalikan jumlah notifikasi @mention yang berhasil terkirim. */
+  addItems: (items: NewFocusItem[]) => Promise<number>;
   deleteCheckin: () => Promise<void>;
   updateItemDescription: (
     itemId: string,
     description: string,
     mentionedIds?: string[],
-  ) => Promise<void>;
+  ) => Promise<number>;
   updateYesterdayProblem: (value: string) => Promise<void>;
 }
 
@@ -92,8 +93,8 @@ export function useCheckinDetail(
   // checkins.tagged_user_ids. Gagal di sini tidak membatalkan simpan.
   const notifyMentions = async (
     entries: { ticket_id: string | null; description: string | null; ids: string[] }[],
-  ) => {
-    if (!checkin) return;
+  ): Promise<number> => {
+    if (!checkin) return 0;
     const rows = entries.flatMap((e) =>
       Array.from(new Set(e.ids))
         .filter((uid) => uid !== (actorId ?? checkin.employee_id))
@@ -106,7 +107,7 @@ export function useCheckinDetail(
         })),
     );
     console.log("[useCheckinDetail] mention notifications to send:", rows.length);
-    if (rows.length === 0) return;
+    if (rows.length === 0) return 0;
     const supabase = createClient();
     const tagged = Array.from(
       new Set([...(checkin.tagged_user_ids ?? []), ...rows.map((r) => r.mentioned_user_id)]),
@@ -120,12 +121,14 @@ export function useCheckinDetail(
     if (notifErr) {
       console.error("[useCheckinDetail] notify failed:", notifErr);
       alert(`Tersimpan, tapi notifikasi tag gagal: ${notifErr.message}`);
+      return 0;
     }
+    return rows.length;
   };
 
   // Tambah fokus baru ke check-in yang SAMA (bukan bikin check-in baru).
-  const addItems = async (items: NewFocusItem[]) => {
-    if (!checkin || items.length === 0) return;
+  const addItems = async (items: NewFocusItem[]): Promise<number> => {
+    if (!checkin || items.length === 0) return 0;
     const supabase = createClient();
 
     const baseOrder = checkin.items?.length || 0;
@@ -161,7 +164,7 @@ export function useCheckinDetail(
         ),
     );
 
-    await notifyMentions(
+    const sent = await notifyMentions(
       items.map((it) => ({
         ticket_id: it.ticket_id,
         description: it.description,
@@ -169,6 +172,7 @@ export function useCheckinDetail(
       })),
     );
     await fetchCheckin();
+    return sent;
   };
 
   // Edit teks fokus (item) yang sudah tersimpan.
@@ -176,14 +180,14 @@ export function useCheckinDetail(
     itemId: string,
     description: string,
     mentionedIds: string[] = [],
-  ) => {
+  ): Promise<number> => {
     const supabase = createClient();
     const { error: updErr } = await supabase
       .from("checkin_items")
       .update({ description: description.trim() || null })
       .eq("id", itemId);
     if (updErr) throw updErr;
-    await notifyMentions([
+    const sent = await notifyMentions([
       {
         ticket_id: checkin?.items?.find((i) => i.id === itemId)?.ticket_id ?? null,
         description: description.trim() || null,
@@ -191,6 +195,7 @@ export function useCheckinDetail(
       },
     ]);
     await fetchCheckin();
+    return sent;
   };
 
   // Edit teks "Yesterday Problem".
