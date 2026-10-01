@@ -12,7 +12,7 @@
 import { useState } from "react";
 import { Clock, GitCommit, MessageSquare, User, Pencil, Check, X } from "lucide-react";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
-import type { ActivityLog } from "@/types";
+import { getLogImages, type ActivityLog } from "@/types";
 import { Badge, RichTextEditor } from "./ui";
 import { TICKET_STATE_BY_VALUE } from "@/lib/constants";
 import { createClient } from "@/utils/supabase/client";
@@ -104,7 +104,7 @@ export function ActivityTimeline({
 
   // Simpan hasil edit ke Supabase.
   const saveEdit = async (log: ActivityLog) => {
-    if (isEmptyHtml(editDraft) && !log.image_url) return;
+    if (isEmptyHtml(editDraft) && getLogImages(log).length === 0) return;
     setSaving(true);
     try {
       const supabase = createClient();
@@ -189,7 +189,8 @@ export function ActivityTimeline({
       );
     }
 
-    if (log.message || log.image_url) {
+    const images = getLogImages(log);
+    if (log.message || images.length > 0) {
       return (
         <div className="space-y-2">
           {log.message && (
@@ -209,15 +210,19 @@ export function ActivityTimeline({
               />
             )
           )}
-          {log.image_url && (
-            <a href={log.image_url} target="_blank" rel="noopener noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={log.image_url}
-                alt="Lampiran"
-                className="max-h-48 rounded-lg border border-slate-200 object-cover"
-              />
-            </a>
+          {images.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {images.map((url) => (
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt="Lampiran"
+                    className="max-h-48 rounded-lg border border-slate-200 object-cover"
+                  />
+                </a>
+              ))}
+            </div>
           )}
         </div>
       );
@@ -316,7 +321,7 @@ export function ActivityTimeline({
                     <button
                       type="button"
                       onClick={() => void saveEdit(log)}
-                      disabled={saving || (isEmptyHtml(editDraft) && !log.image_url)}
+                      disabled={saving || (isEmptyHtml(editDraft) && getLogImages(log).length === 0)}
                       title="Simpan"
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >

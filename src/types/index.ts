@@ -200,6 +200,8 @@ export interface ActivityLog {
   message: string | null;
   /** URL foto lampiran (analysis fitur activity-log image). */
   image_url?: string | null;
+  /** Semua foto lampiran (image_url = foto pertama, untuk data lama). */
+  image_urls?: string[] | null;
   created_at: string;
   user?: User | null;
 }
@@ -321,4 +323,10 @@ export interface SessionUser {
   authId: string;
   email: string;
   profile: User;
+}
+
+/** Daftar foto sebuah activity log; fallback ke `image_url` untuk data lama. */
+export function getLogImages(log: Pick<ActivityLog, "image_url" | "image_urls">): string[] {
+  if (log.image_urls && log.image_urls.length > 0) return log.image_urls;
+  return log.image_url ? [log.image_url] : [];
 }

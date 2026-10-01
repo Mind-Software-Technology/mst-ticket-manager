@@ -69,7 +69,19 @@ export default function TicketDetailPage() {
   const [showProgress, setShowProgress] = useState(false);
   const [progressText, setProgressText] = useState("");
   const [sendingProgress, setSendingProgress] = useState(false);
-  const [progressFile, setProgressFile] = useState<File | null>(null);
+  const [progressFiles, setProgressFiles] = useState<File[]>([]);
+  // Preview URL dibuat sekali per file (dan di-revoke) agar tidak bocor memori.
+  const progressPreviews = useMemo(
+    () => progressFiles.map((f) => URL.createObjectURL(f)),
+    [progressFiles],
+  );
+  useEffect(
+    () => () => progressPreviews.forEach((u) => URL.revokeObjectURL(u)),
+    [progressPreviews],
+  );
+  const addProgressFiles = (files: File[]) => {
+    if (files.length > 0) setProgressFiles((prev) => [...prev, ...files]);
+  };
   // Copy / carry-over ke sprint berikutnya (admin)
   const [showCopy, setShowCopy] = useState(false);
   const [copyTargetSprint, setCopyTargetSprint] = useState("");
@@ -125,24 +137,24 @@ export default function TicketDetailPage() {
 
   const handleSendProgress = async () => {
     if (!ticket) return;
-    if (isEmptyHtml(progressText) && !progressFile) return;
+    if (isEmptyHtml(progressText) && progressFiles.length === 0) return;
     setSendingProgress(true);
     try {
       const supabase = createClient();
 
-      // Upload foto (opsional) ke storage → ambil public URL
-      let imageUrl: string | null = null;
-      if (progressFile) {
-        const ext = progressFile.name.split(".").pop() || "png";
-        const path = `${ticket.id}/${Date.now()}.${ext}`;
+      // Upload semua foto (opsional) ke storage → kumpulkan public URL
+      const imageUrls: string[] = [];
+      for (const [i, file] of progressFiles.entries()) {
+        const ext = file.name.split(".").pop() || "png";
+        const path = `${ticket.id}/${Date.now()}-${i}.${ext}`;
         const { error: uploadErr } = await supabase.storage
           .from(STORAGE_BUCKET_TICKET_ATTACHMENTS)
-          .upload(path, progressFile);
+          .upload(path, file);
         if (uploadErr) throw uploadErr;
         const { data: pub } = supabase.storage
           .from(STORAGE_BUCKET_TICKET_ATTACHMENTS)
           .getPublicUrl(path);
-        imageUrl = pub.publicUrl;
+        imageUrls.push(pub.publicUrl);
       }
 
       const commentMessage = isEmptyHtml(progressText) ? null : progressText;
@@ -154,7 +166,9 @@ export default function TicketDetailPage() {
           action_type: "comment",
           // Simpan sebagai HTML (rich text). Null jika kosong.
           message: commentMessage,
-          image_url: imageUrl,
+          // image_url = foto pertama (kompatibel data lama), image_urls = semua.
+          image_url: imageUrls[0] ?? null,
+          image_urls: imageUrls,
           created_at: new Date().toISOString(),
         })
         .select("id")
@@ -173,7 +187,7 @@ export default function TicketDetailPage() {
       }
 
       setProgressText("");
-      setProgressFile(null);
+      setProgressFiles([]);
       setShowProgress(false);
       setTimelineKey((k) => k + 1);
     } catch (err) {
@@ -606,6 +620,7 @@ export default function TicketDetailPage() {
               new_value: log.new_value,
               message: log.message,
               image_url: log.image_url ?? null,
+              image_urls: log.image_urls ?? [],
               created_at: log.created_at,
             })),
           );
@@ -1150,7 +1165,7 @@ export default function TicketDetailPage() {
             <RichTextEditor
               value={progressText}
               onChange={setProgressText}
-              onImagePaste={(file) => setProgressFile(file)}
+              onImagePaste={(file) => addProgressFiles([file])}
               placeholder="Contoh: Sudah selesai implementasi endpoint & self-test."
               minHeightClass="min-h-[160px]"
               mentionUsers={mentionCandidates}
@@ -1159,32 +1174,40 @@ export default function TicketDetailPage() {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => setProgressFile(e.target.files?.[0] || null)}
+                multiple
+                onChange={(e) => {
+                  addProgressFiles(Array.from(e.target.files ?? []));
+                  e.target.value = ""; // izinkan memilih file yang sama lagi
+                }}
                 className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
               />
-              {progressFile ? (
-                <div className="mt-2 relative inline-block group">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={URL.createObjectURL(progressFile)}
-                    alt="Preview"
-                    className="max-h-48 max-w-full rounded-lg border border-slate-200 object-contain shadow-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setProgressFile(null)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition-colors shadow"
-                    title="Hapus gambar"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                  <p className="mt-1 text-xs text-slate-400 truncate max-w-xs">{progressFile.name}</p>
+              {progressFiles.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {progressFiles.map((file, i) => (
+                    <div key={`${file.name}-${i}`} className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={progressPreviews[i]}
+                        alt={`Preview ${i + 1}`}
+                        className="max-h-32 max-w-[12rem] rounded-lg border border-slate-200 object-contain shadow-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProgressFiles((prev) => prev.filter((_, idx) => idx !== i))
+                        }
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition-colors shadow"
+                        title="Hapus gambar"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <p className="mt-1 text-xs text-slate-400">
-                  💡 Bisa juga paste gambar langsung ke editor (Ctrl+V)
-                </p>
               )}
+              <p className="mt-1 text-xs text-slate-400">
+                💡 Bisa pilih beberapa foto, atau paste gambar langsung ke editor (Ctrl+V) berkali-kali
+              </p>
             </div>
             <div className="flex gap-2 justify-end">
               <Button
@@ -1198,7 +1221,7 @@ export default function TicketDetailPage() {
                 variant="primary"
                 onClick={handleSendProgress}
                 loading={sendingProgress}
-                disabled={isEmptyHtml(progressText) && !progressFile}
+                disabled={isEmptyHtml(progressText) && progressFiles.length === 0}
               >
                 Send
               </Button>

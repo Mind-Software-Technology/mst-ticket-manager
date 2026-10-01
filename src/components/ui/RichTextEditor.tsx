@@ -114,17 +114,19 @@ export function RichTextEditor({
     const handler = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
+      // Proses SEMUA gambar di clipboard (bukan hanya yang pertama).
+      let handled = false;
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (item.type.startsWith('image/')) {
           const file = item.getAsFile();
           if (file) {
-            e.preventDefault(); // cegah TipTap embed gambar sebagai data URL
+            handled = true;
             onImagePasteRef.current?.(file);
-            break;
           }
         }
       }
+      if (handled) e.preventDefault(); // cegah TipTap embed gambar sebagai data URL
     };
     dom.addEventListener('paste', handler);
     return () => dom.removeEventListener('paste', handler);
