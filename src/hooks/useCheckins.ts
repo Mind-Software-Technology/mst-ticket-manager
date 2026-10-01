@@ -131,12 +131,14 @@ export function useCheckins(todayOnly = true): UseCheckinsResult {
           excerpt: it.description,
         })),
     );
+    console.log("[useCheckins] mention notifications to send:", notifRows.length);
     if (notifRows.length > 0) {
       const { error: notifError } = await supabase
         .from("mention_notifications")
         .insert(notifRows);
       if (notifError) {
         console.error("[useCheckins] Failed to notify tagged users:", notifError);
+        alert(`Check-in tersimpan, tapi notifikasi tag gagal: ${notifError.message}`);
       }
     }
 

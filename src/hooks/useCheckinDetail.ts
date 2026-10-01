@@ -101,6 +101,7 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
           excerpt: e.description,
         })),
     );
+    console.log("[useCheckinDetail] mention notifications to send:", rows.length);
     if (rows.length === 0) return;
     const supabase = createClient();
     const tagged = Array.from(
@@ -112,7 +113,10 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
       .eq("id", checkin.id);
     if (tagErr) console.error("[useCheckinDetail] tag update failed:", tagErr);
     const { error: notifErr } = await supabase.from("mention_notifications").insert(rows);
-    if (notifErr) console.error("[useCheckinDetail] notify failed:", notifErr);
+    if (notifErr) {
+      console.error("[useCheckinDetail] notify failed:", notifErr);
+      alert(`Tersimpan, tapi notifikasi tag gagal: ${notifErr.message}`);
+    }
   };
 
   // Tambah fokus baru ke check-in yang SAMA (bukan bikin check-in baru).
