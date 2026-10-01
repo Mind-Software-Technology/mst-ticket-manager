@@ -16,7 +16,7 @@ import { useSession } from "@/hooks/useSession";
 import { useCheckins } from "@/hooks/useCheckins";
 import { useTickets } from "@/hooks/useTickets";
 import { useUsers } from "@/hooks/useUsers";
-import { MemberTagPicker } from "@/components/MemberTagPicker";
+import { MentionInput, findMentionedUserIds } from "@/components/MentionInput";
 import type { Ticket } from "@/types";
 
 interface DraftItem {
@@ -33,8 +33,8 @@ export default function NewCheckinPage() {
   const { createCheckin } = useCheckins(true);
 
   const { users } = useUsers(true);
+  const taggable = users.filter((u) => u.id !== profile?.id);
   const [yesterdayProblem, setYesterdayProblem] = useState("");
-  const [taggedIds, setTaggedIds] = useState<string[]>([]);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -85,7 +85,9 @@ export default function NewCheckinPage() {
         employee_id: profile.id,
         division: profile.division || null,
         yesterday_problem: yesterdayProblem.trim() || null,
-        tagged_user_ids: taggedIds,
+        tagged_user_ids: Array.from(
+          new Set(items.flatMap((it) => findMentionedUserIds(it.description, taggable))),
+        ),
         items: items.map((it, idx) => ({
           ticket_id: it.ticket?.id || null,
           description: it.description.trim() || null,
@@ -161,18 +163,6 @@ export default function NewCheckinPage() {
             />
           </div>
 
-          {/* Tag Anggota */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Tag Anggota
-            </label>
-            <MemberTagPicker
-              users={users.filter((u) => u.id !== profile.id)}
-              value={taggedIds}
-              onChange={setTaggedIds}
-            />
-          </div>
-
           {/* Focus Today */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -234,15 +224,14 @@ export default function NewCheckinPage() {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <Input
+                    <MentionInput
+                      users={taggable}
                       value={item.description}
-                      onChange={(e) =>
-                        updateItemDescription(item.key, e.target.value)
-                      }
+                      onChange={(v) => updateItemDescription(item.key, v)}
                       placeholder={
                         item.ticket
-                          ? "Deskripsi tambahan (opsional)"
-                          : "Tulis action item..."
+                          ? "Deskripsi tambahan (opsional) — ketik @ untuk tag anggota"
+                          : "Tulis action item — ketik @ untuk tag anggota"
                       }
                     />
                   </div>

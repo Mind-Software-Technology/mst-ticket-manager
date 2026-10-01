@@ -5,7 +5,7 @@
 // Text input, textarea, dengan label & error state.
 // =====================================================
 
-import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type { InputHTMLAttributes, Ref, TextareaHTMLAttributes } from "react";
 
 interface BaseInputProps {
   label?: string;
@@ -18,6 +18,7 @@ interface InputProps
   extends BaseInputProps,
     Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   size?: "sm" | "md" | "lg";
+  ref?: Ref<HTMLInputElement>;
 }
 
 interface TextareaProps

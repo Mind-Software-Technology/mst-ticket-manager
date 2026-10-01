@@ -21,9 +21,13 @@ interface UseCheckinDetailResult {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  addItems: (items: NewFocusItem[]) => Promise<void>;
+  addItems: (items: NewFocusItem[], mentionedIds?: string[]) => Promise<void>;
   deleteCheckin: () => Promise<void>;
-  updateItemDescription: (itemId: string, description: string) => Promise<void>;
+  updateItemDescription: (
+    itemId: string,
+    description: string,
+    mentionedIds?: string[],
+  ) => Promise<void>;
   updateYesterdayProblem: (value: string) => Promise<void>;
 }
 
@@ -79,8 +83,38 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
     void fetchCheckin();
   }, [fetchCheckin]);
 
+  // Tag user baru: simpan ke checkins.tagged_user_ids + kirim notifikasi
+  // hanya ke yang belum pernah di-tag. Gagal di sini tidak membatalkan simpan.
+  const tagUsers = async (ids: string[]) => {
+    if (!checkin) return;
+    const existing = new Set(checkin.tagged_user_ids ?? []);
+    const fresh = Array.from(new Set(ids)).filter(
+      (id) => !existing.has(id) && id !== checkin.employee_id,
+    );
+    if (fresh.length === 0) return;
+    const supabase = createClient();
+    const { error: tagErr } = await supabase
+      .from("checkins")
+      .update({ tagged_user_ids: [...existing, ...fresh] })
+      .eq("id", checkin.id);
+    if (tagErr) {
+      console.error("[useCheckinDetail] tag update failed:", tagErr);
+      return;
+    }
+    const { error: notifErr } = await supabase.from("mention_notifications").insert(
+      fresh.map((uid) => ({
+        ticket_id: null,
+        checkin_id: checkin.id,
+        mentioned_user_id: uid,
+        mentioned_by: checkin.employee_id,
+        excerpt: null,
+      })),
+    );
+    if (notifErr) console.error("[useCheckinDetail] notify failed:", notifErr);
+  };
+
   // Tambah fokus baru ke check-in yang SAMA (bukan bikin check-in baru).
-  const addItems = async (items: NewFocusItem[]) => {
+  const addItems = async (items: NewFocusItem[], mentionedIds: string[] = []) => {
     if (!checkin || items.length === 0) return;
     const supabase = createClient();
 
@@ -117,17 +151,23 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
         ),
     );
 
+    await tagUsers(mentionedIds);
     await fetchCheckin();
   };
 
   // Edit teks fokus (item) yang sudah tersimpan.
-  const updateItemDescription = async (itemId: string, description: string) => {
+  const updateItemDescription = async (
+    itemId: string,
+    description: string,
+    mentionedIds: string[] = [],
+  ) => {
     const supabase = createClient();
     const { error: updErr } = await supabase
       .from("checkin_items")
       .update({ description: description.trim() || null })
       .eq("id", itemId);
     if (updErr) throw updErr;
+    await tagUsers(mentionedIds);
     await fetchCheckin();
   };
 

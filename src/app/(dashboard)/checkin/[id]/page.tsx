@@ -16,6 +16,7 @@ import { useSession } from "@/hooks/useSession";
 import { useCheckinDetail } from "@/hooks/useCheckinDetail";
 import { useTickets } from "@/hooks/useTickets";
 import { useUsers } from "@/hooks/useUsers";
+import { MentionInput, findMentionedUserIds } from "@/components/MentionInput";
 import type { Ticket } from "@/types";
 
 interface DraftItem {
@@ -55,6 +56,8 @@ export default function CheckinDetailPage() {
   const [editingProblem, setEditingProblem] = useState(false);
   const [editProblemText, setEditProblemText] = useState("");
   const [savingProblem, setSavingProblem] = useState(false);
+
+  const taggable = users.filter((u) => u.id !== checkin?.employee_id);
 
   const canManage =
     !!checkin &&
@@ -113,6 +116,7 @@ export default function CheckinDetailPage() {
           ticket_id: d.ticket?.id || null,
           description: d.description.trim() || null,
         })),
+        drafts.flatMap((d) => findMentionedUserIds(d.description, taggable)),
       );
       setDrafts([]);
     } catch (err) {
@@ -141,7 +145,11 @@ export default function CheckinDetailPage() {
   const handleSaveItem = async (itemId: string) => {
     setSavingItem(true);
     try {
-      await updateItemDescription(itemId, editItemText);
+      await updateItemDescription(
+        itemId,
+        editItemText,
+        findMentionedUserIds(editItemText, taggable),
+      );
       cancelEditItem();
     } catch (err) {
       console.error("Failed to update item:", err);
@@ -401,9 +409,10 @@ export default function CheckinDetailPage() {
 
                   {editingItemId === item.id ? (
                     <div className="mt-2 space-y-2">
-                      <Input
+                      <MentionInput
+                        users={taggable}
                         value={editItemText}
-                        onChange={(e) => setEditItemText(e.target.value)}
+                        onChange={setEditItemText}
                         autoFocus
                         placeholder={
                           item.ticket
@@ -486,9 +495,10 @@ export default function CheckinDetailPage() {
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                  <Input
+                  <MentionInput
+                    users={taggable}
                     value={d.description}
-                    onChange={(e) => updateDraft(d.key, e.target.value)}
+                    onChange={(v) => updateDraft(d.key, v)}
                     placeholder={
                       d.ticket
                         ? "Deskripsi tambahan (opsional)"
