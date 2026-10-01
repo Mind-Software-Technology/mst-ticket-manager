@@ -21,6 +21,8 @@ export function findMentionedUserIds(
   users: TaggableUser[],
 ): string[] {
   if (!text) return [];
+  // "@all" men-tag semua user (bukan bagian dari nama lain, mis. "@Allan").
+  if (/@all(?![\p{L}\p{N}_])/iu.test(text)) return users.map((u) => u.id);
   const lower = text.toLowerCase();
   return users
     .filter((u) => u.name && lower.includes(`@${u.name.toLowerCase()}`))
@@ -43,7 +45,7 @@ export function MentionInput({ value, onChange, users, placeholder, autoFocus }:
   const options =
     query === null
       ? []
-      : users
+      : [{ id: "all", name: "All" }, ...users]
           .filter((u) => u.name.toLowerCase().includes(query.toLowerCase()))
           .slice(0, 6);
 

@@ -92,6 +92,7 @@ export default function NewCheckinPage() {
           ticket_id: it.ticket?.id || null,
           description: it.description.trim() || null,
           sort_order: idx,
+          mentioned_user_ids: findMentionedUserIds(it.description, taggable),
         })),
       });
       router.push("/checkin");

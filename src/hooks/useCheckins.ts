@@ -15,6 +15,8 @@ interface NewCheckinItem {
   ticket_id: string | null;
   description: string | null;
   sort_order: number;
+  /** User yang di-tag (@nama) di deskripsi item ini. */
+  mentioned_user_ids?: string[];
 }
 
 interface CreateCheckinInput {
@@ -116,22 +118,23 @@ export function useCheckins(todayOnly = true): UseCheckinsResult {
 
     if (createError) throw createError;
 
-    // 1b. Notifikasi untuk anggota yang di-tag (gagal tidak boleh membatalkan check-in)
-    const tagged = (input.tagged_user_ids ?? []).filter(
-      (id) => id !== input.employee_id,
+    // 1b. Notifikasi @mention per item (seperti di activity log: ada kutipan teks
+    // + tautan ke tiket bila item berupa tiket). Gagal tidak membatalkan check-in.
+    const notifRows = input.items.flatMap((it) =>
+      Array.from(new Set(it.mentioned_user_ids ?? []))
+        .filter((uid) => uid !== input.employee_id)
+        .map((uid) => ({
+          ticket_id: it.ticket_id,
+          checkin_id: checkin.id,
+          mentioned_user_id: uid,
+          mentioned_by: input.employee_id,
+          excerpt: it.description,
+        })),
     );
-    if (tagged.length > 0) {
+    if (notifRows.length > 0) {
       const { error: notifError } = await supabase
         .from("mention_notifications")
-        .insert(
-          tagged.map((uid) => ({
-            ticket_id: null,
-            checkin_id: checkin.id,
-            mentioned_user_id: uid,
-            mentioned_by: input.employee_id,
-            excerpt: null,
-          })),
-        );
+        .insert(notifRows);
       if (notifError) {
         console.error("[useCheckins] Failed to notify tagged users:", notifError);
       }

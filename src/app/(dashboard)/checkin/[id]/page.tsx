@@ -115,8 +115,8 @@ export default function CheckinDetailPage() {
         drafts.map((d) => ({
           ticket_id: d.ticket?.id || null,
           description: d.description.trim() || null,
+          mentioned_user_ids: findMentionedUserIds(d.description, taggable),
         })),
-        drafts.flatMap((d) => findMentionedUserIds(d.description, taggable)),
       );
       setDrafts([]);
     } catch (err) {
@@ -145,10 +145,15 @@ export default function CheckinDetailPage() {
   const handleSaveItem = async (itemId: string) => {
     setSavingItem(true);
     try {
+      const oldText = checkin?.items?.find((i) => i.id === itemId)?.description;
+      const before = findMentionedUserIds(oldText, taggable);
       await updateItemDescription(
         itemId,
         editItemText,
-        findMentionedUserIds(editItemText, taggable),
+        // Hanya yang BARU di-tag di edit ini yang dinotifikasi.
+        findMentionedUserIds(editItemText, taggable).filter(
+          (id) => !before.includes(id),
+        ),
       );
       cancelEditItem();
     } catch (err) {

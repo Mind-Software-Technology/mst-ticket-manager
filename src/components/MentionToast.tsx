@@ -111,9 +111,9 @@ export function MentionToast({ userId }: Props) {
               </span>{" "}
               men-tag kamu di{" "}
               <span className="font-medium">
-                {n.checkin_id
-                  ? "check-in"
-                  : n.tickets?.ticket_id || n.tickets?.subject || "sebuah tiket"}
+                {n.tickets?.ticket_id ||
+                  n.tickets?.subject ||
+                  (n.checkin_id ? "check-in" : "sebuah tiket")}
               </span>
             </p>
             {n.excerpt && (

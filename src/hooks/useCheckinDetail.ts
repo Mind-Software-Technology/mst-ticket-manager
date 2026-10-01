@@ -14,6 +14,7 @@ import type { Checkin } from "@/types";
 interface NewFocusItem {
   ticket_id: string | null;
   description: string | null;
+  mentioned_user_ids?: string[];
 }
 
 interface UseCheckinDetailResult {
@@ -21,7 +22,7 @@ interface UseCheckinDetailResult {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  addItems: (items: NewFocusItem[], mentionedIds?: string[]) => Promise<void>;
+  addItems: (items: NewFocusItem[]) => Promise<void>;
   deleteCheckin: () => Promise<void>;
   updateItemDescription: (
     itemId: string,
@@ -83,38 +84,39 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
     void fetchCheckin();
   }, [fetchCheckin]);
 
-  // Tag user baru: simpan ke checkins.tagged_user_ids + kirim notifikasi
-  // hanya ke yang belum pernah di-tag. Gagal di sini tidak membatalkan simpan.
-  const tagUsers = async (ids: string[]) => {
+  // Kirim notifikasi @mention (dengan kutipan + tautan tiket) & catat user di
+  // checkins.tagged_user_ids. Gagal di sini tidak membatalkan simpan.
+  const notifyMentions = async (
+    entries: { ticket_id: string | null; description: string | null; ids: string[] }[],
+  ) => {
     if (!checkin) return;
-    const existing = new Set(checkin.tagged_user_ids ?? []);
-    const fresh = Array.from(new Set(ids)).filter(
-      (id) => !existing.has(id) && id !== checkin.employee_id,
+    const rows = entries.flatMap((e) =>
+      Array.from(new Set(e.ids))
+        .filter((uid) => uid !== checkin.employee_id)
+        .map((uid) => ({
+          ticket_id: e.ticket_id,
+          checkin_id: checkin.id,
+          mentioned_user_id: uid,
+          mentioned_by: checkin.employee_id,
+          excerpt: e.description,
+        })),
     );
-    if (fresh.length === 0) return;
+    if (rows.length === 0) return;
     const supabase = createClient();
+    const tagged = Array.from(
+      new Set([...(checkin.tagged_user_ids ?? []), ...rows.map((r) => r.mentioned_user_id)]),
+    );
     const { error: tagErr } = await supabase
       .from("checkins")
-      .update({ tagged_user_ids: [...existing, ...fresh] })
+      .update({ tagged_user_ids: tagged })
       .eq("id", checkin.id);
-    if (tagErr) {
-      console.error("[useCheckinDetail] tag update failed:", tagErr);
-      return;
-    }
-    const { error: notifErr } = await supabase.from("mention_notifications").insert(
-      fresh.map((uid) => ({
-        ticket_id: null,
-        checkin_id: checkin.id,
-        mentioned_user_id: uid,
-        mentioned_by: checkin.employee_id,
-        excerpt: null,
-      })),
-    );
+    if (tagErr) console.error("[useCheckinDetail] tag update failed:", tagErr);
+    const { error: notifErr } = await supabase.from("mention_notifications").insert(rows);
     if (notifErr) console.error("[useCheckinDetail] notify failed:", notifErr);
   };
 
   // Tambah fokus baru ke check-in yang SAMA (bukan bikin check-in baru).
-  const addItems = async (items: NewFocusItem[], mentionedIds: string[] = []) => {
+  const addItems = async (items: NewFocusItem[]) => {
     if (!checkin || items.length === 0) return;
     const supabase = createClient();
 
@@ -151,7 +153,13 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
         ),
     );
 
-    await tagUsers(mentionedIds);
+    await notifyMentions(
+      items.map((it) => ({
+        ticket_id: it.ticket_id,
+        description: it.description,
+        ids: it.mentioned_user_ids ?? [],
+      })),
+    );
     await fetchCheckin();
   };
 
@@ -167,7 +175,13 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
       .update({ description: description.trim() || null })
       .eq("id", itemId);
     if (updErr) throw updErr;
-    await tagUsers(mentionedIds);
+    await notifyMentions([
+      {
+        ticket_id: checkin?.items?.find((i) => i.id === itemId)?.ticket_id ?? null,
+        description: description.trim() || null,
+        ids: mentionedIds,
+      },
+    ]);
     await fetchCheckin();
   };
 
