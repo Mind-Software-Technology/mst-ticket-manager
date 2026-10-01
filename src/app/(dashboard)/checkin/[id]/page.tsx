@@ -40,7 +40,7 @@ export default function CheckinDetailPage() {
     deleteCheckin,
     updateItemDescription,
     updateYesterdayProblem,
-  } = useCheckinDetail(checkinId);
+  } = useCheckinDetail(checkinId, session?.profile?.id);
 
   const [drafts, setDrafts] = useState<DraftItem[]>([]);
   const [showPicker, setShowPicker] = useState(false);
@@ -57,7 +57,7 @@ export default function CheckinDetailPage() {
   const [editProblemText, setEditProblemText] = useState("");
   const [savingProblem, setSavingProblem] = useState(false);
 
-  const taggable = users.filter((u) => u.id !== checkin?.employee_id);
+  const taggable = users.filter((u) => u.id !== session?.profile?.id);
 
   const canManage =
     !!checkin &&

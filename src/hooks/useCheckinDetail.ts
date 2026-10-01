@@ -32,7 +32,11 @@ interface UseCheckinDetailResult {
   updateYesterdayProblem: (value: string) => Promise<void>;
 }
 
-export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
+export function useCheckinDetail(
+  checkinId: string,
+  /** ID profil user yang sedang login (pelaku tag) — wajib cocok dengan RLS. */
+  actorId?: string | null,
+): UseCheckinDetailResult {
   const [checkin, setCheckin] = useState<Checkin | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,12 +96,12 @@ export function useCheckinDetail(checkinId: string): UseCheckinDetailResult {
     if (!checkin) return;
     const rows = entries.flatMap((e) =>
       Array.from(new Set(e.ids))
-        .filter((uid) => uid !== checkin.employee_id)
+        .filter((uid) => uid !== (actorId ?? checkin.employee_id))
         .map((uid) => ({
           ticket_id: e.ticket_id,
           checkin_id: checkin.id,
           mentioned_user_id: uid,
-          mentioned_by: checkin.employee_id,
+          mentioned_by: actorId ?? checkin.employee_id,
           excerpt: e.description,
         })),
     );
