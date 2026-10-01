@@ -19,7 +19,8 @@ const MAX_VISIBLE = 3;
 
 interface MentionNotificationRow {
   id: string;
-  ticket_id: string;
+  ticket_id: string | null;
+  checkin_id: string | null;
   excerpt: string | null;
   created_at: string;
   tickets: { subject: string | null; ticket_id: string | null } | null;
@@ -47,7 +48,7 @@ export function MentionToast({ userId }: Props) {
     const { data, error } = await supabase
       .from("mention_notifications")
       .select(
-        "id, ticket_id, excerpt, created_at, tickets(subject, ticket_id), mentioned_by_user:users!mention_notifications_mentioned_by_fkey(name)",
+        "id, ticket_id, checkin_id, excerpt, created_at, tickets(subject, ticket_id), mentioned_by_user:users!mention_notifications_mentioned_by_fkey(name)",
       )
       .eq("mentioned_user_id", uid)
       .is("read_at", null)
@@ -84,7 +85,7 @@ export function MentionToast({ userId }: Props) {
   const openTicket = (n: MentionNotificationRow) => {
     setToasts((prev) => prev.filter((t) => t.id !== n.id));
     void markRead(n.id);
-    router.push(`/gawean/${n.ticket_id}`);
+    router.push(n.checkin_id ? `/checkin/${n.checkin_id}` : `/gawean/${n.ticket_id}`);
   };
 
   if (toasts.length === 0) return null;
@@ -110,7 +111,9 @@ export function MentionToast({ userId }: Props) {
               </span>{" "}
               men-tag kamu di{" "}
               <span className="font-medium">
-                {n.tickets?.ticket_id || n.tickets?.subject || "sebuah tiket"}
+                {n.checkin_id
+                  ? "check-in"
+                  : n.tickets?.ticket_id || n.tickets?.subject || "sebuah tiket"}
               </span>
             </p>
             {n.excerpt && (

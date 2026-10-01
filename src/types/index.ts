@@ -211,6 +211,8 @@ export interface Checkin {
   yesterday_problem: string | null;
   status: CheckinStatus;
   approved_by: string | null;
+  /** ID user yang di-tag saat check-in. */
+  tagged_user_ids?: string[];
   created_at: string;
   updated_at: string;
   employee?: User | null;

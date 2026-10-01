@@ -15,6 +15,8 @@ import { Button, Input, Modal, Badge, EmptyState, SearchInput } from "@/componen
 import { useSession } from "@/hooks/useSession";
 import { useCheckins } from "@/hooks/useCheckins";
 import { useTickets } from "@/hooks/useTickets";
+import { useUsers } from "@/hooks/useUsers";
+import { MemberTagPicker } from "@/components/MemberTagPicker";
 import type { Ticket } from "@/types";
 
 interface DraftItem {
@@ -30,7 +32,9 @@ export default function NewCheckinPage() {
 
   const { createCheckin } = useCheckins(true);
 
+  const { users } = useUsers(true);
   const [yesterdayProblem, setYesterdayProblem] = useState("");
+  const [taggedIds, setTaggedIds] = useState<string[]>([]);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -81,6 +85,7 @@ export default function NewCheckinPage() {
         employee_id: profile.id,
         division: profile.division || null,
         yesterday_problem: yesterdayProblem.trim() || null,
+        tagged_user_ids: taggedIds,
         items: items.map((it, idx) => ({
           ticket_id: it.ticket?.id || null,
           description: it.description.trim() || null,
@@ -153,6 +158,18 @@ export default function NewCheckinPage() {
               rows={3}
               placeholder="Kendala kemarin (opsional)"
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          {/* Tag Anggota */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Tag Anggota
+            </label>
+            <MemberTagPicker
+              users={users.filter((u) => u.id !== profile.id)}
+              value={taggedIds}
+              onChange={setTaggedIds}
             />
           </div>
 

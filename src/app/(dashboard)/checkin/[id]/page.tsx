@@ -15,6 +15,7 @@ import { Button, Input, Modal, Badge, EmptyState, SearchInput } from "@/componen
 import { useSession } from "@/hooks/useSession";
 import { useCheckinDetail } from "@/hooks/useCheckinDetail";
 import { useTickets } from "@/hooks/useTickets";
+import { useUsers } from "@/hooks/useUsers";
 import type { Ticket } from "@/types";
 
 interface DraftItem {
@@ -29,6 +30,7 @@ export default function CheckinDetailPage() {
   const checkinId = params?.id as string;
 
   const { session } = useSession();
+  const { users } = useUsers();
   const {
     checkin,
     loading,
@@ -257,6 +259,23 @@ export default function CheckinDetailPage() {
               value={checkin.division || checkin.employee?.division || "-"}
             />
           </div>
+          {checkin.tagged_user_ids && checkin.tagged_user_ids.length > 0 && (
+            <div className="mt-4">
+              <label className="block text-xs text-slate-500 mb-1">
+                Tag Anggota
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {checkin.tagged_user_ids.map((uid) => (
+                  <span
+                    key={uid}
+                    className="rounded-full bg-indigo-50 px-2 py-0.5 text-sm text-indigo-700"
+                  >
+                    @{users.find((u) => u.id === uid)?.name || "Unknown"}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs text-slate-500">
