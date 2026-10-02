@@ -8,14 +8,23 @@
 // Problem, Tickets — sesuai ERP "Gawean" reference.
 // =====================================================
 
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { PlusCircle, Flame } from "lucide-react";
+import { PlusCircle, Search, X } from "lucide-react";
 import { useCheckins } from "@/hooks/useCheckins";
 import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
 import { useSession } from "@/hooks/useSession";
 import { Button, Badge, EmptyState } from "@/components/ui";
+
+type GroupBy = "none" | "employee" | "division" | "date";
+
+const GROUP_LABELS: Record<GroupBy, string> = {
+  none: "Tanpa Group",
+  employee: "Employee",
+  division: "Divisi",
+  date: "Tanggal",
+};
 
 export default function CheckinListPage() {
   const router = useRouter();
@@ -27,6 +36,85 @@ export default function CheckinListPage() {
   const myStreak = myStreakData.streak;
   
   const [restoring, setRestoring] = useState(false);
+
+  // Filter & group by (client-side)
+  const [search, setSearch] = useState("");
+  const [employeeFilter, setEmployeeFilter] = useState("");
+  const [divisionFilter, setDivisionFilter] = useState("");
+  const [groupBy, setGroupBy] = useState<GroupBy>("none");
+
+  const employeeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(checkins.map((c) => c.employee?.name).filter(Boolean) as string[]),
+      ).sort((a, b) => a.localeCompare(b)),
+    [checkins],
+  );
+  const divisionOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          checkins
+            .map((c) => c.division || c.employee?.division)
+            .filter(Boolean) as string[],
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [checkins],
+  );
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return checkins.filter((c) => {
+      if (employeeFilter && c.employee?.name !== employeeFilter) return false;
+      if (divisionFilter && (c.division || c.employee?.division) !== divisionFilter) return false;
+      if (!q) return true;
+      const haystack = [
+        c.employee?.name,
+        c.yesterday_problem,
+        ...(c.items || []).flatMap((i) => [
+          i.description,
+          i.ticket?.ticket_id,
+          i.ticket?.subject,
+        ]),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [checkins, search, employeeFilter, divisionFilter]);
+
+  const groups = useMemo(() => {
+    if (groupBy === "none") return [{ key: "", label: "", rows: filtered }];
+    const map = new Map<string, typeof filtered>();
+    for (const c of filtered) {
+      const key =
+        groupBy === "employee"
+          ? c.employee?.name || "(Tanpa nama)"
+          : groupBy === "division"
+            ? c.division || c.employee?.division || "(Tanpa divisi)"
+            : new Date(c.created_at).toLocaleDateString("id-ID", {
+                weekday: "long",
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              });
+      const arr = map.get(key);
+      if (arr) arr.push(c);
+      else map.set(key, [c]);
+    }
+    const entries = Array.from(map.entries());
+    // Tanggal: urutan asli (terbaru dulu); lainnya: alfabetis
+    if (groupBy !== "date") entries.sort((a, b) => a[0].localeCompare(b[0]));
+    return entries.map(([key, rows]) => ({ key, label: key, rows }));
+  }, [filtered, groupBy]);
+
+  const hasFilter = !!(search || employeeFilter || divisionFilter);
+  const resetFilters = () => {
+    setSearch("");
+    setEmployeeFilter("");
+    setDivisionFilter("");
+  };
 
   const handleRestoreStreak = async () => {
     if (!session || !myStreakData.missedDate) return;
@@ -154,6 +242,56 @@ export default function CheckinListPage() {
             Semua
           </Button>
         </div>
+
+        <div className="flex flex-wrap items-center gap-3 mt-4">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari employee, tiket, action item..."
+              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <select
+            value={employeeFilter}
+            onChange={(e) => setEmployeeFilter(e.target.value)}
+            className="py-2 px-3 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Semua Employee</option>
+            {employeeOptions.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+          <select
+            value={divisionFilter}
+            onChange={(e) => setDivisionFilter(e.target.value)}
+            className="py-2 px-3 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Semua Divisi</option>
+            {divisionOptions.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            Group by
+            <select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as GroupBy)}
+              className="py-2 px-3 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {(Object.keys(GROUP_LABELS) as GroupBy[]).map((g) => (
+                <option key={g} value={g}>{GROUP_LABELS[g]}</option>
+              ))}
+            </select>
+          </label>
+          {hasFilter && (
+            <Button variant="secondary" size="md" icon={<X className="w-4 h-4" />} onClick={resetFilters}>
+              Reset
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -183,13 +321,15 @@ export default function CheckinListPage() {
                     Memuat check-in...
                   </td>
                 </tr>
-              ) : checkins.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6}>
                     <EmptyState
                       title="Belum ada check-in"
                       description={
-                        todayOnly
+                        hasFilter
+                          ? "Tidak ada check-in yang cocok dengan filter."
+                          : todayOnly
                           ? "Belum ada yang check-in hari ini. Buat check-in untuk menandai fokus hari ini."
                           : "Belum ada data check-in."
                       }
@@ -205,7 +345,19 @@ export default function CheckinListPage() {
                   </td>
                 </tr>
               ) : (
-                checkins.map((checkin) => (
+                groups.map((group) => (
+                  <Fragment key={group.key || "all"}>
+                    {groupBy !== "none" && (
+                      <tr className="bg-slate-100/70">
+                        <td colSpan={6} className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          {GROUP_LABELS[groupBy]}: {group.label}
+                          <span className="ml-2 font-normal normal-case text-slate-400">
+                            ({group.rows.length})
+                          </span>
+                        </td>
+                      </tr>
+                    )}
+                    {group.rows.map((checkin) => (
                   <tr
                     key={checkin.id}
                     onClick={() => router.push(`/checkin/${checkin.id}`)}
@@ -269,6 +421,8 @@ export default function CheckinListPage() {
                       records
                     </td>
                   </tr>
+                    ))}
+                  </Fragment>
                 ))
               )}
             </tbody>
