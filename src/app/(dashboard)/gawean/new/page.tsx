@@ -56,6 +56,9 @@ export default function CreateTicketPage() {
   const canCreateTicket = isAdmin || session?.email === "gema@mst.id";
 
   const [saving, setSaving] = useState(false);
+  // Berlaku kalau assignee > 1: "single" = 1 tiket dengan banyak assignee,
+  // "split" = 1 tiket per assignee.
+  const [assigneeMode, setAssigneeMode] = useState<"single" | "split">("single");
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
   const handleAddFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,7 +186,17 @@ export default function CreateTicketPage() {
     setSaving(true);
     const supabase = createClient();
 
+    // Tiap elemen = daftar assignee untuk satu tiket. Mode "split" membuat
+    // satu tiket per assignee; mode "single" satu tiket untuk semua assignee.
+    const assigneeGroups: string[][] =
+      formData.assigned_to.length > 1 && assigneeMode === "split"
+        ? formData.assigned_to.map((id) => [id])
+        : [formData.assigned_to];
+
+    const createdTicketIds: string[] = [];
+
     try {
+      for (const assignees of assigneeGroups) {
       // Alokasikan ticket ID + sequence secara atomik di server (race-safe).
       const { ticketId, sequence } = await generateTicketId(formData.product_id);
 
@@ -204,7 +217,7 @@ export default function CreateTicketPage() {
           product_id: formData.product_id || null,
           project_id: formData.project_id || null,
           sprint_id: formData.sprint_id || null,
-          assigned_to: formData.assigned_to[0] || null,
+          assigned_to: assignees[0] || null,
           reported_to: formData.reported_to[0] || null,
           manhours_estimate: parseFloat(formData.manhours_estimate) || 0,
           actual_manhours: 0,
@@ -219,15 +232,16 @@ export default function CreateTicketPage() {
         .single();
 
       if (createError) throw createError;
+      createdTicketIds.push(newTicket.id);
 
       // Simpan semua assignee (bisa lebih dari satu) di tabel junction.
       // assigned_to (kolom lama) tetap berisi assignee pertama saja, dipakai
       // halaman lain yang masih single-assignee.
-      if (formData.assigned_to.length > 0) {
+      if (assignees.length > 0) {
         const { error: assigneesError } = await supabase
           .from("ticket_assignees")
           .insert(
-            formData.assigned_to.map((userId) => ({
+            assignees.map((userId) => ({
               ticket_id: newTicket.id,
               user_id: userId,
             })),
@@ -282,7 +296,8 @@ export default function CreateTicketPage() {
 
       // Kalau tiket ini dibuat dari pengajuan (ticket request), tandai
       // pengajuannya "approved" & link ke tiket yang baru dibuat.
-      if (requestId) {
+      // (hanya tiket pertama yang di-link kalau mode split)
+      if (requestId && createdTicketIds.length === 1) {
         const { error: requestUpdateError } = await supabase
           .from("ticket_requests")
           .update({
@@ -296,16 +311,25 @@ export default function CreateTicketPage() {
           console.error("Failed to update ticket request:", requestUpdateError);
         }
       }
+      }
 
-      // Redirect to ticket detail
-      router.push(`/gawean/${newTicket.id}`);
+      // Redirect: satu tiket → detail, banyak tiket → daftar
+      router.push(
+        createdTicketIds.length === 1
+          ? `/gawean/${createdTicketIds[0]}`
+          : "/gawean",
+      );
     } catch (err) {
       console.error("Failed to create ticket:", err);
       const message =
         err instanceof Error
           ? err.message
           : (err as { message?: string })?.message ?? "Unknown error";
-      alert(`Failed to create ticket: ${message}. Please try again.`);
+      const partial =
+        createdTicketIds.length > 0
+          ? ` (${createdTicketIds.length} dari ${assigneeGroups.length} tiket sudah terbuat, cek daftar tiket sebelum mencoba lagi)`
+          : "";
+      alert(`Failed to create ticket: ${message}${partial}. Please try again.`);
       setSaving(false);
     }
   };
@@ -645,6 +669,38 @@ export default function CreateTicketPage() {
                     </span>
                   </p>
                 )}
+                {formData.assigned_to.length > 1 && (
+                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <p className="text-xs font-medium text-slate-700">
+                      Ada {formData.assigned_to.length} assignee. Buat sebagai:
+                    </p>
+                    <label className="flex items-start gap-2 text-sm cursor-pointer">
+                      <input
+                        type="radio"
+                        name="assigneeMode"
+                        checked={assigneeMode === "single"}
+                        onChange={() => setAssigneeMode("single")}
+                        className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-slate-700">
+                        1 tiket dengan {formData.assigned_to.length} assignee
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 text-sm cursor-pointer">
+                      <input
+                        type="radio"
+                        name="assigneeMode"
+                        checked={assigneeMode === "split"}
+                        onChange={() => setAssigneeMode("split")}
+                        className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-slate-700">
+                        {formData.assigned_to.length} tiket terpisah, masing-masing
+                        1 assignee
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -838,7 +894,9 @@ export default function CreateTicketPage() {
               loading={saving}
               disabled={!formData.product_id || saving}
             >
-              Create Ticket
+              {formData.assigned_to.length > 1 && assigneeMode === "split"
+                ? `Create ${formData.assigned_to.length} Tickets`
+                : "Create Ticket"}
             </Button>
           </div>
         </form>
