@@ -9,7 +9,7 @@
 // penulisnya sendiri atau admin.
 // =====================================================
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Clock, GitCommit, MessageSquare, User, Pencil, Check, X } from "lucide-react";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { getLogImages, type ActivityLog } from "@/types";
@@ -47,6 +47,26 @@ export function ActivityTimeline({
   const [editDraft, setEditDraft] = useState("");
   // Sedang menyimpan?
   const [saving, setSaving] = useState(false);
+  // URL foto yang sedang dibuka di popup (null = tertutup).
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!previewUrl) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewUrl(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewUrl]);
+
+  // Klik gambar di dalam isi pesan rich text → buka popup, bukan pindah page.
+  const handleContentClick = (e: React.MouseEvent<HTMLElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "IMG") {
+      e.preventDefault();
+      setPreviewUrl((target as HTMLImageElement).src);
+    }
+  };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -198,6 +218,7 @@ export function ActivityTimeline({
               // Pesan rich text (HTML dari TipTap) — render dengan styling prose.
               <div
                 className="tiptap-content tiptap-readonly text-slate-600"
+                onClick={handleContentClick}
                 dangerouslySetInnerHTML={{ __html: log.message }}
               />
             ) : (
@@ -213,14 +234,19 @@ export function ActivityTimeline({
           {images.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {images.map((url) => (
-                <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => setPreviewUrl(url)}
+                  className="cursor-zoom-in"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={url}
                     alt="Lampiran"
                     className="max-h-48 rounded-lg border border-slate-200 object-cover"
                   />
-                </a>
+                </button>
               ))}
             </div>
           )}
@@ -258,6 +284,31 @@ export function ActivityTimeline({
   }
 
   return (
+    <>
+    {previewUrl && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+        onClick={() => setPreviewUrl(null)}
+        role="dialog"
+        aria-modal="true"
+      >
+        <button
+          type="button"
+          title="Tutup"
+          onClick={() => setPreviewUrl(null)}
+          className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={previewUrl}
+          alt="Preview"
+          onClick={(e) => e.stopPropagation()}
+          className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+        />
+      </div>
+    )}
     <div className="space-y-4 p-4">
       {logs.map((log, idx) => {
         const isEditing = editingId === log.id;
@@ -338,5 +389,6 @@ export function ActivityTimeline({
         );
       })}
     </div>
+    </>
   );
 }
