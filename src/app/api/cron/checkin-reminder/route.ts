@@ -14,6 +14,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { sendWhatsAppMessage, formatCheckinReminder } from "@/lib/fonnte";
 import { wibDayBoundsUtc } from "@/lib/date-utils";
+import { DEFAULT_ACTIVE_DAYS } from "@/lib/streak";
+import { parseActiveDays, CHECKIN_ACTIVE_DAYS_KEY } from "@/hooks/useCheckinStreaks";
 
 const DEFAULT_REMINDER_HOUR = 10;
 
@@ -46,18 +48,33 @@ export async function GET(request: Request) {
     // ── 2. Hitung jam & tanggal "sekarang" versi WIB ───
     const now = new Date();
     const { startUtcIso, endUtcIso, todayStr } = wibDayBoundsUtc(now);
-    const wibHour = new Date(now.getTime() + 7 * 60 * 60 * 1000).getUTCHours();
+    const wibNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const wibHour = wibNow.getUTCHours();
+    const wibDow = wibNow.getUTCDay(); // 0=Minggu, 6=Sabtu
 
-    // ── 3. Baca jam reminder yang di-set admin ─────────
-    const { data: setting } = await supabase
+    // ── 3. Baca settings admin (jam reminder + hari aktif) ──
+    const { data: settings } = await supabase
       .from("app_settings")
-      .select("value")
-      .eq("key", "checkin_reminder_hour")
-      .maybeSingle();
+      .select("key, value")
+      .in("key", ["checkin_reminder_hour", CHECKIN_ACTIVE_DAYS_KEY]);
 
-    const reminderHour = setting?.value
-      ? parseInt(setting.value, 10)
+    const settingMap: Record<string, string> = {};
+    for (const s of settings || []) settingMap[s.key] = s.value;
+
+    const reminderHour = settingMap["checkin_reminder_hour"]
+      ? parseInt(settingMap["checkin_reminder_hour"], 10)
       : DEFAULT_REMINDER_HOUR;
+
+    const activeDays = parseActiveDays(settingMap[CHECKIN_ACTIVE_DAYS_KEY]);
+
+    // Hari ini bukan hari aktif → lewati (tidak perlu reminder)
+    if (!activeDays.has(wibDow)) {
+      return NextResponse.json({
+        message: "Hari ini bukan hari aktif check-in, dilewati",
+        wib_dow: wibDow,
+        active_days: [...activeDays],
+      });
+    }
 
     if (wibHour !== reminderHour) {
       return NextResponse.json({

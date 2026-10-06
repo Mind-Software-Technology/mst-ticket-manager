@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Plus, Pencil, Trash2, Loader2, Send, Copy, Check, BellRing, Clock, Flame } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Send, Copy, Check, BellRing, Clock, Flame, CalendarDays } from "lucide-react";
 import { Button, Input, Modal } from "@/components/ui";
 import { createClient } from "@/utils/supabase/client";
 import { useClients } from "@/hooks/useClients";
@@ -21,6 +21,7 @@ import { useLabels } from "@/hooks/useLabels";
 import { useUsers } from "@/hooks/useUsers";
 import { useCheckins } from "@/hooks/useCheckins";
 import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
+import { CHECKIN_ACTIVE_DAYS_KEY, parseActiveDays } from "@/hooks/useCheckinStreaks";
 import { useClientHealth } from "@/hooks/useClientHealth";
 import { useSession } from "@/hooks/useSession";
 import type { Client, Product, Project, Sprint, Label, User } from "@/types";
@@ -223,6 +224,9 @@ function UsersTab() {
 
       {/* WhatsApp reminder settings */}
       <ReminderHourSetting isAdmin={isAdmin} />
+
+      {/* Hari aktif check-in */}
+      <CheckinActiveDaysSetting isAdmin={isAdmin} />
 
       {users.length === 0 ? (
         <p className="text-slate-500 text-center py-8">
@@ -491,6 +495,137 @@ function ReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
             <p className="text-xs text-amber-600">
               Reminder otomatis jam <strong>{hour}:00 WIB</strong>. Hanya
               admin yang bisa mengubah jam ini.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== CHECKIN ACTIVE DAYS SETTING ====================
+
+const DAY_LABELS: { value: number; short: string; long: string }[] = [
+  { value: 1, short: "Sen", long: "Senin" },
+  { value: 2, short: "Sel", long: "Selasa" },
+  { value: 3, short: "Rab", long: "Rabu" },
+  { value: 4, short: "Kam", long: "Kamis" },
+  { value: 5, short: "Jum", long: "Jumat" },
+  { value: 6, short: "Sab", long: "Sabtu" },
+  { value: 0, short: "Min", long: "Minggu" },
+];
+
+function CheckinActiveDaysSetting({ isAdmin }: { isAdmin: boolean }) {
+  const [activeDays, setActiveDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5]));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", CHECKIN_ACTIVE_DAYS_KEY)
+        .maybeSingle();
+      if (!cancelled) {
+        const parsed = parseActiveDays(data?.value);
+        setActiveDays(new Set(parsed));
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const toggleDay = (day: number) => {
+    setActiveDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(day)) {
+        // Minimal 1 hari harus aktif
+        if (next.size <= 1) return prev;
+        next.delete(day);
+      } else {
+        next.add(day);
+      }
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const value = JSON.stringify([...activeDays].sort((a, b) => a - b));
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert({ key: CHECKIN_ACTIVE_DAYS_KEY, value, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      alert(`Gagal menyimpan hari aktif: ${err?.message || "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const activeLabel = DAY_LABELS
+    .filter((d) => activeDays.has(d.value))
+    .map((d) => d.long)
+    .join(", ");
+
+  return (
+    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+      <div className="flex gap-3 items-start flex-wrap">
+        <CalendarDays className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-indigo-800 flex-1 min-w-[240px]">
+          <p className="font-medium mb-1">Hari Aktif Check-In</p>
+          <p className="text-indigo-700 mb-3">
+            Tentukan hari apa saja yang wajib check-in. Hari di luar daftar ini
+            tidak dihitung (tidak memutus streak, tidak dikirim reminder WA).
+            Berguna saat ada pergeseran jadwal.
+          </p>
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+          ) : isAdmin ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {DAY_LABELS.map((day) => (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => toggleDay(day.value)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-all ${
+                      activeDays.has(day.value)
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                        : "bg-white text-indigo-600 border-indigo-300 hover:bg-indigo-100"
+                    }`}
+                  >
+                    {day.short}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : saved ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : null}
+                  {saved ? "Tersimpan" : "Simpan"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-indigo-600">
+              Hari aktif saat ini: <strong>{activeLabel}</strong>. Hanya admin
+              yang bisa mengubah pengaturan ini.
             </p>
           )}
         </div>
