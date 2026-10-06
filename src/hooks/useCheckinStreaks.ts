@@ -24,24 +24,45 @@ const LOOKBACK_DAYS = 90;
 export const CHECKIN_ACTIVE_DAYS_KEY = "checkin_active_days";
 
 /**
- * Parse value dari app_settings → Set<number>.
- * Value disimpan sebagai JSON array of numbers, e.g. "[1,2,3,4,5]".
+ * Parse value dari app_settings → hari aktif + tanggal efektif.
+ *
+ * Format baru (recommended):
+ *   {"days": [1,2,3,4,5,6], "since": "2026-10-06"}
+ *
+ * Format lama (backward compat):
+ *   [1,2,3,4,5]
+ *
  * Fallback ke DEFAULT_ACTIVE_DAYS kalau parsing gagal.
  */
-export function parseActiveDays(raw: string | null | undefined): ReadonlySet<number> {
-  if (!raw) return DEFAULT_ACTIVE_DAYS;
+export function parseActiveDays(raw: string | null | undefined): {
+  days: ReadonlySet<number>;
+  since: string | null;
+} {
+  if (!raw) return { days: DEFAULT_ACTIVE_DAYS, since: null };
   try {
-    const arr = JSON.parse(raw);
-    if (Array.isArray(arr) && arr.length > 0 && arr.every((n: unknown) => typeof n === "number")) {
-      return new Set(arr as number[]);
+    const parsed = JSON.parse(raw);
+
+    // Format baru: { days: number[], since: string }
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const arr = parsed.days;
+      const since: string | null = typeof parsed.since === "string" ? parsed.since : null;
+      if (Array.isArray(arr) && arr.length > 0 && arr.every((n: unknown) => typeof n === "number")) {
+        return { days: new Set(arr as number[]), since };
+      }
+    }
+
+    // Format lama: number[]
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((n: unknown) => typeof n === "number")) {
+      return { days: new Set(parsed as number[]), since: null };
     }
   } catch { /* ignore parse errors */ }
-  return DEFAULT_ACTIVE_DAYS;
+  return { days: DEFAULT_ACTIVE_DAYS, since: null };
 }
 
 export function useCheckinStreaks() {
   const [streaks, setStreaks] = useState<StreakMap>({});
   const [activeDays, setActiveDays] = useState<ReadonlySet<number>>(DEFAULT_ACTIVE_DAYS);
+  const [activeDaysSince, setActiveDaysSince] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchStreaks = useCallback(async () => {
@@ -62,8 +83,9 @@ export function useCheckinStreaks() {
           .gte("created_at", new Date(Date.now() - LOOKBACK_DAYS * 86400000).toISOString()),
       ]);
 
-      const days = parseActiveDays(settingRes.data?.value);
+      const { days, since } = parseActiveDays(settingRes.data?.value);
       setActiveDays(days);
+      setActiveDaysSince(since);
 
       if (checkinRes.error) throw checkinRes.error;
 
@@ -75,7 +97,7 @@ export function useCheckinStreaks() {
 
       const map: StreakMap = {};
       for (const userId of Object.keys(datesByUser)) {
-        map[userId] = computeWeekdayStreak(datesByUser[userId], new Date(), days);
+        map[userId] = computeWeekdayStreak(datesByUser[userId], new Date(), days, since);
       }
 
       setStreaks(map);
@@ -94,6 +116,6 @@ export function useCheckinStreaks() {
   const getStreakData = (userId: string): StreakData => streaks[userId] || { streak: 0, missedDate: null };
   const getStreak = (userId: string): number => getStreakData(userId).streak;
 
-  return { streaks, activeDays, getStreak, getStreakData, loading, refresh: fetchStreaks };
+  return { streaks, activeDays, activeDaysSince, getStreak, getStreakData, loading, refresh: fetchStreaks };
 }
 

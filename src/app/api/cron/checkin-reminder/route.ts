@@ -65,7 +65,7 @@ export async function GET(request: Request) {
       ? parseInt(settingMap["checkin_reminder_hour"], 10)
       : DEFAULT_REMINDER_HOUR;
 
-    const activeDays = parseActiveDays(settingMap[CHECKIN_ACTIVE_DAYS_KEY]);
+    const { days: activeDays } = parseActiveDays(settingMap[CHECKIN_ACTIVE_DAYS_KEY]);
 
     // Hari ini bukan hari aktif → lewati (tidak perlu reminder)
     if (!activeDays.has(wibDow)) {

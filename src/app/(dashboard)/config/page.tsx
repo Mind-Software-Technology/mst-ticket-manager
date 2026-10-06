@@ -22,6 +22,7 @@ import { useUsers } from "@/hooks/useUsers";
 import { useCheckins } from "@/hooks/useCheckins";
 import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
 import { CHECKIN_ACTIVE_DAYS_KEY, parseActiveDays } from "@/hooks/useCheckinStreaks";
+import { toISODate } from "@/lib/date-utils";
 import { useClientHealth } from "@/hooks/useClientHealth";
 import { useSession } from "@/hooks/useSession";
 import type { Client, Product, Project, Sprint, Label, User } from "@/types";
@@ -531,8 +532,8 @@ function CheckinActiveDaysSetting({ isAdmin }: { isAdmin: boolean }) {
         .eq("key", CHECKIN_ACTIVE_DAYS_KEY)
         .maybeSingle();
       if (!cancelled) {
-        const parsed = parseActiveDays(data?.value);
-        setActiveDays(new Set(parsed));
+        const { days } = parseActiveDays(data?.value);
+        setActiveDays(new Set(days));
         setLoading(false);
       }
     })();
@@ -557,7 +558,10 @@ function CheckinActiveDaysSetting({ isAdmin }: { isAdmin: boolean }) {
     setSaving(true);
     try {
       const supabase = createClient();
-      const value = JSON.stringify([...activeDays].sort((a, b) => a - b));
+      const value = JSON.stringify({
+        days: [...activeDays].sort((a, b) => a - b),
+        since: toISODate(new Date()),
+      });
       const { error } = await supabase
         .from("app_settings")
         .upsert({ key: CHECKIN_ACTIVE_DAYS_KEY, value, updated_at: new Date().toISOString() });
