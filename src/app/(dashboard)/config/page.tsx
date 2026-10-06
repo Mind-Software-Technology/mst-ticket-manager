@@ -518,6 +518,7 @@ const DAY_LABELS: { value: number; short: string; long: string }[] = [
 
 function CheckinActiveDaysSetting({ isAdmin }: { isAdmin: boolean }) {
   const [activeDays, setActiveDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5]));
+  const [savedSince, setSavedSince] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -532,8 +533,9 @@ function CheckinActiveDaysSetting({ isAdmin }: { isAdmin: boolean }) {
         .eq("key", CHECKIN_ACTIVE_DAYS_KEY)
         .maybeSingle();
       if (!cancelled) {
-        const { days } = parseActiveDays(data?.value);
+        const { days, since } = parseActiveDays(data?.value);
         setActiveDays(new Set(days));
+        setSavedSince(since);
         setLoading(false);
       }
     })();
@@ -560,7 +562,7 @@ function CheckinActiveDaysSetting({ isAdmin }: { isAdmin: boolean }) {
       const supabase = createClient();
       const value = JSON.stringify({
         days: [...activeDays].sort((a, b) => a - b),
-        since: toISODate(new Date()),
+        since: savedSince || toISODate(new Date()),
       });
       const { error } = await supabase
         .from("app_settings")
