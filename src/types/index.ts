@@ -220,6 +220,16 @@ export interface Checkin {
   employee?: User | null;
   approver?: User | null;
   items?: CheckinItem[];
+  comments?: CheckinComment[];
+}
+
+export interface CheckinComment {
+  id: string;
+  checkin_id: string;
+  user_id: string;
+  message: string;
+  created_at: string;
+  user?: User | null;
 }
 
 export interface CheckinItem {

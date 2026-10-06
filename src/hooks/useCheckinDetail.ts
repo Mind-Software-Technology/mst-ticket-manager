@@ -31,6 +31,8 @@ interface UseCheckinDetailResult {
     mentionedIds?: string[],
   ) => Promise<number>;
   updateYesterdayProblem: (value: string) => Promise<void>;
+  addComment: (message: string) => Promise<void>;
+  deleteComment: (id: string) => Promise<void>;
 }
 
 export function useCheckinDetail(
@@ -63,6 +65,10 @@ export function useCheckinDetail(
           items:checkin_items(
             id, checkin_id, ticket_id, description, sort_order,
             ticket:tickets(id, ticket_id, subject, state)
+          ),
+          comments:checkin_comments(
+            id, checkin_id, user_id, message, created_at,
+            user:users!checkin_comments_user_id_fkey(id, name, email, division)
           )
         `,
         )
@@ -74,6 +80,9 @@ export function useCheckinDetail(
       const result = data as Checkin;
       result.items = (result.items || []).sort(
         (a, b) => a.sort_order - b.sort_order,
+      );
+      result.comments = (result.comments || []).sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       setCheckin(result);
     } catch (err) {
@@ -222,6 +231,29 @@ export function useCheckinDetail(
     if (delErr) throw delErr;
   };
 
+  const addComment = async (message: string) => {
+    if (!checkin || !actorId) return;
+    if (!message.trim()) return;
+    const supabase = createClient();
+    const { error: insErr } = await supabase.from("checkin_comments").insert({
+      checkin_id: checkin.id,
+      user_id: actorId,
+      message: message.trim(),
+    });
+    if (insErr) throw insErr;
+    await fetchCheckin();
+  };
+
+  const deleteComment = async (id: string) => {
+    const supabase = createClient();
+    const { error: delErr } = await supabase
+      .from("checkin_comments")
+      .delete()
+      .eq("id", id);
+    if (delErr) throw delErr;
+    await fetchCheckin();
+  };
+
   return {
     checkin,
     loading,
@@ -231,5 +263,7 @@ export function useCheckinDetail(
     deleteCheckin,
     updateItemDescription,
     updateYesterdayProblem,
+    addComment,
+    deleteComment,
   };
 }

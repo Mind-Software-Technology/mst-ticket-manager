@@ -10,7 +10,7 @@
 
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, Search, Loader2, Pencil, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, Loader2, Pencil, Check, X, MessageSquare, Send } from "lucide-react";
 import { Button, Input, Modal, Badge, EmptyState, SearchInput } from "@/components/ui";
 import { useSession } from "@/hooks/useSession";
 import { useCheckinDetail } from "@/hooks/useCheckinDetail";
@@ -40,6 +40,8 @@ export default function CheckinDetailPage() {
     deleteCheckin,
     updateItemDescription,
     updateYesterdayProblem,
+    addComment,
+    deleteComment,
   } = useCheckinDetail(checkinId, session?.profile?.id);
 
   const [drafts, setDrafts] = useState<DraftItem[]>([]);
@@ -541,6 +543,15 @@ export default function CheckinDetailPage() {
         </div>
       </div>
 
+      <div className="max-w-3xl mx-auto px-4 md:px-8 mt-6">
+        <CheckinCommentsSection 
+          checkin={checkin} 
+          addComment={addComment} 
+          deleteComment={deleteComment} 
+          currentUser={session?.profile} 
+        />
+      </div>
+
       {showPicker && (
         <TicketPickerModal
           assigneeId={session?.profile?.id}
@@ -668,5 +679,106 @@ function TicketPickerModal({
         </div>
       </div>
     </Modal>
+  );
+}
+
+function CheckinCommentsSection({
+  checkin,
+  addComment,
+  deleteComment,
+  currentUser,
+}: {
+  checkin: any;
+  addComment: (msg: string) => Promise<void>;
+  deleteComment: (id: string) => Promise<void>;
+  currentUser: any;
+}) {
+  const [msg, setMsg] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!msg.trim()) return;
+    setSending(true);
+    try {
+      await addComment(msg);
+      setMsg("");
+    } catch (e) {
+      alert("Gagal mengirim komentar.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-12">
+      <div className="p-4 md:p-6 border-b border-slate-200 bg-slate-50/50 flex items-center gap-2">
+        <MessageSquare className="w-5 h-5 text-indigo-600" />
+        <h2 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">
+          Diskusi & Komentar
+        </h2>
+      </div>
+      <div className="p-4 md:p-6 flex flex-col gap-4 max-h-[500px] overflow-y-auto bg-slate-50/30">
+        {(!checkin.comments || checkin.comments.length === 0) ? (
+          <p className="text-sm text-slate-400 text-center py-4">Belum ada komentar.</p>
+        ) : (
+          checkin.comments.map((c: any) => {
+            const isMe = c.user_id === currentUser?.id;
+            return (
+              <div key={c.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-semibold text-slate-700">{c.user?.name}</span>
+                  <span className="text-[10px] text-slate-400">
+                    {new Date(c.created_at).toLocaleString("id-ID", {
+                      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
+                    })}
+                  </span>
+                </div>
+                <div className={`relative group max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                  isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white border border-slate-200 text-slate-800 rounded-tl-none"
+                }`}>
+                  <p className="whitespace-pre-wrap leading-relaxed">{c.message}</p>
+                  
+                  {isMe && (
+                    <button
+                      onClick={() => {
+                        if (confirm("Hapus komentar ini?")) deleteComment(c.id);
+                      }}
+                      className="absolute -left-8 top-2 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full shadow-sm border border-slate-100"
+                      title="Hapus"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+      <div className="p-4 bg-white border-t border-slate-100 flex gap-3">
+        <textarea
+          className="flex-1 min-h-[44px] max-h-[120px] rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none transition-colors"
+          placeholder="Tulis komentar..."
+          value={msg}
+          onChange={(e) => setMsg(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+        />
+        <Button 
+          variant="primary" 
+          onClick={handleSend} 
+          loading={sending} 
+          disabled={!msg.trim()}
+          icon={!sending ? <Send className="w-4 h-4" /> : undefined}
+          className="self-end rounded-xl h-[44px] px-4"
+        >
+          {!sending && "Kirim"}
+        </Button>
+      </div>
+    </div>
   );
 }
