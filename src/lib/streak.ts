@@ -75,6 +75,14 @@ export function computeWeekdayStreak(
       continue;
     }
 
+    // Khusus untuk data lama (sebelum aturan baru ditetapkan),
+    // jangan putus streaknya. Lewati saja hari yang bolong
+    // sehingga semua check-in lama ditotal menjadi 1 streak panjang.
+    if (activeDaysSince && dateStr < activeDaysSince) {
+      cursor.setDate(cursor.getDate() - 1);
+      continue;
+    }
+
     // Streak terputus! Ini adalah hari yang terlewat
     missedDate = dateStr;
     break;
