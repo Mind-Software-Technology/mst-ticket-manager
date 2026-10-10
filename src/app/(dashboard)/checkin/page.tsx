@@ -10,12 +10,12 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { PlusCircle, Search, X } from "lucide-react";
 import { useCheckins } from "@/hooks/useCheckins";
 import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
 import { useSession } from "@/hooks/useSession";
 import { Button, Badge, EmptyState } from "@/components/ui";
+import { StreakIcon } from "@/components/StreakIcon";
 
 type GroupBy = "none" | "employee" | "division" | "date";
 
@@ -178,12 +178,11 @@ export default function CheckinListPage() {
                     
                     {/* Icon dengan efek bounce dan rotasi saat hover */}
                     <div className={`relative ${isCheckedInToday ? "animate-bounce" : "opacity-75 grayscale-[0.5]"}`}>
-                      <Image
-                        src={isCheckedInToday ? "/streak-active.png" : "/streak-inactive.png"}
-                        alt="Streak"
+                      <StreakIcon
+                        streak={myStreak}
+                        isActive={isCheckedInToday}
                         width={56}
                         height={56}
-                        className="object-contain drop-shadow-xl hover:scale-110 hover:rotate-[6deg] transition-all duration-300"
                       />
                     </div>
                   </div>

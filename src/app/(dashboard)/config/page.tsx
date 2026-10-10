@@ -9,9 +9,10 @@
 // =====================================================
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+
 import { Plus, Pencil, Trash2, Loader2, Send, Copy, Check, BellRing, Clock, Flame, CalendarDays } from "lucide-react";
 import { Button, Input, Modal } from "@/components/ui";
+import { StreakIcon } from "@/components/StreakIcon";
 import { createClient } from "@/utils/supabase/client";
 import { useClients } from "@/hooks/useClients";
 import { useProducts } from "@/hooks/useProducts";
@@ -338,9 +339,9 @@ function UsersTab() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${checkedInTodayIds.has(user.id) ? 'text-orange-600' : 'text-slate-400'}`}>
-                      <Image
-                        src={checkedInTodayIds.has(user.id) ? "/streak-active.png" : "/streak-inactive.png"}
-                        alt="Streak"
+                      <StreakIcon
+                        streak={getStreak(user.id)}
+                        isActive={checkedInTodayIds.has(user.id)}
                         width={20}
                         height={20}
                         className="object-contain"

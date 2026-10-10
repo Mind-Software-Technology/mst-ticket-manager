@@ -14,8 +14,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { sendWhatsAppMessage, formatCheckinReminder } from "@/lib/fonnte";
 import { wibDayBoundsUtc } from "@/lib/date-utils";
-import { DEFAULT_ACTIVE_DAYS } from "@/lib/streak";
-import { parseActiveDays, CHECKIN_ACTIVE_DAYS_KEY } from "@/hooks/useCheckinStreaks";
+import { parseActiveDays, CHECKIN_ACTIVE_DAYS_KEY } from "@/lib/streak";
 
 const DEFAULT_REMINDER_HOUR = 10;
 

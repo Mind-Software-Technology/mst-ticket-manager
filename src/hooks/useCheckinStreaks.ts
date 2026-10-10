@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // =====================================================
 // useCheckinStreaks Hook — Check-In Streak (Configurable Days)
@@ -11,7 +11,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient as createSupabaseClient } from "@/utils/supabase/client";
 import { toISODate } from "@/lib/date-utils";
-import { computeWeekdayStreak, DEFAULT_ACTIVE_DAYS } from "@/lib/streak";
+import {
+  computeWeekdayStreak,
+  DEFAULT_ACTIVE_DAYS,
+  CHECKIN_ACTIVE_DAYS_KEY,
+  parseActiveDays,
+} from "@/lib/streak";
 
 type StreakData = { streak: number; missedDate: string | null };
 type StreakMap = Record<string, StreakData>;
@@ -20,44 +25,8 @@ type StreakMap = Record<string, StreakData>;
 // tanpa nge-fetch seluruh histori check-in.
 const LOOKBACK_DAYS = 90;
 
-/** Key di tabel app_settings untuk hari aktif check-in. */
-export const CHECKIN_ACTIVE_DAYS_KEY = "checkin_active_days";
-
-/**
- * Parse value dari app_settings → hari aktif + tanggal efektif.
- *
- * Format baru (recommended):
- *   {"days": [1,2,3,4,5,6], "since": "2026-10-06"}
- *
- * Format lama (backward compat):
- *   [1,2,3,4,5]
- *
- * Fallback ke DEFAULT_ACTIVE_DAYS kalau parsing gagal.
- */
-export function parseActiveDays(raw: string | null | undefined): {
-  days: ReadonlySet<number>;
-  since: string | null;
-} {
-  if (!raw) return { days: DEFAULT_ACTIVE_DAYS, since: null };
-  try {
-    const parsed = JSON.parse(raw);
-
-    // Format baru: { days: number[], since: string }
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const arr = parsed.days;
-      const since: string | null = typeof parsed.since === "string" ? parsed.since : null;
-      if (Array.isArray(arr) && arr.length > 0 && arr.every((n: unknown) => typeof n === "number")) {
-        return { days: new Set(arr as number[]), since };
-      }
-    }
-
-    // Format lama: number[]
-    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((n: unknown) => typeof n === "number")) {
-      return { days: new Set(parsed as number[]), since: null };
-    }
-  } catch { /* ignore parse errors */ }
-  return { days: DEFAULT_ACTIVE_DAYS, since: null };
-}
+// Dipindah ke lib/streak.ts supaya bisa dipakai server (API route); re-export untuk kompatibilitas.
+export { CHECKIN_ACTIVE_DAYS_KEY, parseActiveDays };
 
 export function useCheckinStreaks() {
   const [streaks, setStreaks] = useState<StreakMap>({});

@@ -14,6 +14,47 @@ import { toISODate } from "@/lib/date-utils";
 /** Default hari aktif: Senin(1) - Jumat(5). */
 export const DEFAULT_ACTIVE_DAYS: ReadonlySet<number> = new Set([1, 2, 3, 4, 5]);
 
+/** Key di tabel app_settings untuk hari aktif check-in. */
+export const CHECKIN_ACTIVE_DAYS_KEY = "checkin_active_days";
+
+/**
+ * Parse value dari app_settings → hari aktif + tanggal efektif.
+ *
+ * Format baru (recommended):
+ *   {"days": [1,2,3,4,5,6], "since": "2026-10-06"}
+ *
+ * Format lama (backward compat):
+ *   [1,2,3,4,5]
+ *
+ * Fallback ke DEFAULT_ACTIVE_DAYS kalau parsing gagal.
+ *
+ * Ada di lib (bukan hook "use client") supaya aman dipakai server/API route.
+ */
+export function parseActiveDays(raw: string | null | undefined): {
+  days: ReadonlySet<number>;
+  since: string | null;
+} {
+  if (!raw) return { days: DEFAULT_ACTIVE_DAYS, since: null };
+  try {
+    const parsed = JSON.parse(raw);
+
+    // Format baru: { days: number[], since: string }
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const arr = parsed.days;
+      const since: string | null = typeof parsed.since === "string" ? parsed.since : null;
+      if (Array.isArray(arr) && arr.length > 0 && arr.every((n: unknown) => typeof n === "number")) {
+        return { days: new Set(arr as number[]), since };
+      }
+    }
+
+    // Format lama: number[]
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((n: unknown) => typeof n === "number")) {
+      return { days: new Set(parsed as number[]), since: null };
+    }
+  } catch { /* ignore parse errors */ }
+  return { days: DEFAULT_ACTIVE_DAYS, since: null };
+}
+
 /**
  * Hitung streak check-in dari kumpulan tanggal (format "YYYY-MM-DD")
  * tempat user pernah check-in.
