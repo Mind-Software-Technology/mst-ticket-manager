@@ -11,7 +11,7 @@ import {
   STORAGE_BUCKET_TICKET_ATTACHMENTS,
   MAX_TICKET_ATTACHMENT_SIZE_BYTES,
 } from "@/lib/constants";
-import type { TicketAttachment } from "@/types";
+import type { ActivityLogFile, TicketAttachment } from "@/types";
 
 const ALLOWED_DOC_MIME_TYPES = [
   "application/pdf",
@@ -98,6 +98,62 @@ export async function uploadTicketAttachments(
   }
 
   return created;
+}
+
+const LOG_FILE_EXTENSIONS = [
+  ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+  ".csv", ".txt", ".zip", ".rar", ".7z",
+];
+
+/** File yang boleh dilampirkan di activity log (foto ditangani terpisah). */
+export function validateLogFile(file: File): string | null {
+  const name = file.name.toLowerCase();
+  const ok =
+    file.type.startsWith("video/") ||
+    file.type === "application/pdf" ||
+    LOG_FILE_EXTENSIONS.some((ext) => name.endsWith(ext));
+  if (!ok) {
+    return `${file.name}: tipe file tidak didukung (PDF, Word, Excel, PowerPoint, CSV, TXT, ZIP, atau video).`;
+  }
+  if (file.size > MAX_TICKET_ATTACHMENT_SIZE_BYTES) {
+    const limitMb = Math.round(MAX_TICKET_ATTACHMENT_SIZE_BYTES / 1024 / 1024);
+    return `${file.name}: ukuran melebihi batas ${limitMb}MB.`;
+  }
+  return null;
+}
+
+/**
+ * Upload file non-foto untuk activity log ke storage.
+ * Mengembalikan metadata untuk disimpan di kolom activity_logs.files.
+ */
+export async function uploadLogFiles(
+  supabase: SupabaseClient,
+  ticketId: string,
+  files: File[],
+): Promise<ActivityLogFile[]> {
+  const result: ActivityLogFile[] = [];
+  for (const [i, file] of files.entries()) {
+    const dot = file.name.lastIndexOf(".");
+    const ext = dot > -1 ? file.name.slice(dot + 1).replace(/[^a-zA-Z0-9]/g, "") : "";
+    const path = `${ticketId}/log-${Date.now()}-${i}${ext ? "." + ext : ""}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from(STORAGE_BUCKET_TICKET_ATTACHMENTS)
+      .upload(path, file, { contentType: file.type || undefined });
+    if (uploadErr) throw uploadErr;
+
+    const { data: pub } = supabase.storage
+      .from(STORAGE_BUCKET_TICKET_ATTACHMENTS)
+      .getPublicUrl(path);
+
+    result.push({
+      name: file.name,
+      url: pub.publicUrl,
+      type: file.type || null,
+      size: file.size,
+    });
+  }
+  return result;
 }
 
 /** Ekstrak storage path dari public URL (untuk hapus object). */

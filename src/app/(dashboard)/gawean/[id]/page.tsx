@@ -11,7 +11,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft, Clock, MessageSquarePlus, Copy, X, GitFork } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquarePlus, Copy, X, GitFork, Paperclip } from "lucide-react";
+import { uploadLogFiles, validateLogFile, formatFileSize } from "@/lib/ticket-attachments";
 import { useTicketDetail } from "@/hooks/useTicketDetail";
 import { useUsers } from "@/hooks/useUsers";
 import { useClients } from "@/hooks/useClients";
@@ -79,8 +80,19 @@ export default function TicketDetailPage() {
     () => () => progressPreviews.forEach((u) => URL.revokeObjectURL(u)),
     [progressPreviews],
   );
+  // File non-foto (PDF, Word, Excel, video, dll.)
+  const [progressDocs, setProgressDocs] = useState<File[]>([]);
   const addProgressFiles = (files: File[]) => {
     if (files.length > 0) setProgressFiles((prev) => [...prev, ...files]);
+  };
+  const addProgressDocs = (files: File[]) => {
+    const valid: File[] = [];
+    for (const f of files) {
+      const err = validateLogFile(f);
+      if (err) alert(err);
+      else valid.push(f);
+    }
+    if (valid.length > 0) setProgressDocs((prev) => [...prev, ...valid]);
   };
   // Copy / carry-over ke sprint berikutnya (admin)
   const [showCopy, setShowCopy] = useState(false);
@@ -137,7 +149,7 @@ export default function TicketDetailPage() {
 
   const handleSendProgress = async () => {
     if (!ticket) return;
-    if (isEmptyHtml(progressText) && progressFiles.length === 0) return;
+    if (isEmptyHtml(progressText) && progressFiles.length === 0 && progressDocs.length === 0) return;
     setSendingProgress(true);
     try {
       const supabase = createClient();
@@ -157,6 +169,8 @@ export default function TicketDetailPage() {
         imageUrls.push(pub.publicUrl);
       }
 
+      const logFiles = await uploadLogFiles(supabase, ticket.id, progressDocs);
+
       const commentMessage = isEmptyHtml(progressText) ? null : progressText;
       const { data: inserted, error: insertErr } = await supabase
         .from("activity_logs")
@@ -169,6 +183,7 @@ export default function TicketDetailPage() {
           // image_url = foto pertama (kompatibel data lama), image_urls = semua.
           image_url: imageUrls[0] ?? null,
           image_urls: imageUrls,
+          files: logFiles,
           created_at: new Date().toISOString(),
         })
         .select("id")
@@ -188,6 +203,7 @@ export default function TicketDetailPage() {
 
       setProgressText("");
       setProgressFiles([]);
+      setProgressDocs([]);
       setShowProgress(false);
       setTimelineKey((k) => k + 1);
     } catch (err) {
@@ -621,6 +637,7 @@ export default function TicketDetailPage() {
               message: log.message,
               image_url: log.image_url ?? null,
               image_urls: log.image_urls ?? [],
+              files: log.files ?? [],
               created_at: log.created_at,
             })),
           );
@@ -1209,6 +1226,50 @@ export default function TicketDetailPage() {
                 💡 Bisa pilih beberapa foto, atau paste gambar langsung ke editor (Ctrl+V) berkali-kali
               </p>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Lampiran file
+              </label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.rar,.7z,video/*"
+                multiple
+                onChange={(e) => {
+                  addProgressDocs(Array.from(e.target.files ?? []));
+                  e.target.value = "";
+                }}
+                className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
+              />
+              {progressDocs.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {progressDocs.map((file, i) => (
+                    <li
+                      key={`${file.name}-${i}`}
+                      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-700"
+                    >
+                      <Paperclip className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <span className="truncate flex-1">{file.name}</span>
+                      <span className="text-xs text-slate-400 flex-shrink-0">
+                        {formatFileSize(file.size)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProgressDocs((prev) => prev.filter((_, idx) => idx !== i))
+                        }
+                        className="text-slate-400 hover:text-red-500 flex-shrink-0"
+                        title="Hapus file"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-1 text-xs text-slate-400">
+                PDF, Word, Excel, PowerPoint, CSV, TXT, ZIP, atau video (maks 50MB per file)
+              </p>
+            </div>
             <div className="flex gap-2 justify-end">
               <Button
                 variant="secondary"
@@ -1221,7 +1282,11 @@ export default function TicketDetailPage() {
                 variant="primary"
                 onClick={handleSendProgress}
                 loading={sendingProgress}
-                disabled={isEmptyHtml(progressText) && progressFiles.length === 0}
+                disabled={
+                  isEmptyHtml(progressText) &&
+                  progressFiles.length === 0 &&
+                  progressDocs.length === 0
+                }
               >
                 Send
               </Button>

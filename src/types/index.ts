@@ -202,8 +202,17 @@ export interface ActivityLog {
   image_url?: string | null;
   /** Semua foto lampiran (image_url = foto pertama, untuk data lama). */
   image_urls?: string[] | null;
+  /** File lampiran non-foto (PDF, Word, Excel, video, dll.). */
+  files?: ActivityLogFile[] | null;
   created_at: string;
   user?: User | null;
+}
+
+export interface ActivityLogFile {
+  name: string;
+  url: string;
+  type: string | null;
+  size: number | null;
 }
 
 export interface Checkin {

@@ -10,7 +10,8 @@
 // =====================================================
 
 import { useEffect, useState } from "react";
-import { Clock, GitCommit, MessageSquare, User, Pencil, Check, X } from "lucide-react";
+import { Clock, GitCommit, MessageSquare, User, Pencil, Check, X, Paperclip } from "lucide-react";
+import { formatFileSize } from "@/lib/ticket-attachments";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { getLogImages, type ActivityLog } from "@/types";
 import { Badge, RichTextEditor } from "./ui";
@@ -124,7 +125,7 @@ export function ActivityTimeline({
 
   // Simpan hasil edit ke Supabase.
   const saveEdit = async (log: ActivityLog) => {
-    if (isEmptyHtml(editDraft) && getLogImages(log).length === 0) return;
+    if (isEmptyHtml(editDraft) && getLogImages(log).length === 0 && !log.files?.length) return;
     setSaving(true);
     try {
       const supabase = createClient();
@@ -210,7 +211,8 @@ export function ActivityTimeline({
     }
 
     const images = getLogImages(log);
-    if (log.message || images.length > 0) {
+    const files = log.files ?? [];
+    if (log.message || images.length > 0 || files.length > 0) {
       return (
         <div className="space-y-2">
           {log.message && (
@@ -247,6 +249,28 @@ export function ActivityTimeline({
                     className="max-h-48 rounded-lg border border-slate-200 object-cover"
                   />
                 </button>
+              ))}
+            </div>
+          )}
+          {files.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {files.map((f) => (
+                <a
+                  key={f.url}
+                  href={f.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={f.name}
+                  className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                >
+                  <Paperclip className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <span className="truncate flex-1">{f.name}</span>
+                  {f.size != null && (
+                    <span className="text-xs text-slate-400 flex-shrink-0">
+                      {formatFileSize(f.size)}
+                    </span>
+                  )}
+                </a>
               ))}
             </div>
           )}
@@ -372,7 +396,7 @@ export function ActivityTimeline({
                     <button
                       type="button"
                       onClick={() => void saveEdit(log)}
-                      disabled={saving || (isEmptyHtml(editDraft) && getLogImages(log).length === 0)}
+                      disabled={saving || (isEmptyHtml(editDraft) && getLogImages(log).length === 0 && !log.files?.length)}
                       title="Simpan"
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
