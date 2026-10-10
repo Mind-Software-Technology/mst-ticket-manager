@@ -133,6 +133,17 @@ export async function GET(request: Request) {
     let errors = 0;
     const failedUsers: string[] = [];
 
+    // Gagal kirim → lepas klaim supaya panggilan cron berikutnya mencoba lagi
+    // (kalau tidak, user itu tidak akan diingatkan lagi sampai besok).
+    const releaseClaim = async (userId: string) => {
+      const { error } = await supabase
+        .from("checkin_reminder_log")
+        .delete()
+        .eq("user_id", userId)
+        .eq("reminder_date", todayStr);
+      if (error) console.error("[checkin-reminder] Gagal lepas klaim:", error);
+    };
+
     for (const user of pending) {
       // Klaim slot "sudah diingatkan hari ini" dulu — kalau baris sudah ada
       // (dikirim oleh panggilan cron-job.org sebelumnya), lewati tanpa kirim WA lagi.
@@ -170,11 +181,13 @@ export async function GET(request: Request) {
             `[checkin-reminder] Failed to send to ${user.name}:`,
             result.detail
           );
+          await releaseClaim(user.id);
           errors++;
           failedUsers.push(user.name);
         }
       } catch (err) {
         console.error(`[checkin-reminder] Error sending to ${user.name}:`, err);
+        await releaseClaim(user.id);
         errors++;
         failedUsers.push(user.name);
       }
