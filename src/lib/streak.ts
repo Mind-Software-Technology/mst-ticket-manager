@@ -14,6 +14,20 @@ import { toISODate } from "@/lib/date-utils";
 /** Default hari aktif: Senin(1) - Jumat(5). */
 export const DEFAULT_ACTIVE_DAYS: ReadonlySet<number> = new Set([1, 2, 3, 4, 5]);
 
+/**
+ * Parse jam reminder dari app_settings. Mendukung "HH:MM" (baru) dan "H" (lama).
+ * Fallback ke 10:00 kalau tidak valid.
+ */
+export function parseReminderTime(raw: string | null | undefined): { hour: number; minute: number } {
+  const m = /^\s*(\d{1,2})(?::(\d{1,2}))?\s*$/.exec(raw ?? "");
+  if (m) {
+    const hour = parseInt(m[1], 10);
+    const minute = m[2] ? parseInt(m[2], 10) : 0;
+    if (hour <= 23 && minute <= 59) return { hour, minute };
+  }
+  return { hour: 10, minute: 0 };
+}
+
 /** Key di tabel app_settings untuk hari aktif check-in. */
 export const CHECKIN_ACTIVE_DAYS_KEY = "checkin_active_days";
 

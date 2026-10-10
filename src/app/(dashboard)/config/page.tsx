@@ -22,7 +22,7 @@ import { useLabels } from "@/hooks/useLabels";
 import { useUsers } from "@/hooks/useUsers";
 import { useCheckins } from "@/hooks/useCheckins";
 import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
-import { CHECKIN_ACTIVE_DAYS_KEY, parseActiveDays } from "@/hooks/useCheckinStreaks";
+import { CHECKIN_ACTIVE_DAYS_KEY, parseActiveDays, parseReminderTime } from "@/lib/streak";
 import { toISODate } from "@/lib/date-utils";
 import { useClientHealth } from "@/hooks/useClientHealth";
 import { useSession } from "@/hooks/useSession";
@@ -414,8 +414,14 @@ function UsersTab() {
 
 const REMINDER_HOUR_KEY = "checkin_reminder_hour";
 
+/** Value lama berupa jam saja ("10") → "10:00". Format baru "HH:MM". */
+function normalizeReminderTime(raw: string): string {
+  const { hour, minute } = parseReminderTime(raw);
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 function ReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
-  const [hour, setHour] = useState<string>("10");
+  const [hour, setHour] = useState<string>("10:00");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -429,7 +435,7 @@ function ReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
         .select("value")
         .eq("key", REMINDER_HOUR_KEY)
         .maybeSingle();
-      if (!cancelled && data?.value) setHour(data.value);
+      if (!cancelled && data?.value) setHour(normalizeReminderTime(data.value));
       if (!cancelled) setLoading(false);
     })();
     return () => {
@@ -469,20 +475,16 @@ function ReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
             <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
           ) : isAdmin ? (
             <div className="flex items-center gap-2">
-              <select
+              <input
+                type="time"
                 value={hour}
                 onChange={(e) => setHour(e.target.value)}
                 className="px-2.5 py-1.5 text-sm border border-amber-300 rounded-lg bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
-              >
-                {Array.from({ length: 24 }, (_, h) => (
-                  <option key={h} value={h}>
-                    {String(h).padStart(2, "0")}:00 WIB
-                  </option>
-                ))}
-              </select>
+              />
+              <span className="text-xs text-amber-700">WIB</span>
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || !hour}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 {saving ? (
@@ -495,7 +497,7 @@ function ReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
             </div>
           ) : (
             <p className="text-xs text-amber-600">
-              Reminder otomatis jam <strong>{hour}:00 WIB</strong>. Hanya
+              Reminder otomatis jam <strong>{hour} WIB</strong>. Hanya
               admin yang bisa mengubah jam ini.
             </p>
           )}

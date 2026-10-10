@@ -14,9 +14,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { sendWhatsAppMessage, formatCheckinReminder } from "@/lib/fonnte";
 import { wibDayBoundsUtc } from "@/lib/date-utils";
-import { parseActiveDays, CHECKIN_ACTIVE_DAYS_KEY } from "@/lib/streak";
-
-const DEFAULT_REMINDER_HOUR = 10;
+import { parseActiveDays, parseReminderTime, CHECKIN_ACTIVE_DAYS_KEY } from "@/lib/streak";
 
 /**
  * GET /api/cron/checkin-reminder
@@ -60,9 +58,9 @@ export async function GET(request: Request) {
     const settingMap: Record<string, string> = {};
     for (const s of settings || []) settingMap[s.key] = s.value;
 
-    const reminderHour = settingMap["checkin_reminder_hour"]
-      ? parseInt(settingMap["checkin_reminder_hour"], 10)
-      : DEFAULT_REMINDER_HOUR;
+    const reminder = parseReminderTime(settingMap["checkin_reminder_hour"]);
+    const reminderMinutes = reminder.hour * 60 + reminder.minute;
+    const nowMinutes = wibHour * 60 + wibNow.getUTCMinutes();
 
     const { days: activeDays } = parseActiveDays(settingMap[CHECKIN_ACTIVE_DAYS_KEY]);
 
@@ -75,11 +73,13 @@ export async function GET(request: Request) {
       });
     }
 
-    if (wibHour !== reminderHour) {
+    // Kirim jika sudah lewat jam reminder (hari ini). Dedup via checkin_reminder_log
+    // mencegah kirim ulang, dan cron yang terlambat/terlewat tetap terkejar.
+    if (nowMinutes < reminderMinutes) {
       return NextResponse.json({
-        message: "Bukan jam reminder, dilewati",
-        wib_hour: wibHour,
-        reminder_hour: reminderHour,
+        message: "Belum jam reminder, dilewati",
+        wib_time: `${String(wibHour).padStart(2, "0")}:${String(wibNow.getUTCMinutes()).padStart(2, "0")}`,
+        reminder_time: `${String(reminder.hour).padStart(2, "0")}:${String(reminder.minute).padStart(2, "0")}`,
       });
     }
 
@@ -183,7 +183,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       message: "Check-in reminder completed",
       today: todayStr,
-      reminder_hour: reminderHour,
+      reminder_time: `${String(reminder.hour).padStart(2, "0")}:${String(reminder.minute).padStart(2, "0")}`,
       total_pending: pending.length,
       notified,
       skipped_already_sent: skipped,
