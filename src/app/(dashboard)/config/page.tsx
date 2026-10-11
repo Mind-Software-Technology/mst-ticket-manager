@@ -95,6 +95,7 @@ function UsersTab() {
   const [waDraft, setWaDraft] = useState<Record<string, string>>({});
   const [savingWaId, setSavingWaId] = useState<string | null>(null);
   const [remindingId, setRemindingId] = useState<string | null>(null);
+  const [weekendReminding, setWeekendReminding] = useState(false);
 
   const checkedInTodayIds = new Set(
     todaysCheckins.map((c) => c.employee_id).filter(Boolean) as string[],
@@ -136,6 +137,30 @@ function UsersTab() {
       alert("Gagal mengirim reminder. Coba lagi.");
     } finally {
       setRemindingId(null);
+    }
+  };
+
+  const handleWeekendRemindAll = async () => {
+    if (!confirm("Kirim pengingat akhir pekan ke SEMUA user aktif yang punya nomor WA sekarang?")) return;
+    setWeekendReminding(true);
+    try {
+      const res = await fetch("/api/weekend-reminder/send", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Gagal mengirim: ${data?.error || "Unknown error"}`);
+        return;
+      }
+      alert(
+        `✅ Pengingat akhir pekan terkirim!\n` +
+        `Hari: ${data.day ?? "-"}\n` +
+        `Terkirim: ${data.notified ?? 0} user\n` +
+        `Gagal: ${data.errors ?? 0} user`
+      );
+    } catch (err) {
+      console.error("[config] weekend remind error:", err);
+      alert("Gagal mengirim pengingat. Coba lagi.");
+    } finally {
+      setWeekendReminding(false);
     }
   };
 
@@ -197,6 +222,21 @@ function UsersTab() {
             Hubungkan akun Telegram untuk menerima notifikasi sprint reminder
           </p>
         </div>
+        {isAdmin && (
+          <button
+            onClick={handleWeekendRemindAll}
+            disabled={weekendReminding}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors disabled:opacity-50"
+            title="Kirim pesan pengingat akhir pekan ke semua user aktif via WhatsApp"
+          >
+            {weekendReminding ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <BellRing className="w-4 h-4" />
+            )}
+            Kirim Pengingat Akhir Pekan
+          </button>
+        )}
       </div>
 
       {/* Info box */}
