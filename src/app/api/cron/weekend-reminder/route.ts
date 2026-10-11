@@ -1,22 +1,24 @@
 // =====================================================
 // Cron Job: Weekend Daily Reminder (WhatsApp via Fonnte)
 //
-// Dipanggil oleh Vercel Cron setiap Sabtu & Minggu jam 20:00 WIB
-// (= 13:00 UTC, lihat vercel.json).
+// Dipanggil oleh Vercel Cron setiap jam (0 * * * * UTC).
+// Endpoint sendiri yang mengecek:
+//   1. Apakah hari ini Sabtu (6) atau Minggu (0)
+//   2. Apakah jam WIB sekarang sudah >= weekend_reminder_hour
+//      (dibaca dari app_settings, default 20:00)
 //
-// Hanya berjalan di hari Sabtu (6) dan Minggu (0).
-// Mengirim pesan WA pengingat/sapaan akhir pekan ke semua user
-// aktif yang memiliki nomor WhatsApp terdaftar.
+// Dedup via weekend_reminder_log supaya aman dipanggil
+// berkali-kali tanpa kirim WA dobel ke user yang sama di hari
+// yang sama.
 //
-// Dilindungi dengan CRON_SECRET header (pola sama dengan checkin-reminder).
-// Dedup via weekend_reminder_log supaya aman dipanggil berkali-kali
-// tanpa kirim WA dobel ke user yang sama di hari yang sama.
+// Dilindungi dengan CRON_SECRET header.
 // =====================================================
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { sendWhatsAppMessage, formatWeekendReminder } from "@/lib/fonnte";
 import { wibDayBoundsUtc } from "@/lib/date-utils";
+import { parseReminderTime } from "@/lib/streak";
 
 // Hari akhir pekan: 0 = Minggu, 6 = Sabtu
 const WEEKEND_DAYS = new Set([0, 6]);
@@ -25,11 +27,15 @@ const DAY_NAMES: Record<number, string> = {
   6: "Sabtu",
 };
 
+/** Key di tabel app_settings untuk jam reminder akhir pekan. */
+export const WEEKEND_REMINDER_HOUR_KEY = "weekend_reminder_hour";
+
 /**
  * GET /api/cron/weekend-reminder
  *
  * Dilindungi dengan CRON_SECRET header.
- * Dipanggil Vercel Cron setiap Sabtu & Minggu jam 14:00 UTC (= 21:00 WIB).
+ * Dipanggil Vercel Cron setiap jam. Jam reminder dikonfigurasi
+ * admin lewat UI (app_settings.weekend_reminder_hour, default "20:00").
  */
 export async function GET(request: Request) {
   // ── 1. Verify cron secret ──────────────────────────
@@ -48,11 +54,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // ── 2. Cek apakah hari ini Sabtu / Minggu (WIB) ───
+  // ── 2. Cek hari & jam WIB sekarang ────────────────
   const now = new Date();
   const { todayStr } = wibDayBoundsUtc(now);
   const wibNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  const wibDow = wibNow.getUTCDay(); // 0=Minggu, 6=Sabtu
+  const wibDow = wibNow.getUTCDay();   // 0=Minggu, 6=Sabtu
+  const wibHour = wibNow.getUTCHours();
+  const wibMinute = wibNow.getUTCMinutes();
 
   if (!WEEKEND_DAYS.has(wibDow)) {
     return NextResponse.json({
@@ -67,7 +75,26 @@ export async function GET(request: Request) {
   try {
     const supabase = createAdminClient();
 
-    // ── 3. Ambil semua user aktif dengan nomor WA ──
+    // ── 3. Baca jam reminder dari app_settings ─────
+    const { data: setting } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", WEEKEND_REMINDER_HOUR_KEY)
+      .maybeSingle();
+
+    const reminder = parseReminderTime(setting?.value ?? "20:00");
+    const reminderMinutes = reminder.hour * 60 + reminder.minute;
+    const nowMinutes = wibHour * 60 + wibMinute;
+
+    if (nowMinutes < reminderMinutes) {
+      return NextResponse.json({
+        message: "Belum jam reminder akhir pekan, dilewati",
+        wib_time: `${String(wibHour).padStart(2, "0")}:${String(wibMinute).padStart(2, "0")}`,
+        reminder_time: `${String(reminder.hour).padStart(2, "0")}:${String(reminder.minute).padStart(2, "0")}`,
+      });
+    }
+
+    // ── 4. Ambil semua user aktif dengan nomor WA ──
     const { data: users, error: userError } = await supabase
       .from("users")
       .select("id, name, whatsapp_number")
@@ -90,7 +117,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // ── 4. Kirim WA (dedup via weekend_reminder_log) ─
+    // ── 5. Kirim WA (dedup via weekend_reminder_log) ─
     let notified = 0;
     let skipped = 0;
     let errors = 0;
@@ -113,7 +140,6 @@ export async function GET(request: Request) {
 
       if (claimError) {
         if (claimError.code === "23505") {
-          // unique violation → sudah pernah diingatkan hari ini
           skipped++;
           continue;
         }
@@ -157,6 +183,7 @@ export async function GET(request: Request) {
       message: "Weekend reminder completed",
       day: dayName,
       today: todayStr,
+      reminder_time: `${String(reminder.hour).padStart(2, "0")}:${String(reminder.minute).padStart(2, "0")}`,
       total_users: users.length,
       notified,
       skipped_already_sent: skipped,

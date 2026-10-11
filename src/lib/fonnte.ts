@@ -58,13 +58,14 @@ export function formatCheckinReminder(userName: string): string {
 
 /**
  * Buat pesan pengingat harian akhir pekan (Sabtu & Minggu).
- * Dikirim tiap jam 21:00 WIB untuk semua user aktif yang punya nomor WA.
+ * Dikirim sesuai jam yang dikonfigurasi admin (app_settings.weekend_reminder_hour,
+ * default 20:00 WIB) untuk semua user aktif yang punya nomor WA.
  */
 export function formatWeekendReminder(userName: string, dayName: string): string {
   return [
     `Halo *${userName}*! 👋`,
     ``,
-    `Selamat *${dayName}* — Jangan lupa hari ini kita ada meet ya ges! 🌅`,
+    `Selamat *${dayName}* — Jangan lupa hari ini kita ada gmeet jam setengah 9 ya ges! 🌅`,
     ``,
     `Tetap semangat! Sukses!`,
     ``,

@@ -267,6 +267,9 @@ function UsersTab() {
       {/* WhatsApp reminder settings */}
       <ReminderHourSetting isAdmin={isAdmin} />
 
+      {/* Jam reminder akhir pekan */}
+      <WeekendReminderHourSetting isAdmin={isAdmin} />
+
       {/* Hari aktif check-in */}
       <CheckinActiveDaysSetting isAdmin={isAdmin} />
 
@@ -538,6 +541,95 @@ function ReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
           ) : (
             <p className="text-xs text-amber-600">
               Reminder otomatis jam <strong>{hour} WIB</strong>. Hanya
+              admin yang bisa mengubah jam ini.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== WEEKEND REMINDER HOUR SETTING ====================
+
+const WEEKEND_REMINDER_HOUR_KEY = "weekend_reminder_hour";
+
+function WeekendReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
+  const [hour, setHour] = useState<string>("20:00");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", WEEKEND_REMINDER_HOUR_KEY)
+        .maybeSingle();
+      if (!cancelled && data?.value) setHour(normalizeReminderTime(data.value));
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert({ key: WEEKEND_REMINDER_HOUR_KEY, value: hour, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      alert(`Gagal menyimpan jam reminder: ${err?.message || "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+      <div className="flex gap-3 items-start flex-wrap">
+        <BellRing className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-purple-800 flex-1 min-w-[240px]">
+          <p className="font-medium mb-1">Jam Pengingat Akhir Pekan (Sabtu &amp; Minggu)</p>
+          <p className="text-purple-700 mb-3">
+            Setiap Sabtu &amp; Minggu jam segini, semua user aktif yang punya
+            nomor WA akan otomatis menerima pesan pengingat. Admin juga bisa
+            kirim manual kapan saja lewat tombol di atas.
+          </p>
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+          ) : isAdmin ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="time"
+                value={hour}
+                onChange={(e) => setHour(e.target.value)}
+                className="px-2.5 py-1.5 text-sm border border-purple-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              />
+              <span className="text-xs text-purple-700">WIB</span>
+              <button
+                onClick={handleSave}
+                disabled={saving || !hour}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : saved ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : null}
+                {saved ? "Tersimpan" : "Simpan"}
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-purple-600">
+              Pengingat otomatis jam <strong>{hour} WIB</strong>. Hanya
               admin yang bisa mengubah jam ini.
             </p>
           )}
