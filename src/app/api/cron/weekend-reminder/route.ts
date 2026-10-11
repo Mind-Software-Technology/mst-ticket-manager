@@ -29,6 +29,8 @@ const DAY_NAMES: Record<number, string> = {
 
 /** Key di tabel app_settings untuk jam reminder akhir pekan. */
 export const WEEKEND_REMINDER_HOUR_KEY = "weekend_reminder_hour";
+/** Key di tabel app_settings untuk daftar penerima (user IDs). Kosong = semua. */
+export const WEEKEND_REMINDER_TARGETS_KEY = "weekend_reminder_targets";
 
 /**
  * GET /api/cron/weekend-reminder
@@ -75,16 +77,27 @@ export async function GET(request: Request) {
   try {
     const supabase = createAdminClient();
 
-    // ── 3. Baca jam reminder dari app_settings ─────
-    const { data: setting } = await supabase
+    // ── 3. Baca setting dari app_settings ─────────
+    const { data: settings } = await supabase
       .from("app_settings")
-      .select("value")
-      .eq("key", WEEKEND_REMINDER_HOUR_KEY)
-      .maybeSingle();
+      .select("key, value")
+      .in("key", [WEEKEND_REMINDER_HOUR_KEY, WEEKEND_REMINDER_TARGETS_KEY]);
 
-    const reminder = parseReminderTime(setting?.value ?? "20:00");
+    const settingMap: Record<string, string> = {};
+    for (const s of settings || []) settingMap[s.key] = s.value;
+
+    const reminder = parseReminderTime(settingMap[WEEKEND_REMINDER_HOUR_KEY] ?? "20:00");
     const reminderMinutes = reminder.hour * 60 + reminder.minute;
     const nowMinutes = wibHour * 60 + wibMinute;
+
+    // Parse target user IDs (kosong = semua)
+    let targetIds: Set<string> | null = null;
+    try {
+      const raw: string[] = settingMap[WEEKEND_REMINDER_TARGETS_KEY]
+        ? JSON.parse(settingMap[WEEKEND_REMINDER_TARGETS_KEY])
+        : [];
+      if (raw.length > 0) targetIds = new Set(raw);
+    } catch { /* kosong = semua */ }
 
     if (nowMinutes < reminderMinutes) {
       return NextResponse.json({
@@ -94,12 +107,18 @@ export async function GET(request: Request) {
       });
     }
 
-    // ── 4. Ambil semua user aktif dengan nomor WA ──
-    const { data: users, error: userError } = await supabase
+    // ── 4. Ambil users aktif dengan nomor WA (filter target jika dipilih) ──
+    let usersQuery = supabase
       .from("users")
       .select("id, name, whatsapp_number")
       .eq("is_active", true)
       .not("whatsapp_number", "is", null);
+
+    if (targetIds) {
+      usersQuery = usersQuery.in("id", [...targetIds]);
+    }
+
+    const { data: users, error: userError } = await usersQuery;
 
     if (userError) {
       console.error("[weekend-reminder] User query error:", userError);

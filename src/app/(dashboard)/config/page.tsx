@@ -553,9 +553,15 @@ function ReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
 // ==================== WEEKEND REMINDER HOUR SETTING ====================
 
 const WEEKEND_REMINDER_HOUR_KEY = "weekend_reminder_hour";
+const WEEKEND_REMINDER_TARGETS_KEY = "weekend_reminder_targets";
 
 function WeekendReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
   const [hour, setHour] = useState<string>("20:00");
+  // null = belum load, string[] = daftar user_id yang dipilih (kosong = semua)
+  const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
+  // "all" = tidak ada filter (kirim ke semua), false = hanya yang dipilih
+  const [sendToAll, setSendToAll] = useState(true);
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; whatsapp_number: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -564,59 +570,157 @@ function WeekendReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
     let cancelled = false;
     (async () => {
       const supabase = createClient();
-      const { data } = await supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", WEEKEND_REMINDER_HOUR_KEY)
-        .maybeSingle();
-      if (!cancelled && data?.value) setHour(normalizeReminderTime(data.value));
-      if (!cancelled) setLoading(false);
+      const [{ data: hourData }, { data: targetsData }, { data: usersData }] = await Promise.all([
+        supabase.from("app_settings").select("value").eq("key", WEEKEND_REMINDER_HOUR_KEY).maybeSingle(),
+        supabase.from("app_settings").select("value").eq("key", WEEKEND_REMINDER_TARGETS_KEY).maybeSingle(),
+        supabase.from("users").select("id, name, whatsapp_number").eq("is_active", true).order("name"),
+      ]);
+      if (cancelled) return;
+      if (hourData?.value) setHour(normalizeReminderTime(hourData.value));
+      if (usersData) setAllUsers(usersData);
+      try {
+        const parsed: string[] = targetsData?.value ? JSON.parse(targetsData.value) : [];
+        if (parsed.length === 0) {
+          setSendToAll(true);
+          setTargetIds(new Set());
+        } else {
+          setSendToAll(false);
+          setTargetIds(new Set(parsed));
+        }
+      } catch { /* pakai default semua */ }
+      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const toggleUser = (id: string) => {
+    setTargetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase
-        .from("app_settings")
-        .upsert({ key: WEEKEND_REMINDER_HOUR_KEY, value: hour, updated_at: new Date().toISOString() });
-      if (error) throw error;
+      const targetsValue = sendToAll ? "[]" : JSON.stringify([...targetIds]);
+      const [r1, r2] = await Promise.all([
+        supabase.from("app_settings").upsert({ key: WEEKEND_REMINDER_HOUR_KEY, value: hour, updated_at: new Date().toISOString() }),
+        supabase.from("app_settings").upsert({ key: WEEKEND_REMINDER_TARGETS_KEY, value: targetsValue, updated_at: new Date().toISOString() }),
+      ]);
+      if (r1.error) throw r1.error;
+      if (r2.error) throw r2.error;
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {
-      alert(`Gagal menyimpan jam reminder: ${err?.message || "Unknown error"}`);
+      alert(`Gagal menyimpan: ${err?.message || "Unknown error"}`);
     } finally {
       setSaving(false);
     }
   };
+
+  const usersWithWa = allUsers.filter((u) => u.whatsapp_number);
 
   return (
     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
       <div className="flex gap-3 items-start flex-wrap">
         <BellRing className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
         <div className="text-sm text-purple-800 flex-1 min-w-[240px]">
-          <p className="font-medium mb-1">Jam Pengingat Akhir Pekan (Sabtu &amp; Minggu)</p>
+          <p className="font-medium mb-1">Pengingat Akhir Pekan (Sabtu &amp; Minggu)</p>
           <p className="text-purple-700 mb-3">
-            Setiap Sabtu &amp; Minggu jam segini, semua user aktif yang punya
-            nomor WA akan otomatis menerima pesan pengingat. Admin juga bisa
-            kirim manual kapan saja lewat tombol di atas.
+            Pesan WA dikirim otomatis tiap Sabtu &amp; Minggu sesuai jam di bawah.
+            Pilih siapa saja yang menerima, atau biarkan &quot;Semua&quot; untuk kirim ke seluruh user aktif berWA.
           </p>
           {loading ? (
             <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
           ) : isAdmin ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="time"
-                value={hour}
-                onChange={(e) => setHour(e.target.value)}
-                className="px-2.5 py-1.5 text-sm border border-purple-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-              />
-              <span className="text-xs text-purple-700">WIB</span>
+            <div className="space-y-4">
+              {/* ── Jam ── */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-purple-700 w-10">Jam</span>
+                <input
+                  type="time"
+                  value={hour}
+                  onChange={(e) => setHour(e.target.value)}
+                  className="px-2.5 py-1.5 text-sm border border-purple-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                />
+                <span className="text-xs text-purple-700">WIB</span>
+              </div>
+
+              {/* ── Penerima ── */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-purple-700">Penerima</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setSendToAll(true); setTargetIds(new Set()); }}
+                      className={`px-2.5 py-1 text-xs rounded-lg border transition-all ${
+                        sendToAll
+                          ? "bg-purple-600 text-white border-purple-600 font-medium"
+                          : "bg-white text-purple-600 border-purple-300 hover:bg-purple-100"
+                      }`}
+                    >
+                      Semua
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSendToAll(false)}
+                      className={`px-2.5 py-1 text-xs rounded-lg border transition-all ${
+                        !sendToAll
+                          ? "bg-purple-600 text-white border-purple-600 font-medium"
+                          : "bg-white text-purple-600 border-purple-300 hover:bg-purple-100"
+                      }`}
+                    >
+                      Pilih manual
+                    </button>
+                  </div>
+                </div>
+
+                {!sendToAll && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {usersWithWa.length === 0 ? (
+                      <p className="text-xs text-purple-500 italic">Belum ada user aktif dengan nomor WA.</p>
+                    ) : (
+                      usersWithWa.map((u) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => toggleUser(u.id)}
+                          className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                            targetIds.has(u.id)
+                              ? "bg-purple-600 text-white border-purple-600 font-medium shadow-sm"
+                              : "bg-white text-purple-700 border-purple-300 hover:bg-purple-100"
+                          }`}
+                        >
+                          {u.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {!sendToAll && (
+                  <p className="text-xs text-purple-500 mt-2">
+                    {targetIds.size === 0
+                      ? "⚠️ Belum ada yang dipilih — tidak ada WA yang akan dikirim."
+                      : `${targetIds.size} user dipilih: ${usersWithWa.filter(u => targetIds.has(u.id)).map(u => u.name).join(", ")}`
+                    }
+                  </p>
+                )}
+                {sendToAll && (
+                  <p className="text-xs text-purple-500 mt-1">
+                    Akan dikirim ke {usersWithWa.length} user aktif berWA.
+                  </p>
+                )}
+              </div>
+
+              {/* ── Simpan ── */}
               <button
                 onClick={handleSave}
-                disabled={saving || !hour}
+                disabled={saving || !hour || (!sendToAll && targetIds.size === 0)}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 {saving ? (
@@ -630,7 +734,7 @@ function WeekendReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
           ) : (
             <p className="text-xs text-purple-600">
               Pengingat otomatis jam <strong>{hour} WIB</strong>. Hanya
-              admin yang bisa mengubah jam ini.
+              admin yang bisa mengubah pengaturan ini.
             </p>
           )}
         </div>
@@ -639,7 +743,7 @@ function WeekendReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
-// ==================== CHECKIN ACTIVE DAYS SETTING ====================
+
 
 const DAY_LABELS: { value: number; short: string; long: string }[] = [
   { value: 1, short: "Sen", long: "Senin" },

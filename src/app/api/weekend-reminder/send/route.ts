@@ -121,12 +121,30 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── 4b. Kirim ke SEMUA user aktif yang punya WA ──
-  const { data: users, error: userError } = await admin
+  // ── 4b. Kirim sesuai setting targets (atau semua jika tidak ada filter) ──
+  const { data: targetSetting } = await admin
+    .from("app_settings")
+    .select("value")
+    .eq("key", "weekend_reminder_targets")
+    .maybeSingle();
+
+  let targetIds: Set<string> | null = null;
+  try {
+    const raw: string[] = targetSetting?.value ? JSON.parse(targetSetting.value) : [];
+    if (raw.length > 0) targetIds = new Set(raw);
+  } catch { /* semua */ }
+
+  let usersQuery = admin
     .from("users")
     .select("id, name, whatsapp_number")
     .eq("is_active", true)
     .not("whatsapp_number", "is", null);
+
+  if (targetIds) {
+    usersQuery = usersQuery.in("id", [...targetIds]);
+  }
+
+  const { data: users, error: userError } = await usersQuery;
 
   if (userError) {
     return NextResponse.json({ error: "Gagal mengambil data users" }, { status: 500 });
