@@ -65,7 +65,7 @@ export function formatWeekendReminder(userName: string, dayName: string): string
   return [
     `Halo *${userName}*! 👋`,
     ``,
-    `Selamat *${dayName}* — Jangan lupa hari ini kita ada gmeet jam setengah 9 ya ges! 🌅`,
+    `Selamat *${dayName}* — Jangan lupa hari ini kita ada gmeet jam setengah 9 ya ges!`,
     ``,
     `Tetap semangat! Sukses!`,
     ``,
