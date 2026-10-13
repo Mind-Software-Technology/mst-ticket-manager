@@ -1,19 +1,45 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { toISODate } from "@/lib/date-utils";
 
 export async function POST(req: Request) {
   try {
+    // ── Auth: wajib login ──
+    const session = await createServerClient();
+    const {
+      data: { user: authUser },
+    } = await session.auth.getUser();
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { employeeId, missedDate } = await req.json();
 
-    if (!employeeId || !missedDate) {
+    if (!employeeId || typeof employeeId !== "string" || !missedDate || typeof missedDate !== "string") {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Format tanggal harus YYYY-MM-DD dan tidak boleh di masa depan / lebih dari 14 hari lalu
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(missedDate) || Number.isNaN(Date.parse(missedDate))) {
+      return NextResponse.json({ error: "Format tanggal tidak valid" }, { status: 400 });
+    }
+    const ageDays = (Date.now() - Date.parse(missedDate)) / 86_400_000;
+    if (ageDays < -1 || ageDays > 14) {
+      return NextResponse.json({ error: "Tanggal di luar rentang yang diizinkan" }, { status: 400 });
+    }
+
+    const supabase = createAdminClient();
+
+    // ── Otorisasi: hanya pemilik akun itu sendiri atau admin ──
+    const { data: caller } = await supabase
+      .from("users")
+      .select("id, is_admin")
+      .eq("auth_user_id", authUser.id)
+      .maybeSingle();
+    if (!caller || (caller.id !== employeeId && !caller.is_admin)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // Hitung berapa kali user sudah menggunakan "Streak Recovery" bulan ini
     const startOfMonth = new Date();
@@ -29,7 +55,7 @@ export async function POST(req: Request) {
 
     if (fetchError) {
       console.error("Failed to fetch past recoveries:", fetchError);
-      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+      return NextResponse.json({ error: "Gagal memeriksa data pemulihan" }, { status: 500 });
     }
 
     if (pastRecoveries && pastRecoveries.length >= 5) {
@@ -54,12 +80,12 @@ export async function POST(req: Request) {
 
     if (insertError) {
       console.error("Failed to insert recovery checkin:", insertError);
-      return NextResponse.json({ error: insertError.message }, { status: 500 });
+      return NextResponse.json({ error: "Gagal menyimpan pemulihan streak" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("Restore streak error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

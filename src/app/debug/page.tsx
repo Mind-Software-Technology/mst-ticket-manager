@@ -39,7 +39,7 @@ const INITIAL: DiagnosticState = {
   allUsersError: null,
 };
 
-export default function DebugPage() {
+function DebugPageInner() {
   const [state, setState] = useState<DiagnosticState>(INITIAL);
   const [loading, setLoading] = useState(true);
 
@@ -334,4 +334,16 @@ function Json({ data }: { data: unknown }) {
       {JSON.stringify(data, null, 2)}
     </pre>
   );
+}
+
+// Halaman diagnostik membocorkan data profil — nonaktif di production.
+// Set NEXT_PUBLIC_ENABLE_DEBUG=true bila perlu troubleshoot sementara.
+export default function DebugPage() {
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PUBLIC_ENABLE_DEBUG !== "true"
+  ) {
+    return null;
+  }
+  return <DebugPageInner />;
 }

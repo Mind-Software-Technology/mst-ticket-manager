@@ -17,7 +17,7 @@ import { getLogImages, type ActivityLog } from "@/types";
 import { Badge, RichTextEditor } from "./ui";
 import { TICKET_STATE_BY_VALUE } from "@/lib/constants";
 import { createClient } from "@/utils/supabase/client";
-import { escapeHtml, isEmptyHtml, linkifyText, toEditorHtml } from "@/lib/rich-text";
+import { escapeHtml, sanitizeHtml, isEmptyHtml, linkifyText, toEditorHtml } from "@/lib/rich-text";
 import { ALL_MENTION_ID, extractMentionedUserIds, notifyMentionedUsers } from "@/lib/mentions";
 import type { MentionSuggestionItem } from "./ui/MentionList";
 
@@ -221,7 +221,7 @@ export function ActivityTimeline({
               <div
                 className="tiptap-content tiptap-readonly text-slate-600"
                 onClick={handleContentClick}
-                dangerouslySetInnerHTML={{ __html: log.message }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(log.message) }}
               />
             ) : (
               // Pesan lama (plain text) — escape + linkify URL agar bisa diklik.

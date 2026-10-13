@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 // =====================================================
 // Rich Text helpers — Ticket Description
 //
@@ -38,6 +39,16 @@ export function toEditorHtml(value: string | null | undefined): string {
 }
 
 /** Escape karakter HTML dasar pada teks polos. */
+/**
+ * Sanitasi HTML rich text (dari TipTap) sebelum dirender via
+ * dangerouslySetInnerHTML — mencegah stored XSS (<script>, onerror=, javascript:).
+ * Di server (tanpa DOM) fallback ke escape penuh.
+ */
+export function sanitizeHtml(html: string): string {
+  if (typeof window === "undefined") return escapeHtml(html);
+  return DOMPurify.sanitize(html, { ADD_ATTR: ["target"], FORBID_TAGS: ["style", "form", "iframe"] });
+}
+
 export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
