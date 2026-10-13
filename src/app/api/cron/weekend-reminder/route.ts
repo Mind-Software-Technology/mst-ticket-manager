@@ -1,7 +1,8 @@
 // =====================================================
 // Cron Job: Weekend Daily Reminder (WhatsApp via Fonnte)
 //
-// Dipanggil oleh Vercel Cron setiap jam (0 * * * * UTC).
+// Dipanggil oleh Vercel Cron sekali sehari (0 13 * * * UTC = 20:00 WIB)
+// karena plan Hobby hanya mengizinkan cron harian.
 // Endpoint sendiri yang mengecek:
 //   1. Apakah hari ini Sabtu (6) atau Minggu (0)
 //   2. Apakah jam WIB sekarang sudah >= weekend_reminder_hour
