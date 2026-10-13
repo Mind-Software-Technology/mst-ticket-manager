@@ -565,6 +565,7 @@ function WeekendReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -622,6 +623,37 @@ function WeekendReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
   };
 
   const usersWithWa = allUsers.filter((u) => u.whatsapp_number);
+
+  // Kirim langsung ke penerima yang sedang dipilih di UI (tanpa harus Simpan dulu)
+  const handleSendNow = async () => {
+    const recipients = sendToAll ? usersWithWa : usersWithWa.filter((u) => targetIds.has(u.id));
+    if (recipients.length === 0) return;
+    const names = recipients.map((u) => u.name).join(", ");
+    if (!confirm(`Kirim pengingat akhir pekan sekarang ke ${recipients.length} user?\n${names}`)) return;
+
+    setSending(true);
+    try {
+      const failed: string[] = [];
+      for (const u of recipients) {
+        try {
+          const res = await fetch("/api/weekend-reminder/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: u.id }),
+          });
+          if (!res.ok) failed.push(u.name);
+        } catch {
+          failed.push(u.name);
+        }
+      }
+      alert(
+        `Terkirim: ${recipients.length - failed.length} user\n` +
+        (failed.length > 0 ? `Gagal: ${failed.join(", ")}` : "Gagal: 0 user")
+      );
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
@@ -717,19 +749,30 @@ function WeekendReminderHourSetting({ isAdmin }: { isAdmin: boolean }) {
                 )}
               </div>
 
-              {/* ── Simpan ── */}
-              <button
-                onClick={handleSave}
-                disabled={saving || !hour || (!sendToAll && targetIds.size === 0)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : saved ? (
-                  <Check className="w-3.5 h-3.5" />
-                ) : null}
-                {saved ? "Tersimpan" : "Simpan"}
-              </button>
+              {/* ── Simpan & Kirim sekarang ── */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !hour || (!sendToAll && targetIds.size === 0)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : saved ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : null}
+                  {saved ? "Tersimpan" : "Simpan"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendNow}
+                  disabled={sending || (!sendToAll && targetIds.size === 0)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-purple-700 bg-white border border-purple-300 hover:bg-purple-100 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  Kirim sekarang
+                </button>
+              </div>
             </div>
           ) : (
             <p className="text-xs text-purple-600">
