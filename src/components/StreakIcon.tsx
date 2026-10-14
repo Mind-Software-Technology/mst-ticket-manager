@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
 
 interface StreakIconProps {
   streak: number;
@@ -13,7 +12,7 @@ interface StreakIconProps {
 
 /**
  * Komponen ikon api (streak).
- * - streak >= 50 & active → putar video50.mp4 sekali sebagai transisi, lalu tampilkan api50.png
+ * - streak >= 50 & active → api50.png
  * - streak < 50 → streak-active.png / streak-inactive.png seperti biasa
  */
 export function StreakIcon({
@@ -24,41 +23,6 @@ export function StreakIcon({
   className = "object-contain drop-shadow-xl hover:scale-110 hover:rotate-[6deg] transition-all duration-300",
 }: StreakIconProps) {
   const isMilestone = streak >= 50 && isActive;
-
-  // Simpan di sessionStorage supaya video tidak replay tiap render
-  const [videoPlayed, setVideoPlayed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return sessionStorage.getItem("streak50VideoPlayed") === "true";
-  });
-  const [showVideo, setShowVideo] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (isMilestone && !videoPlayed) {
-      setShowVideo(true);
-    }
-  }, [isMilestone, videoPlayed]);
-
-  const handleVideoEnded = () => {
-    setShowVideo(false);
-    setVideoPlayed(true);
-    sessionStorage.setItem("streak50VideoPlayed", "true");
-  };
-
-  if (showVideo) {
-    return (
-      <video
-        ref={videoRef}
-        src="/video50.mp4"
-        autoPlay
-        muted
-        playsInline
-        onEnded={handleVideoEnded}
-        style={{ width, height, objectFit: "contain" }}
-        className={`rounded-full ${className}`}
-      />
-    );
-  }
 
   if (isMilestone) {
     return (
