@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft, Clock, MessageSquarePlus, Copy, X, GitFork, Paperclip } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquarePlus, Copy, X, GitFork, Paperclip, Share2 } from "lucide-react";
 import { uploadLogFiles, validateLogFile, formatFileSize } from "@/lib/ticket-attachments";
 import { useTicketDetail } from "@/hooks/useTicketDetail";
 import { useUsers } from "@/hooks/useUsers";
@@ -26,7 +26,7 @@ import { generateTicketId } from "@/lib/ticket-id-generator";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { TicketAttachments } from "@/components/TicketAttachments";
 import { Badge, Button, Modal, RichTextEditor } from "@/components/ui";
-import { toEditorHtml, isEmptyHtml } from "@/lib/rich-text";
+import { toEditorHtml, isEmptyHtml, htmlToPlainText } from "@/lib/rich-text";
 import { notifyMentionedUsers, ALL_MENTION_ID } from "@/lib/mentions";
 import {
   TICKET_STATES,
@@ -430,6 +430,44 @@ export default function TicketDetailPage() {
     }
   };
 
+  // ─── Bagikan ke WhatsApp ─────────────────────────────
+  // Susun ringkasan tiket + link detail, lalu buka WhatsApp (wa.me) agar
+  // user tinggal memilih kontak/grup tujuan.
+  const handleShareWhatsApp = () => {
+    const stateLabel =
+      TICKET_STATES.find((s) => s.value === ticket.state)?.label ?? ticket.state;
+    const priorityLabel =
+      TICKET_PRIORITIES.find((p) => p.value === ticket.priority)?.label ??
+      ticket.priority;
+    const assigneeNames = [
+      ticket.assignee?.name,
+      ...additionalAssignees.map((a) => a.name),
+    ].filter(Boolean);
+    const desc = htmlToPlainText(ticket.description, 300);
+    const url = `${window.location.origin}/gawean/${ticket.id}`;
+
+    const lines = [
+      `*${ticket.ticket_id}* — ${ticket.subject}`,
+      "",
+      `Status: ${stateLabel}`,
+      `Prioritas: ${priorityLabel}`,
+      assigneeNames.length > 0 ? `Assignee: ${assigneeNames.join(", ")}` : null,
+      ticket.reporter?.name ? `Reported To: ${ticket.reporter.name}` : null,
+      ticket.client?.name ? `Client: ${ticket.client.name}` : null,
+      ticket.product?.name ? `Product: ${ticket.product.name}` : null,
+      ticket.sprint?.name ? `Sprint: ${ticket.sprint.name}` : null,
+      ticket.due_date ? `Due Date: ${formatDate(ticket.due_date)}` : null,
+      desc ? `\n${desc}` : null,
+      `\nDetail: ${url}`,
+    ].filter((l): l is string => l !== null);
+
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
   // ─── Copy / Carry Over ke sprint berikutnya ──────────
   // Sprint "berikutnya" = sprint dengan start_date paling awal yang masih
   // lebih besar dari sprint tiket ini (perbandingan string ISO YYYY-MM-DD).
@@ -691,6 +729,14 @@ export default function TicketDetailPage() {
               {fromCheckin && fromCheckinId ? "Back to Check-In" : "Back to Tickets"}
             </Button>
             <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Share2 className="w-4 h-4" />}
+                onClick={handleShareWhatsApp}
+              >
+                WhatsApp
+              </Button>
               {isAdmin && (
                 <Button
                   variant="secondary"
