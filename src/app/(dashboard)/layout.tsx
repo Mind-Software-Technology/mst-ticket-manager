@@ -20,10 +20,13 @@ import {
   Kanban,
   ChevronDown,
   MoreHorizontal,
+  ShieldCheck,
   UserCog,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useSession } from "@/hooks/useSession";
+import { useMenuAccess } from "@/hooks/useMenuAccess";
+import { isMenuManager, menuForPath, type MenuKey } from "@/lib/menus";
 import { PengajuanModalBell } from "@/components/PengajuanModalBell";
 import { MentionToast } from "@/components/MentionToast";
 import { AppsMenu } from "@/components/AppsMenu";
@@ -37,6 +40,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { session, loading, profileStatus, profileError, authEmail, signOut } =
     useSession();
+  const { allowed, loading: accessLoading } = useMenuAccess(session?.profile.id);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -86,21 +90,35 @@ export default function DashboardLayout({
     router.replace("/");
   };
 
+  // Hak akses menu: manager selalu penuh; user lain mengikuti menu_access (null = semua).
+  const manager = isMenuManager(profile);
+  const canSee = (key: MenuKey) => {
+    if (key === "admin" && !profile.is_admin) return false;
+    return manager || allowed === null || allowed.includes(key);
+  };
+
   const navItems = [
-    ...(profile.is_admin
-      ? [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }]
-      : []),
-    { href: "/gawean", label: "Gawean", icon: CheckSquare },
-    { href: "/kanban", label: "Kanban", icon: Kanban },
-    { href: "/checkin", label: "Check In", icon: CalendarCheck },
-    { href: "/leaderboard", label: "Peringkat", icon: Trophy },
-  ];
+    { key: "admin" as const, href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { key: "gawean" as const, href: "/gawean", label: "Gawean", icon: CheckSquare },
+    { key: "kanban" as const, href: "/kanban", label: "Kanban", icon: Kanban },
+    { key: "checkin" as const, href: "/checkin", label: "Check In", icon: CalendarCheck },
+    { key: "leaderboard" as const, href: "/leaderboard", label: "Peringkat", icon: Trophy },
+  ].filter((i) => canSee(i.key));
   // Menu jarang dipakai dikelompokkan di dropdown "Lainnya" supaya navbar tidak sesak.
   const moreItems = [
-    { href: "/config", label: "Config", icon: Settings },
-    { href: "/notes", label: "Catatan Ide", icon: Lightbulb },
-  ];
+    { key: "config" as const, href: "/config", label: "Config", icon: Settings },
+    { key: "notes" as const, href: "/notes", label: "Catatan Ide", icon: Lightbulb },
+  ]
+    .filter((i) => canSee(i.key))
+    .map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
+  if (manager) moreItems.push({ href: "/akses", label: "Hak Akses", icon: ShieldCheck });
   const allItems = [...navItems, ...moreItems];
+
+  // Route guard: halaman menu yang tidak diizinkan tidak dirender.
+  const currentMenu = menuForPath(pathname);
+  const blocked =
+    !accessLoading && ((currentMenu !== null && !canSee(currentMenu)) || (pathname === "/akses" && !manager));
+  const firstAllowed = allItems[0]?.href;
 
   const isActive = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
@@ -290,7 +308,28 @@ export default function DashboardLayout({
 
       <MentionToast userId={profile.id} />
 
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto">
+        {accessLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+          </div>
+        ) : blocked ? (
+          <div className="p-8 text-center">
+            <p className="text-4xl">🔒</p>
+            <h1 className="mt-2 text-xl font-bold text-slate-900">Menu ini tidak tersedia untukmu</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Akses ke halaman ini belum diberikan. Hubungi Co-Founder &amp; Project/Sprint Lead jika perlu.
+            </p>
+            {firstAllowed && (
+              <Link href={firstAllowed} className="mt-4 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">
+                Ke menu yang tersedia
+              </Link>
+            )}
+          </div>
+        ) : (
+          children
+        )}
+      </main>
     </div>
   );
 }
