@@ -10,7 +10,17 @@
 
 import { useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, RefreshCw, Search, SlidersHorizontal, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  Flame,
+  Loader2,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  UserX,
+  X,
+} from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useKanbanTickets } from "@/hooks/useKanbanTickets";
 import { useUsers } from "@/hooks/useUsers";
@@ -27,6 +37,8 @@ import { isTerminalState, isValidStateTransition } from "@/lib/ticket-utils";
 import type { Ticket, TicketState } from "@/types";
 
 const RECENT_OPTIONS = [7, 14, 30] as const;
+
+type AlertKey = "overdue" | "today" | "critical" | "unassigned";
 
 // Aksen warna tipis di atas tiap kolom (mengikuti warna state di constants).
 const COLUMN_ACCENT: Record<TicketState, string> = {
@@ -83,6 +95,7 @@ export default function KanbanPage() {
   const [priority, setPriority] = useState("");
   const [category, setCategory] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
+  const [alertFilter, setAlertFilter] = useState<AlertKey | null>(null);
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [overState, setOverState] = useState<TicketState | null>(null);
@@ -97,7 +110,7 @@ export default function KanbanPage() {
 
   const today = toISODate(new Date());
 
-  const filtered = useMemo(() => {
+  const baseFiltered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tickets.filter((t) => {
       const assigneeIds = [t.assigned_to, ...(t.additional_assignees ?? []).map((u) => u.id)];
@@ -109,6 +122,23 @@ export default function KanbanPage() {
       return true;
     });
   }, [tickets, search, assignee, priority, category, onlyMine, meId]);
+
+  const isOpen = (t: Ticket) => t.state !== "done" && t.state !== "cancel";
+  const matchesAlert = (t: Ticket, key: AlertKey) =>
+    isOpen(t) &&
+    (key === "overdue"
+      ? dueStatus(t, today) === "overdue"
+      : key === "today"
+        ? dueStatus(t, today) === "today"
+        : key === "critical"
+          ? t.priority === "critical"
+          : !t.assigned_to);
+
+  const filtered = useMemo(
+    () => (alertFilter ? baseFiltered.filter((t) => matchesAlert(t, alertFilter)) : baseFiltered),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseFiltered, alertFilter, today],
+  );
 
   const columns = useMemo(() => {
     const states = TICKET_STATES.filter((s) => showCancel || s.value !== "cancel");
@@ -127,15 +157,16 @@ export default function KanbanPage() {
   }, [filtered, showCancel]);
 
   const summary = useMemo(() => {
-    const open = filtered.filter((t) => t.state !== "done" && t.state !== "cancel");
+    const open = baseFiltered.filter(isOpen);
     return {
       open: open.length,
-      overdue: open.filter((t) => dueStatus(t, today) === "overdue").length,
-      dueToday: open.filter((t) => dueStatus(t, today) === "today").length,
-      critical: open.filter((t) => t.priority === "critical").length,
-      unassigned: open.filter((t) => !t.assigned_to).length,
+      overdue: open.filter((t) => matchesAlert(t, "overdue")).length,
+      today: open.filter((t) => matchesAlert(t, "today")).length,
+      critical: open.filter((t) => matchesAlert(t, "critical")).length,
+      unassigned: open.filter((t) => matchesAlert(t, "unassigned")).length,
     };
-  }, [filtered, today]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseFiltered, today]);
 
   const hasFilter = !!(search || assignee || priority || category || onlyMine);
   const dragged = dragId ? tickets.find((t) => t.id === dragId) : undefined;
@@ -174,18 +205,27 @@ export default function KanbanPage() {
     setCategory("");
     setOnlyMine(false);
     setShowCancel(false);
+    setAlertFilter(null);
   };
 
   const fieldCls =
     "py-1.5 px-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
-  // Hanya tampilkan indikator yang perlu perhatian (nilai > 0).
-  const alerts = [
-    { label: "lewat deadline", value: summary.overdue, tone: "text-red-600 bg-red-50" },
-    { label: "deadline hari ini", value: summary.dueToday, tone: "text-orange-600 bg-orange-50" },
-    { label: "critical", value: summary.critical, tone: "text-rose-600 bg-rose-50" },
-    { label: "belum di-assign", value: summary.unassigned, tone: "text-slate-600 bg-slate-100" },
-  ].filter((a) => a.value > 0);
+  // Hanya tampilkan indikator yang perlu perhatian (nilai > 0); klik untuk memfilter papan.
+  const alerts: Array<{
+    key: AlertKey;
+    label: string;
+    value: number;
+    icon: typeof Flame;
+    idle: string;
+    active: string;
+  }> = [
+    { key: "overdue", label: "lewat deadline", value: summary.overdue, icon: AlertTriangle, idle: "bg-red-50 text-red-700 border-red-300 hover:bg-red-100", active: "bg-red-600 text-white border-red-600" },
+    { key: "today", label: "deadline hari ini", value: summary.today, icon: CalendarClock, idle: "bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100", active: "bg-orange-500 text-white border-orange-500" },
+    { key: "critical", label: "critical", value: summary.critical, icon: Flame, idle: "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100", active: "bg-rose-600 text-white border-rose-600" },
+    { key: "unassigned", label: "belum di-assign", value: summary.unassigned, icon: UserX, idle: "bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100", active: "bg-slate-700 text-white border-slate-700" },
+  ];
+  const visibleAlerts = alerts.filter((a) => a.value > 0);
 
   return (
     <div className="p-4 md:p-6 flex flex-col h-[calc(100vh-3.5rem)]">
@@ -294,14 +334,29 @@ export default function KanbanPage() {
         </div>
       )}
 
-      {/* Peringatan: hanya muncul kalau ada yang perlu diperhatikan */}
-      {alerts.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {alerts.map((a) => (
-            <span key={a.label} className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${a.tone}`}>
-              <strong>{a.value}</strong> {a.label}
-            </span>
-          ))}
+      {/* Peringatan: hanya muncul kalau ada yang perlu diperhatikan; klik untuk memfilter */}
+      {visibleAlerts.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {visibleAlerts.map((a) => {
+            const Icon = a.icon;
+            const on = alertFilter === a.key;
+            return (
+              <button
+                key={a.key}
+                type="button"
+                onClick={() => setAlertFilter(on ? null : a.key)}
+                title={on ? "Klik untuk menampilkan semua tiket lagi" : "Klik untuk menampilkan hanya tiket ini"}
+                className={`flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-lg border text-sm font-semibold shadow-sm transition-colors ${
+                  on ? a.active : a.idle
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-base font-black leading-none">{a.value}</span>
+                <span className="font-medium">{a.label}</span>
+                {on && <X className="w-3.5 h-3.5 ml-0.5 opacity-80" />}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -317,7 +372,7 @@ export default function KanbanPage() {
           <Loader2 className="w-4 h-4 animate-spin" /> Memuat papan…
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden no-scrollbar">
+        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden thin-scrollbar">
           <div className="flex gap-2.5 h-full pb-2">
             {columns.map(({ state, tickets: list }) => {
               const droppable = canDrop(state.value);

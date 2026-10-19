@@ -137,3 +137,25 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Scrollbar horizontal tipis & rapi (dipakai di Kanban) */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  height: 10px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+  background-clip: content-box;
+}
