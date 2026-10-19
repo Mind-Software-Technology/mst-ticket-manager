@@ -23,7 +23,10 @@ export type MpMode =
   | "hitung"
   | "trivia"
   | "memory"
-  | "reflex";
+  | "reflex"
+  | "lari"
+  | "kata"
+  | "simon";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -38,6 +41,42 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  lari: {
+    group: "umum",
+    label: "Lomba Lari",
+    emoji: "🏃",
+    tagline: "Siapa yang paling cepat sampai garis finish? Gantian kiri-kanan secepat kilat!",
+    rules: [
+      "Tap tombol KIRI dan KANAN bergantian (keyboard: F dan J, atau ← dan →).",
+      "Tap sisi yang sama dua kali = tersandung, tidak maju.",
+      "Yang sampai finish duluan menang, makin cepat bonus makin besar. Batas 30 detik.",
+    ],
+    minPlayers: 2,
+  },
+  kata: {
+    group: "umum",
+    label: "Acak Kata",
+    emoji: "🔤",
+    tagline: "Huruf diacak, tebak kata aslinya. Otak IT vs otak kantoran!",
+    rules: [
+      "10 kata acak (istilah kerja & IT), 15 detik per soal.",
+      "Pilih kata aslinya dari 4 pilihan.",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+    ],
+    minPlayers: 2,
+  },
+  simon: {
+    group: "umum",
+    label: "Pola Ajaib",
+    emoji: "🎨",
+    tagline: "Hafalkan urutan warna yang menyala, ulangi tanpa salah. Makin lama makin panjang!",
+    rules: [
+      "Perhatikan urutan pad yang menyala, lalu ulangi persis.",
+      "Tiap level urutan bertambah satu. Pola sama untuk semua pemain.",
+      "Salah atau kehabisan waktu = selesai. Skor = level yang lolos x 100.",
+    ],
+    minPlayers: 2,
+  },
   hitung: {
     group: "umum",
     label: "Hitung Kilat",
@@ -159,6 +198,9 @@ export const MP_MODE_KEYS: MpMode[] = [
   "trivia",
   "memory",
   "reflex",
+  "lari",
+  "kata",
+  "simon",
 ];
 
 export const ROUND_MS = 15_000;
@@ -167,7 +209,7 @@ export const MP_ROUNDS = 10;
 
 // ─── Soal ────────────────────────────────────────────
 
-export type QuestionKind = "owner" | "category" | "deadline" | "math" | "trivia" | "emoji";
+export type QuestionKind = "owner" | "category" | "deadline" | "math" | "trivia" | "emoji" | "scramble";
 
 export interface MpQuestion {
   kind: QuestionKind;
@@ -187,6 +229,7 @@ const KIND_TITLE: Record<QuestionKind, string> = {
   math: "🧮 Hitung cepat!",
   trivia: "🧠 Trivia",
   emoji: "🎬 Tebak emoji",
+  scramble: "🔤 Susun huruf ini jadi kata",
 };
 
 export const kindTitle = (k: QuestionKind) => KIND_TITLE[k];
@@ -342,6 +385,8 @@ export interface StartPayload {
   deck?: string[];
   /** Jeda tunggu tiap ronde Refleks Kilat (ms). */
   delays?: number[];
+  /** Pola pad Pola Ajaib (0-3). */
+  pattern?: number[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

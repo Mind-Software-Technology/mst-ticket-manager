@@ -77,7 +77,7 @@ const asQuestion = (kind: "trivia" | "emoji", [prompt, answer, wrong]: Item, hin
 };
 
 export interface ContentQuestion {
-  kind: "trivia" | "emoji" | "math";
+  kind: "trivia" | "emoji" | "math" | "scramble";
   prompt: string;
   hint: string;
   options: string[];
@@ -142,4 +142,41 @@ export const REFLEX_ROUNDS = 6;
 
 export function buildReflexDelays(): number[] {
   return Array.from({ length: REFLEX_ROUNDS }, () => rand(1500, 4500));
+}
+
+const WORDS = [
+  "KOMPUTER", "KEYBOARD", "JARINGAN", "SERVER", "DATABASE", "SPRINT", "DEPLOY", "KLIEN", "PRODUK", "LAPORAN",
+  "PROYEK", "DESAIN", "PEMROGRAM", "INTERNET", "APLIKASI", "MONITOR", "BROWSER", "PASSWORD", "LAYAR", "SEMANGAT",
+  "KOLABORASI", "DEADLINE", "BACKEND", "FRONTEND", "TESTING", "REVIEW", "KOPI", "LEMBUR", "SEMINAR", "TARGET",
+  "KANBAN", "MARKETING", "FINANSIAL", "STRATEGI", "PRESENTASI", "KOORDINASI",
+];
+
+function scramble(word: string): string {
+  let out = word;
+  for (let i = 0; i < 10 && out === word; i++) out = shuffle(word.split("")).join("");
+  return out;
+}
+
+export function buildScrambleQuestions(count = 10): ContentQuestion[] {
+  return shuffle(WORDS)
+    .slice(0, count)
+    .map((word) => {
+      const near = shuffle(WORDS.filter((w) => w !== word)).sort(
+        (a, b) => Math.abs(a.length - word.length) - Math.abs(b.length - word.length),
+      );
+      const options = shuffle([word, ...near.slice(0, 3)]);
+      return {
+        kind: "scramble" as const,
+        prompt: scramble(word).split("").join(" "),
+        hint: `${word.length} huruf — pilih kata aslinya`,
+        options,
+        answer: options.indexOf(word),
+      };
+    });
+}
+
+export const SIMON_MAX = 40;
+
+export function buildSimonPattern(): number[] {
+  return Array.from({ length: SIMON_MAX }, () => rand(0, 3));
 }

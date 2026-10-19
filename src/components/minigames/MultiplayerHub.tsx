@@ -24,10 +24,19 @@ import {
   type MpPlayer,
   type StartPayload,
 } from "@/lib/multiplayer";
-import { buildMathQuestions, buildMemoryDeck, buildReflexDelays, buildTriviaQuestions } from "@/lib/mp-content";
+import {
+  buildMathQuestions,
+  buildMemoryDeck,
+  buildReflexDelays,
+  buildScrambleQuestions,
+  buildSimonPattern,
+  buildTriviaQuestions,
+} from "@/lib/mp-content";
 import { QuizBattle } from "./QuizBattle";
 import { MemoryRace } from "./MemoryRace";
 import { ReflexRace } from "./ReflexRace";
+import { RunRace } from "./RunRace";
+import { SimonRace } from "./SimonRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -174,6 +183,10 @@ function Room({
         return <MemoryRace key={key} {...props} />;
       case "reflex":
         return <ReflexRace key={key} {...props} />;
+      case "lari":
+        return <RunRace key={key} {...props} />;
+      case "simon":
+        return <SimonRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }
@@ -206,6 +219,12 @@ function Room({
           return { ...base, deck: buildMemoryDeck() };
         case "reflex":
           return { ...base, delays: buildReflexDelays() };
+        case "lari":
+          return { ...base };
+        case "kata":
+          return { ...base, questions: buildScrambleQuestions() };
+        case "simon":
+          return { ...base, pattern: buildSimonPattern() };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
