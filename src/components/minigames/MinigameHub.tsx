@@ -14,13 +14,31 @@ import { WhackGame } from "./WhackGame";
 import { PrioritySortGame } from "./PrioritySortGame";
 import { CategoryGuessGame } from "./CategoryGuessGame";
 import { SpeedTypeGame } from "./SpeedTypeGame";
+import { MultiplayerHub } from "./MultiplayerHub";
 
-export function MinigameHub({ userId }: { userId?: string }) {
+export function MinigameHub({ userId, userName }: { userId?: string; userName?: string }) {
   const { tickets, names, loading, error } = useMinigameTickets();
   const [game, setGame] = useState<GameKey>("quiz");
+  const [multi, setMulti] = useState(false);
 
   return (
     <div className="pt-4">
+      <div className="mb-3 inline-flex rounded-xl bg-slate-100 p-1 text-sm font-bold">
+        {[
+          { v: false, label: "🎮 Solo" },
+          { v: true, label: "👥 Main Bareng" },
+        ].map((t) => (
+          <button
+            key={t.label}
+            type="button"
+            onClick={() => setMulti(t.v)}
+            className={`px-4 py-1.5 rounded-lg transition ${multi === t.v ? "bg-white text-indigo-700 shadow" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {!multi && (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {GAME_KEYS.map((key) => (
           <button
@@ -38,6 +56,7 @@ export function MinigameHub({ userId }: { userId?: string }) {
           </button>
         ))}
       </div>
+      )}
 
       <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-5 min-h-[22rem]">
         {error && <p className="text-sm text-red-600 text-center">{error}</p>}
@@ -46,6 +65,13 @@ export function MinigameHub({ userId }: { userId?: string }) {
             <Loader2 className="w-4 h-4 animate-spin" /> Menyiapkan tiket untuk bermain…
           </div>
         ) : (
+          multi ? (
+            <MultiplayerHub
+              me={userId && userName ? { id: userId, name: userName } : undefined}
+              tickets={tickets}
+              names={names}
+            />
+          ) : (
           <>
             {game === "quiz" && <QuizGame key="quiz" tickets={tickets} names={names} userId={userId} />}
             {game === "deadline" && <DeadlineGame key="deadline" tickets={tickets} userId={userId} />}
@@ -54,10 +80,11 @@ export function MinigameHub({ userId }: { userId?: string }) {
             {game === "category_guess" && <CategoryGuessGame key="category_guess" tickets={tickets} userId={userId} />}
             {game === "speed_type" && <SpeedTypeGame key="speed_type" tickets={tickets} userId={userId} />}
           </>
+          )
         )}
       </div>
       <p className="mt-2 text-center text-[11px] text-slate-400">
-        Soal dibuat dari tiket asli tim. Rekor hanya tersimpan di browser kamu.
+        Soal dibuat dari tiket asli tim. Rekor solo hanya tersimpan di browser kamu; main bareng berjalan langsung lewat ruangan.
       </p>
     </div>
   );

@@ -159,7 +159,7 @@ export default function LeaderboardPage() {
 
         {isGame ? (
           <div className="px-4 md:px-6 pb-6">
-            <MinigameHub userId={meId} />
+            <MinigameHub userId={meId} userName={session?.profile.name} />
           </div>
         ) : (
         <>
