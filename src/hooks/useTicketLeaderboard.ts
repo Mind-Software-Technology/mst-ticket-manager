@@ -7,6 +7,8 @@
 // - Tiket selesai = state "done". Periode memakai done_date; kalau
 //   done_date kosong (tiket lama / diubah di luar UI) pakai updated_at.
 // - Tiket aktif (beban & molor) dihitung dari state saat ini.
+// - Jam kerja = manhours_estimate (yang diisi tim di tiket); actual_manhours
+//   dipakai kalau suatu saat terisi (> 0).
 // - Tiket dengan banyak assignee (assigned_to + ticket_assignees):
 //   SETIAP assignee dapat kredit 1 tiket; jam kerja dibagi rata.
 // - Semua bisa dipersempit per kategori tiket.
@@ -49,6 +51,7 @@ interface TicketRow {
   due_date: string | null;
   done_date: string | null;
   actual_manhours: number | null;
+  manhours_estimate: number | null;
 }
 
 interface UserRow {
@@ -91,7 +94,7 @@ export function useTicketLeaderboard(period: LeaderboardPeriod, category: Ticket
       const todayStr = toISODate(now);
       const since = periodStart(period, now);
       const cols =
-        "id, assigned_to, state, priority, due_date, done_date, actual_manhours, extra_assignees:ticket_assignees(user_id)";
+        "id, assigned_to, state, priority, due_date, done_date, actual_manhours, manhours_estimate, extra_assignees:ticket_assignees(user_id)";
 
       const [usersRes, doneRows, openRows] = await Promise.all([
         supabase.from("users").select("id, name, division").eq("is_active", true),
@@ -139,7 +142,8 @@ export function useTicketLeaderboard(period: LeaderboardPeriod, category: Ticket
       for (const t of doneRows) {
         const ids = assigneesOf(t);
         if (ids.length === 0) continue;
-        const hoursEach = (Number(t.actual_manhours) || 0) / ids.length;
+        const actual = Number(t.actual_manhours) || 0;
+        const hoursEach = (actual > 0 ? actual : Number(t.manhours_estimate) || 0) / ids.length;
         const doneOnTime = !!t.due_date && !!t.done_date && t.done_date <= t.due_date;
         for (const id of ids) {
           const s = stats.get(id);
