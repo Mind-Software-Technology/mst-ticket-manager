@@ -311,7 +311,7 @@ export default function KanbanPage() {
           <Loader2 className="w-4 h-4 animate-spin" /> Memuat papan…
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
+        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden no-scrollbar">
           <div className="flex gap-3 h-full pb-2">
             {columns.map(({ state, tickets: list }) => {
               const droppable = canDrop(state.value);
@@ -341,7 +341,7 @@ export default function KanbanPage() {
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
+                  <div className="flex-1 overflow-y-auto no-scrollbar px-2 pb-2 space-y-2">
                     {list.length === 0 && (
                       <p className="text-center text-[11px] text-slate-400 py-6">
                         {droppable ? "Lepas di sini" : "Kosong"}
