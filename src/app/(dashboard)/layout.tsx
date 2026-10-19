@@ -17,6 +17,7 @@ import {
   Lightbulb,
   Settings,
   Trophy,
+  Kanban,
   ChevronDown,
   UserCog,
 } from "lucide-react";
@@ -88,6 +89,7 @@ export default function DashboardLayout({
       ? [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }]
       : []),
     { href: "/gawean", label: "Gawean", icon: CheckSquare },
+    { href: "/kanban", label: "Kanban", icon: Kanban },
     { href: "/checkin", label: "Check In", icon: CalendarCheck },
     { href: "/leaderboard", label: "Peringkat", icon: Trophy },
     { href: "/config", label: "Config", icon: Settings },

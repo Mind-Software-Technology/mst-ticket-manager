@@ -10,7 +10,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, Search, Trophy, X } from "lucide-react";
+import { Kanban, PlusCircle, Search, Trophy, X } from "lucide-react";
 import { useCheckins } from "@/hooks/useCheckins";
 import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
 import { useSession } from "@/hooks/useSession";
@@ -212,6 +212,13 @@ export default function CheckinListPage() {
               </div>
             );
           })()}
+          <Button
+            variant="secondary"
+            icon={<Kanban className="w-4 h-4" />}
+            onClick={() => router.push("/kanban")}
+          >
+            Kanban
+          </Button>
           <Button
             variant="secondary"
             icon={<Trophy className="w-4 h-4" />}
