@@ -6,9 +6,9 @@
 // dibagikan ke tim).
 // =====================================================
 
-import type { TicketPriority, TicketState } from "@/types";
+import type { TicketCategory, TicketPriority, TicketState } from "@/types";
 
-export type GameKey = "quiz" | "deadline" | "whack";
+export type GameKey = "quiz" | "deadline" | "whack" | "priority_sort" | "category_guess" | "speed_type";
 
 export interface GameTicket {
   id: string;
@@ -66,9 +66,44 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "Butuh minimal 3 tiket.",
   },
+  priority_sort: {
+    label: "Susun Prioritas",
+    emoji: "🧩",
+    tagline: "Urutkan tiket dari prioritas tertinggi ke terendah secepat mungkin!",
+    rules: [
+      "8 ronde, tiap ronde 5 tiket diacak.",
+      "Tap tiket dari prioritas tertinggi (Critical) ke terendah (Low).",
+      "Benar = +50 + bonus kecepatan. Salah = -20 dan nyawa berkurang.",
+      "3 nyawa — habis = game over!",
+    ],
+    needs: "Butuh minimal 5 tiket dengan prioritas berbeda.",
+  },
+  category_guess: {
+    label: "Tebak Kategori",
+    emoji: "💡",
+    tagline: "Baca judul tiketnya, tebak kategorinya! Seberapa hapal kamu?",
+    rules: [
+      "10 soal, tiap soal 15 detik.",
+      "Pilih kategori yang benar dari 4 pilihan.",
+      "Benar +100 + bonus kecepatan + kombo. Salah = kombo hangus.",
+    ],
+    needs: "Butuh minimal 5 tiket dari 3 kategori berbeda.",
+  },
+  speed_type: {
+    label: "Ketik Cepat",
+    emoji: "⌨️",
+    tagline: "Tiket muncul — ketik ID-nya sebelum waktu habis! Uji kecepatan jarimu.",
+    rules: [
+      "45 detik, tiket muncul satu per satu.",
+      "Ketik kode tiket (misal MST-042) lalu Enter.",
+      "Benar = +80 + bonus kecepatan. Typo = skip, tidak ada penalti.",
+      "Makin lama makin cepat waktu per tiketnya!",
+    ],
+    needs: "Butuh minimal 5 tiket.",
+  },
 };
 
-export const GAME_KEYS: GameKey[] = ["quiz", "deadline", "whack"];
+export const GAME_KEYS: GameKey[] = ["quiz", "deadline", "whack", "priority_sort", "category_guess", "speed_type"];
 
 export function shuffle<T>(input: readonly T[]): T[] {
   const arr = [...input];
@@ -135,6 +170,107 @@ export const PRIORITY_DOT: Record<TicketPriority, string> = {
   low: "⚪",
 };
 
+// ─── Susun Prioritas ────────────────────────────────
+
+export const PRIORITY_ORDER: Record<TicketPriority, number> = {
+  critical: 1,
+  high: 2,
+  normal: 3,
+  low: 4,
+};
+
+export const SORT_ROUNDS = 8;
+export const SORT_HAND_SIZE = 5;
+
+export interface SortRound {
+  /** 5 tiket acak, belum diurutkan. */
+  tickets: GameTicket[];
+  /** Urutan jawaban yang benar (indeks ke array tickets, sudah terurut by priority lalu subject). */
+  correctOrder: number[];
+}
+
+export function buildSortRounds(tickets: GameTicket[]): SortRound[] {
+  const pool = shuffle(tickets);
+  const rounds: SortRound[] = [];
+  for (let r = 0; r < SORT_ROUNDS; r++) {
+    const start = (r * SORT_HAND_SIZE) % pool.length;
+    const hand: GameTicket[] = [];
+    for (let i = 0; i < SORT_HAND_SIZE; i++) {
+      hand.push(pool[(start + i) % pool.length]);
+    }
+    // Correct order: sort by priority level, then alphabetically by subject
+    const indexed = hand.map((t, i) => ({ t, i }));
+    indexed.sort((a, b) => {
+      const pa = PRIORITY_ORDER[a.t.priority];
+      const pb = PRIORITY_ORDER[b.t.priority];
+      if (pa !== pb) return pa - pb;
+      return a.t.subject.localeCompare(b.t.subject);
+    });
+    rounds.push({ tickets: hand, correctOrder: indexed.map((x) => x.i) });
+  }
+  return rounds;
+}
+
+export function canPlaySort(tickets: GameTicket[]): boolean {
+  const priorities = new Set(tickets.map((t) => t.priority));
+  return tickets.length >= 5 && priorities.size >= 2;
+}
+
+// ─── Tebak Kategori ─────────────────────────────────
+
+export interface CategoryQuestion {
+  ticket: GameTicket;
+  options: string[];
+  answer: string;
+}
+
+export const CATEGORY_ROUNDS = 10;
+
+/** Mapping dari category value ke label yang bersih. */
+export const CATEGORY_LABEL: Record<string, string> = {
+  service_support: "Service & Support",
+  finance_sales: "Finance & Sales",
+  development: "Development",
+  infrastructure_operations: "Infra & Ops",
+  qa_testing: "QA & Testing",
+  coordination_management: "Koordinasi",
+  design_ui_ux: "Design (UI/UX)",
+  internal_learning: "Internal & Learning",
+  marketing: "Marketing",
+};
+
+export function buildCategoryQuiz(tickets: GameTicket[]): CategoryQuestion[] {
+  const pool = shuffle(tickets.filter((t) => t.category && CATEGORY_LABEL[t.category]));
+  const allCategories = Array.from(new Set(pool.map((t) => t.category)));
+  return pool.slice(0, CATEGORY_ROUNDS).map((ticket) => {
+    const answer = CATEGORY_LABEL[ticket.category] ?? ticket.category;
+    const distractors = shuffle(
+      allCategories.filter((c) => c !== ticket.category).map((c) => CATEGORY_LABEL[c] ?? c),
+    ).slice(0, 3);
+    return { ticket, answer, options: shuffle([answer, ...distractors]) };
+  });
+}
+
+export function canPlayCategory(tickets: GameTicket[]): boolean {
+  const cats = new Set(tickets.filter((t) => t.category).map((t) => t.category));
+  return tickets.filter((t) => t.category).length >= 5 && cats.size >= 3;
+}
+
+// ─── Ketik Cepat ────────────────────────────────────
+
+export const SPEED_TYPE_DURATION = 45;
+
+export function buildTypeQueue(tickets: GameTicket[]): GameTicket[] {
+  // Shuffle dan buat queue besar supaya tidak habis
+  const pool = shuffle(tickets.filter((t) => t.ticket_id));
+  const repeats = Math.ceil(200 / Math.max(pool.length, 1));
+  return Array.from({ length: repeats }, () => shuffle(pool)).flat();
+}
+
+export function canPlaySpeedType(tickets: GameTicket[]): boolean {
+  return tickets.filter((t) => t.ticket_id).length >= 5;
+}
+
 // ─── Rekor pribadi ───────────────────────────────────
 
 const bestKey = (userId: string, game: GameKey) => `mst-minigame-best:${userId}:${game}`;
@@ -178,6 +314,24 @@ export function resultMessage(game: GameKey, score: number): string {
       [70, "Gebukanmu mematikan. 🔨"],
       [30, "Lumayan, backlog sedikit berkurang. 📉"],
       [0, "Tiketnya kabur semua. Besok lagi ya! 🏃"],
+    ],
+    priority_sort: [
+      [600, "Manajer prioritas sejati! Tiket selalu teratur. 📋"],
+      [400, "Insting prioritasmu tajam! 🎯"],
+      [200, "Lumayan, tapi masih perlu latihan. 📊"],
+      [0, "Prioritas masih bercampur aduk… coba lagi! 🔀"],
+    ],
+    category_guess: [
+      [900, "Kamu tahu semua seluk-beluk tim! Ensiklopedia hidup. 📚"],
+      [600, "Kategorisasimu rapi — PM yang bagus! 💼"],
+      [300, "Lumayan! Mungkin perlu intip-intip papan tiket lebih sering. 🔍"],
+      [0, "Kategori dan kamu… belum akrab, ya? 😅"],
+    ],
+    speed_type: [
+      [800, "Jari-jari super! Keyboard bergetar. ⚡"],
+      [500, "Ketikan cepat kelas developer senior. 💻"],
+      [250, "Lumayan, tapi bisa lebih cepat! 🏃"],
+      [0, "Pelan-pelan saja, tidak ada yang mengejar… 🐢"],
     ],
   };
   return (tiers[game].find(([min]) => score >= min) ?? tiers[game][3])[1];

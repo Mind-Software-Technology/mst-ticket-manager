@@ -11,6 +11,9 @@ import { GAMES, GAME_KEYS, type GameKey } from "@/lib/minigame";
 import { QuizGame } from "./QuizGame";
 import { DeadlineGame } from "./DeadlineGame";
 import { WhackGame } from "./WhackGame";
+import { PrioritySortGame } from "./PrioritySortGame";
+import { CategoryGuessGame } from "./CategoryGuessGame";
+import { SpeedTypeGame } from "./SpeedTypeGame";
 
 export function MinigameHub({ userId }: { userId?: string }) {
   const { tickets, names, loading, error } = useMinigameTickets();
@@ -18,7 +21,7 @@ export function MinigameHub({ userId }: { userId?: string }) {
 
   return (
     <div className="pt-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {GAME_KEYS.map((key) => (
           <button
             key={key}
@@ -47,6 +50,9 @@ export function MinigameHub({ userId }: { userId?: string }) {
             {game === "quiz" && <QuizGame key="quiz" tickets={tickets} names={names} userId={userId} />}
             {game === "deadline" && <DeadlineGame key="deadline" tickets={tickets} userId={userId} />}
             {game === "whack" && <WhackGame key="whack" tickets={tickets} userId={userId} />}
+            {game === "priority_sort" && <PrioritySortGame key="priority_sort" tickets={tickets} userId={userId} />}
+            {game === "category_guess" && <CategoryGuessGame key="category_guess" tickets={tickets} userId={userId} />}
+            {game === "speed_type" && <SpeedTypeGame key="speed_type" tickets={tickets} userId={userId} />}
           </>
         )}
       </div>
