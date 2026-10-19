@@ -3,9 +3,9 @@
 // =====================================================
 // Leaderboard Page — Papan Peringkat
 //
-// Dua grup: Check-In (streak, rajin, pagi) dan Tiket (selesai,
-// jam kerja, tepat waktu, urgent, beban, molor). Papan tiket bisa
-// difilter periode dan kategori tiket.
+// Tiga grup: Check-In (streak, rajin, pagi), Tiket (selesai, jam
+// kerja, tepat waktu, urgent, beban, molor) dan Minigame berbasis
+// tiket. Papan tiket bisa difilter periode dan kategori tiket.
 // =====================================================
 
 import { useMemo, useState } from "react";
@@ -19,6 +19,7 @@ import {
 } from "@/hooks/useTicketLeaderboard";
 import { LeaderboardBoard } from "@/components/LeaderboardBoard";
 import { ShareLeaderboardModal } from "@/components/ShareLeaderboardModal";
+import { MinigameHub } from "@/components/minigames/MinigameHub";
 import { TICKET_CATEGORIES } from "@/lib/constants";
 import {
   BOARDS,
@@ -32,16 +33,21 @@ import {
 } from "@/lib/leaderboard";
 import type { TicketCategory } from "@/types";
 
-const GROUPS: Array<{ key: BoardGroup; label: string; emoji: string }> = [
+type PageGroup = BoardGroup | "game";
+
+const GROUPS: Array<{ key: PageGroup; label: string; emoji: string }> = [
   { key: "checkin", label: "Check-In", emoji: "📋" },
   { key: "ticket", label: "Tiket (Gawean)", emoji: "🎫" },
+  { key: "game", label: "Minigame", emoji: "🎮" },
 ];
 
 export default function LeaderboardPage() {
   const { session } = useSession();
   const meId = session?.profile.id;
 
-  const [group, setGroup] = useState<BoardGroup>("checkin");
+  const [group, setGroup] = useState<PageGroup>("checkin");
+  const isGame = group === "game";
+  const boardGroup: BoardGroup = group === "game" ? "ticket" : group;
   const [board, setBoard] = useState<BoardKey>("streak");
   const [period, setPeriod] = useState<LeaderboardPeriod>("month");
   const [category, setCategory] = useState<TicketCategory | "">("");
@@ -50,9 +56,9 @@ export default function LeaderboardPage() {
   const checkin = useCheckinLeaderboard();
   const tickets = useTicketLeaderboard(period, category);
 
-  const switchGroup = (g: BoardGroup) => {
+  const switchGroup = (g: PageGroup) => {
     setGroup(g);
-    setBoard(BOARD_KEYS_BY_GROUP[g][0]);
+    if (g !== "game") setBoard(BOARD_KEYS_BY_GROUP[g][0]);
   };
 
   const rows = useMemo(
@@ -97,14 +103,17 @@ export default function LeaderboardPage() {
               <span className="animate-lb-float inline-block">🏆</span> Papan Peringkat
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              {BOARDS[board].emoji} {BOARDS[board].tagline}
-              {group === "checkin" && checkin.entries.length > 0 && (
+              {isGame
+                ? "🎮 Istirahat sebentar — main minigame dari tiket tim!"
+                : `${BOARDS[board].emoji} ${BOARDS[board].tagline}`}
+              {!isGame && group === "checkin" && checkin.entries.length > 0 && (
                 <span className="ml-2 text-slate-400">
                   · {doneToday}/{checkin.entries.length} sudah check-in hari ini
                 </span>
               )}
             </p>
           </div>
+          {!isGame && (
           <div className="flex items-center gap-1">
           <button
             type="button"
@@ -125,6 +134,7 @@ export default function LeaderboardPage() {
             <RefreshCw className={`w-4 h-4 ${active.loading ? "animate-spin" : ""}`} />
           </button>
           </div>
+          )}
         </div>
 
         {/* Grup */}
@@ -145,9 +155,15 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
+        {isGame ? (
+          <div className="px-4 md:px-6 pb-6">
+            <MinigameHub userId={meId} />
+          </div>
+        ) : (
+        <>
         {/* Papan */}
         <div className="px-4 md:px-6 pt-3 flex gap-2 flex-wrap">
-          {BOARD_KEYS_BY_GROUP[group].map((key) => (
+          {BOARD_KEYS_BY_GROUP[boardGroup].map((key) => (
             <button
               key={key}
               type="button"
@@ -214,6 +230,8 @@ export default function LeaderboardPage() {
             <LeaderboardBoard board={board} rows={rows} meId={meId} />
           )}
         </div>
+        </>
+        )}
       </section>
 
       {shareOpen && (
