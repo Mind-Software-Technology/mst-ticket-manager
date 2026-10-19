@@ -14,7 +14,7 @@ import {
   type GameTicket,
 } from "@/lib/minigame";
 
-export type MpMode = "quiz" | "rebutan" | "race";
+export type MpMode = "quiz" | "rebutan" | "survival" | "race" | "whack";
 
 export interface MpModeConfig {
   label: string;
@@ -47,6 +47,29 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     ],
     minPlayers: 2,
   },
+  survival: {
+    label: "Survival",
+    emoji: "💀",
+    tagline: "Satu salah, langsung gugur. Siapa penyintas terakhir di tim?",
+    rules: [
+      "Soal sama seperti kuis, 15 detik per soal.",
+      "Jawaban salah atau telat = tereliminasi (tetap bisa menonton).",
+      "Penyintas dapat poin tiap ronde, lebih cepat lebih besar.",
+      "Penyintas terakhir dapat bonus +200. Bisa selesai sebelum soal habis!",
+    ],
+    minPlayers: 2,
+  },
+  whack: {
+    label: "Gebuk Bareng",
+    emoji: "🔨",
+    tagline: "Tiket yang sama muncul untuk semua. Siapa paling jago menggebuk?",
+    rules: [
+      "30 detik, jadwal tiket muncul persis sama untuk semua pemain.",
+      "Prioritas tinggi = poin besar, ✨ tiket emas +10, 💣 bom -5.",
+      "Tiket kabur memutus kombo. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
   race: {
     label: "Balapan Ketik",
     emoji: "🏎️",
@@ -60,7 +83,7 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
   },
 };
 
-export const MP_MODE_KEYS: MpMode[] = ["quiz", "rebutan", "race"];
+export const MP_MODE_KEYS: MpMode[] = ["quiz", "rebutan", "survival", "whack", "race"];
 
 export const ROUND_MS = 15_000;
 export const RACE_SECONDS = 45;
@@ -143,14 +166,14 @@ export type RoundAnswers = Record<string, RoundAnswer>;
 const RANK_POINTS = [150, 100, 70];
 
 /** Poin tiap pemain untuk satu ronde — dipanggil identik di semua klien. */
-export function scoreRound(q: MpQuestion, answers: RoundAnswers, mode: "quiz" | "rebutan"): Record<string, number> {
+export function scoreRound(q: MpQuestion, answers: RoundAnswers, mode: "quiz" | "rebutan" | "survival"): Record<string, number> {
   const correct = Object.entries(answers)
     .filter(([, a]) => a.c === q.answer)
     .sort((a, b) => a[1].ms - b[1].ms || a[0].localeCompare(b[0]));
   const pts: Record<string, number> = {};
   correct.forEach(([id, a], rank) => {
     pts[id] =
-      mode === "rebutan"
+      mode !== "quiz"
         ? (RANK_POINTS[rank] ?? 40)
         : 100 + Math.round(Math.max(0, 1 - a.ms / ROUND_MS) * 100);
   });
@@ -178,6 +201,50 @@ export function canPlayRace(tickets: GameTicket[]): boolean {
   return tickets.filter((t) => t.ticket_id).length >= 5;
 }
 
+// ─── Gebuk bareng ────────────────────────────────────
+
+export const WHACK_SECONDS = 30;
+export const WHACK_HOLES = 9;
+
+export interface WhackSpawn {
+  /** Muncul pada ms ke-N sejak mulai. */
+  at: number;
+  /** Lama tampil (ms). */
+  life: number;
+  slot: number;
+  kind: "ticket" | "bomb" | "gold";
+  ticket_id: string;
+  subject: string;
+  priority: GameTicket["priority"];
+}
+
+/** Jadwal kemunculan deterministik: dibuat host, diputar ulang di semua klien. */
+export function buildWhackSchedule(tickets: GameTicket[]): WhackSpawn[] {
+  const pool = tickets.filter((t) => t.ticket_id);
+  const busyUntil = Array<number>(WHACK_HOLES).fill(-1);
+  const out: WhackSpawn[] = [];
+  let at = 700;
+  while (at < WHACK_SECONDS * 1000 - 600) {
+    const sec = at / 1000;
+    const life = Math.max(850, Math.round(1700 - sec * 25));
+    const free = busyUntil.flatMap((end, i) => (end <= at ? [i] : []));
+    if (free.length > 0) {
+      const slot = free[Math.floor(Math.random() * free.length)];
+      const t = pool[Math.floor(Math.random() * pool.length)];
+      const r = Math.random();
+      const kind: WhackSpawn["kind"] = r < 0.12 ? "bomb" : r < 0.2 ? "gold" : "ticket";
+      out.push({ at, life, slot, kind, ticket_id: t.ticket_id, subject: t.subject, priority: t.priority });
+      busyUntil[slot] = at + life + 100;
+    }
+    at += Math.max(220, Math.round(520 - sec * 8)) + Math.floor(Math.random() * 120);
+  }
+  return out;
+}
+
+export function canPlayWhack(tickets: GameTicket[]): boolean {
+  return tickets.filter((t) => t.ticket_id).length >= 3;
+}
+
 // ─── Pesan & pemain ──────────────────────────────────
 
 export interface MpPlayer {
@@ -191,6 +258,7 @@ export interface StartPayload {
   players: MpPlayer[];
   questions?: MpQuestion[];
   queue?: RaceTicket[];
+  schedule?: WhackSpawn[];
 }
 
 export type MpMessage =

@@ -43,7 +43,8 @@ export function QuizBattle({
   onLeave: () => void;
 }) {
   const questions = config.questions ?? [];
-  const mode = config.mode === "rebutan" ? "rebutan" : "quiz";
+  const mode = config.mode === "rebutan" || config.mode === "survival" ? config.mode : "quiz";
+  const survival = mode === "survival";
   const isHost = config.hostId === me.id;
   const joined = config.players;
 
@@ -55,11 +56,14 @@ export function QuizBattle({
   const [revealed, setRevealed] = useState<RoundAnswers>({});
   const [timeLeft, setTimeLeft] = useState(ROUND_MS);
   const [aborted, setAborted] = useState(false);
+  const [alive, setAlive] = useState<string[]>(() => config.players.map((p) => p.id));
 
   const roundStart = useRef(0);
   const hostAnswers = useRef<Record<number, RoundAnswers>>({});
   const hostRevealed = useRef<Set<number>>(new Set());
   const scored = useRef<Set<number>>(new Set());
+  const aliveRef = useRef<string[]>(config.players.map((p) => p.id));
+  const bonusGiven = useRef(false);
   const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const presentRef = useRef<string[]>([]);
   const handler = useRef<(m: MpMessage) => void>(() => {});
@@ -81,7 +85,8 @@ export function QuizBattle({
     hostRevealed.current.add(i);
     room.send({ t: "reveal", i, answers: hostAnswers.current[i] ?? {} });
     later(() => {
-      if (i + 1 < questions.length) room.send({ t: "round", i: i + 1 });
+      const over = survival && aliveRef.current.length <= 1;
+      if (!over && i + 1 < questions.length) room.send({ t: "round", i: i + 1 });
       else room.send({ t: "end" });
     }, REVEAL_MS);
   };
@@ -101,14 +106,24 @@ export function QuizBattle({
           if (!isHost) break;
           const bucket = (hostAnswers.current[m.i] ??= {});
           if (!bucket[m.id]) bucket[m.id] = { c: m.c, ms: m.ms };
-          const waiting = joined.filter((p) => presentRef.current.includes(p.id));
+          const waiting = joined.filter(
+            (p) => presentRef.current.includes(p.id) && aliveRef.current.includes(p.id),
+          );
           if (waiting.every((p) => bucket[p.id])) later(() => hostReveal(m.i), 600);
           break;
         }
         case "reveal": {
           if (scored.current.has(m.i)) break;
           scored.current.add(m.i);
-          const pts = scoreRound(questions[m.i], m.answers, mode);
+          const q = questions[m.i];
+          const pts = scoreRound(q, m.answers, mode);
+          if (survival) {
+            // Hanya penyintas yang menjawab benar yang lanjut dan dapat poin.
+            const survivors = aliveRef.current.filter((id) => m.answers[id]?.c === q.answer);
+            for (const id of Object.keys(pts)) if (!survivors.includes(id)) delete pts[id];
+            aliveRef.current = survivors;
+            setAlive(survivors);
+          }
           setGain(Object.fromEntries(joined.map((p) => [p.id, pts[p.id] ?? 0])));
           setRevealed(m.answers);
           setScores((prev) => {
@@ -120,6 +135,12 @@ export function QuizBattle({
           break;
         }
         case "end":
+          if (survival && !bonusGiven.current) {
+            bonusGiven.current = true;
+            const last = aliveRef.current;
+            // Bonus hanya kalau ada pemenang tunggal.
+            if (last.length === 1) setScores((prev) => ({ ...prev, [last[0]]: (prev[last[0]] ?? 0) + 200 }));
+          }
           setStage("done");
           break;
       }
@@ -154,6 +175,7 @@ export function QuizBattle({
   const answer = (c: number) => {
     if (stage !== "question" || choice !== null || timeLeft <= 0) return;
     if (!joined.some((p) => p.id === me.id)) return;
+    if (survival && !alive.includes(me.id)) return;
     setChoice(c);
     room.send({ t: "ans", i: idx, id: me.id, c, ms: nowMs() - roundStart.current });
   };
@@ -186,6 +208,7 @@ export function QuizBattle({
   const q = questions[idx];
   const reveal = stage === "reveal";
   const answered = joined.filter((p) => revealed[p.id]).length;
+  const out = survival && !alive.includes(me.id);
 
   return (
     <div className="max-w-xl mx-auto">
@@ -233,7 +256,7 @@ export function QuizBattle({
             <button
               key={opt}
               type="button"
-              disabled={reveal || choice !== null}
+              disabled={reveal || choice !== null || out}
               onClick={() => answer(i)}
               className={`rounded-xl border-2 px-4 py-3 text-sm font-bold transition active:scale-[0.98] ${cls}`}
             >
@@ -244,7 +267,9 @@ export function QuizBattle({
       </div>
 
       <p className="mt-2 text-center text-xs text-slate-400">
-        {reveal
+        {out
+          ? "💀 Kamu tereliminasi — nonton dulu sampai penyintas terakhir ketahuan."
+          : reveal
           ? `${answered}/${joined.length} pemain menjawab`
           : choice !== null
             ? "Jawabanmu terkunci. Menunggu pemain lain…"
@@ -252,7 +277,13 @@ export function QuizBattle({
       </p>
 
       <div className="mt-4">
-        <Scoreboard players={joined} scores={scores} meId={me.id} gain={reveal ? gain : undefined} />
+        <Scoreboard
+          players={joined}
+          scores={scores}
+          meId={me.id}
+          gain={reveal ? gain : undefined}
+          suffix={survival ? (id) => (alive.includes(id) ? "❤️ hidup" : "💀") : undefined}
+        />
       </div>
     </div>
   );

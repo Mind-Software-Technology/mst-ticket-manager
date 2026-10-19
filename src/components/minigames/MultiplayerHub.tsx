@@ -14,8 +14,10 @@ import {
   avatarFor,
   buildMpQuestions,
   buildRaceQueue,
+  buildWhackSchedule,
   canPlayMp,
   canPlayRace,
+  canPlayWhack,
   normalizeCode,
   randomRoomCode,
   type MpMode,
@@ -24,6 +26,7 @@ import {
 } from "@/lib/multiplayer";
 import { QuizBattle } from "./QuizBattle";
 import { TypeRace } from "./TypeRace";
+import { WhackRace } from "./WhackRace";
 
 const TEAM_ROOM = "TIM";
 
@@ -136,12 +139,17 @@ function Room({
       onLeave,
     };
     // key: ronde baru = komponen baru (state permainan bersih).
-    const key = config.questions?.length ? config.questions.map((q) => q.prompt).join("|") : config.queue?.[0]?.ticket_id;
-    return config.mode === "race" ? <TypeRace key={key} {...props} /> : <QuizBattle key={key} {...props} />;
+    const key = config.questions?.length
+      ? config.questions.map((q) => q.prompt).join("|")
+      : (config.queue?.[0]?.ticket_id ?? String(config.schedule?.[0]?.at)) + (config.schedule?.length ?? "");
+    if (config.mode === "race") return <TypeRace key={key} {...props} />;
+    if (config.mode === "whack") return <WhackRace key={key} {...props} />;
+    return <QuizBattle key={key} {...props} />;
   }
 
   const cfg = MP_MODES[mode];
-  const playable = mode === "race" ? canPlayRace(tickets) : canPlayMp(tickets, names);
+  const playable =
+    mode === "race" ? canPlayRace(tickets) : mode === "whack" ? canPlayWhack(tickets) : canPlayMp(tickets, names);
   const enough = players.length >= cfg.minPlayers;
 
   const start = () => {
@@ -149,7 +157,9 @@ function Room({
     const payload: StartPayload =
       mode === "race"
         ? { ...base, queue: buildRaceQueue(tickets) }
-        : { ...base, questions: buildMpQuestions(tickets, names) };
+        : mode === "whack"
+          ? { ...base, schedule: buildWhackSchedule(tickets) }
+          : { ...base, questions: buildMpQuestions(tickets, names) };
     room.send({ t: "start", ...payload });
   };
 
@@ -213,7 +223,7 @@ function Room({
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
         {MP_MODE_KEYS.map((key) => (
           <button
             key={key}
