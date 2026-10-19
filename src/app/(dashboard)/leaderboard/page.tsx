@@ -61,12 +61,14 @@ export default function LeaderboardPage() {
     if (g !== "game") setBoard(BOARD_KEYS_BY_GROUP[g][0]);
   };
 
+  // Pakai group milik `board` (bukan `group`): di tab "game" board tidak berganti,
+  // jadi board check-in bisa sempat dipasangkan dengan papan tiket.
   const rows = useMemo(
     () =>
-      group === "checkin"
+      BOARDS[board].group === "checkin"
         ? checkinRows(checkin.entries, board as CheckinBoardKey)
         : ticketRows(tickets.entries, board as TicketBoardKey),
-    [group, board, checkin.entries, tickets.entries],
+    [board, checkin.entries, tickets.entries],
   );
 
   const active = group === "checkin" ? checkin : tickets;
