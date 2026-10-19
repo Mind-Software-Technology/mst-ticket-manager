@@ -19,6 +19,7 @@ import {
   Trophy,
   Kanban,
   ChevronDown,
+  MoreHorizontal,
   UserCog,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
@@ -37,6 +38,7 @@ export default function DashboardLayout({
   const { session, loading, profileStatus, profileError, authEmail, signOut } =
     useSession();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Redirect ke login HANYA kalau benar-benar tidak ada auth session
   useEffect(() => {
@@ -92,9 +94,13 @@ export default function DashboardLayout({
     { href: "/kanban", label: "Kanban", icon: Kanban },
     { href: "/checkin", label: "Check In", icon: CalendarCheck },
     { href: "/leaderboard", label: "Peringkat", icon: Trophy },
+  ];
+  // Menu jarang dipakai dikelompokkan di dropdown "Lainnya" supaya navbar tidak sesak.
+  const moreItems = [
     { href: "/config", label: "Config", icon: Settings },
     { href: "/notes", label: "Catatan Ide", icon: Lightbulb },
   ];
+  const allItems = [...navItems, ...moreItems];
 
   const isActive = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
@@ -134,7 +140,7 @@ export default function DashboardLayout({
                           try { sessionStorage.removeItem("gawean_v2"); } catch {}
                         }
                       }}
-                      className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      className={`flex items-center whitespace-nowrap px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                         isActive(item.href)
                           ? "bg-indigo-50 text-indigo-700"
                           : "text-slate-600 hover:bg-slate-100 hover:text-indigo-600"
@@ -145,6 +151,49 @@ export default function DashboardLayout({
                     </Link>
                   );
                 })}
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMoreOpen((v) => !v)}
+                    className={`flex items-center whitespace-nowrap px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      moreItems.some((i) => isActive(i.href))
+                        ? "bg-indigo-50 text-indigo-700"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-indigo-600"
+                    }`}
+                    aria-haspopup="menu"
+                    aria-expanded={moreOpen}
+                  >
+                    <MoreHorizontal className="w-4 h-4 mr-2" />
+                    Lainnya
+                    <ChevronDown className="w-3.5 h-3.5 ml-1 text-slate-400" />
+                  </button>
+                  {moreOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setMoreOpen(false)} />
+                      <div className="absolute left-0 mt-2 w-48 bg-white rounded-xl border border-slate-200 shadow-lg z-20 overflow-hidden py-1">
+                        {moreItems.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              onClick={() => setMoreOpen(false)}
+                              className={`flex items-center px-4 py-2.5 text-sm font-medium transition-colors ${
+                                isActive(item.href)
+                                  ? "bg-indigo-50 text-indigo-700"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                            >
+                              <Icon className="w-4 h-4 mr-2" />
+                              {item.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
               </nav>
             </div>
 
@@ -162,7 +211,7 @@ export default function DashboardLayout({
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
                   {profile.name.charAt(0).toUpperCase()}
                 </div>
-                <div className="hidden sm:block text-left">
+                <div className="hidden xl:block text-left">
                   <p className="text-sm font-medium text-slate-900 leading-tight">
                     {profile.name}
                   </p>
@@ -213,7 +262,7 @@ export default function DashboardLayout({
 
           {/* Mobile nav */}
           <nav className="md:hidden flex items-center gap-1 overflow-x-auto pb-2 -mt-1">
-            {navItems.map((item) => {
+            {allItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Link
