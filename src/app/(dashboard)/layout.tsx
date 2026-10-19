@@ -16,6 +16,7 @@ import {
   LogOut,
   Lightbulb,
   Settings,
+  Trophy,
   ChevronDown,
   UserCog,
 } from "lucide-react";
@@ -88,6 +89,7 @@ export default function DashboardLayout({
       : []),
     { href: "/gawean", label: "Gawean", icon: CheckSquare },
     { href: "/checkin", label: "Check In", icon: CalendarCheck },
+    { href: "/leaderboard", label: "Peringkat", icon: Trophy },
     { href: "/config", label: "Config", icon: Settings },
     { href: "/notes", label: "Catatan Ide", icon: Lightbulb },
   ];

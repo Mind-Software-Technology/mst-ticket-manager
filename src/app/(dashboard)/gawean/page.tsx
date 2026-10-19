@@ -15,7 +15,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, ChevronRight, ChevronDown, Wallet } from "lucide-react";
+import { PlusCircle, ChevronRight, ChevronDown, Wallet, Trophy } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useTickets } from "@/hooks/useTickets";
 import { Badge, Button, Pagination, EmptyState } from "@/components/ui";
@@ -295,6 +295,13 @@ export default function GaweanPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            icon={<Trophy className="w-4 h-4" />}
+            onClick={() => router.push("/leaderboard")}
+          >
+            Peringkat
+          </Button>
           <Button
             variant="secondary"
             icon={<Wallet className="w-4 h-4" />}

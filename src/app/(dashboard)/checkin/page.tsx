@@ -16,7 +16,6 @@ import { useCheckinStreaks } from "@/hooks/useCheckinStreaks";
 import { useSession } from "@/hooks/useSession";
 import { Button, Badge, EmptyState } from "@/components/ui";
 import { StreakIcon } from "@/components/StreakIcon";
-import { CheckinLeaderboard } from "@/components/CheckinLeaderboard";
 
 type GroupBy = "none" | "employee" | "division" | "date";
 
@@ -30,7 +29,6 @@ const GROUP_LABELS: Record<GroupBy, string> = {
 export default function CheckinListPage() {
   const router = useRouter();
   const [todayOnly, setTodayOnly] = useState(true);
-  const [showBoard, setShowBoard] = useState(true);
   const { checkins, loading, error } = useCheckins(todayOnly);
   const { session } = useSession();
   const { getStreakData, loading: streakLoading, refresh: refreshStreaks } = useCheckinStreaks();
@@ -215,9 +213,9 @@ export default function CheckinListPage() {
             );
           })()}
           <Button
-            variant={showBoard ? "primary" : "secondary"}
+            variant="secondary"
             icon={<Trophy className="w-4 h-4" />}
-            onClick={() => setShowBoard((v) => !v)}
+            onClick={() => router.push("/leaderboard")}
           >
             Peringkat
           </Button>
@@ -230,8 +228,6 @@ export default function CheckinListPage() {
           </Button>
         </div>
       </div>
-
-      {showBoard && <CheckinLeaderboard meId={session?.profile.id} />}
 
       {/* Quick filter */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">

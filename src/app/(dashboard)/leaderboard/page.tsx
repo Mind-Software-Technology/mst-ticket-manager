@@ -1,0 +1,191 @@
+"use client";
+
+// =====================================================
+// Leaderboard Page — Papan Peringkat
+//
+// Dua grup: Check-In (streak, rajin, pagi) dan Tiket (selesai,
+// jam kerja, tepat waktu, urgent, beban, molor). Papan tiket bisa
+// difilter periode dan kategori tiket.
+// =====================================================
+
+import { useMemo, useState } from "react";
+import { Loader2, RefreshCw } from "lucide-react";
+import { useSession } from "@/hooks/useSession";
+import { useCheckinLeaderboard } from "@/hooks/useCheckinLeaderboard";
+import {
+  PERIOD_LABELS,
+  useTicketLeaderboard,
+  type LeaderboardPeriod,
+} from "@/hooks/useTicketLeaderboard";
+import { LeaderboardBoard } from "@/components/LeaderboardBoard";
+import { TICKET_CATEGORIES } from "@/lib/constants";
+import {
+  BOARDS,
+  BOARD_KEYS_BY_GROUP,
+  checkinRows,
+  ticketRows,
+  type BoardGroup,
+  type BoardKey,
+  type CheckinBoardKey,
+  type TicketBoardKey,
+} from "@/lib/leaderboard";
+import type { TicketCategory } from "@/types";
+
+const GROUPS: Array<{ key: BoardGroup; label: string; emoji: string }> = [
+  { key: "checkin", label: "Check-In", emoji: "📋" },
+  { key: "ticket", label: "Tiket (Gawean)", emoji: "🎫" },
+];
+
+export default function LeaderboardPage() {
+  const { session } = useSession();
+  const meId = session?.profile.id;
+
+  const [group, setGroup] = useState<BoardGroup>("checkin");
+  const [board, setBoard] = useState<BoardKey>("streak");
+  const [period, setPeriod] = useState<LeaderboardPeriod>("month");
+  const [category, setCategory] = useState<TicketCategory | "">("");
+
+  const checkin = useCheckinLeaderboard();
+  const tickets = useTicketLeaderboard(period, category);
+
+  const switchGroup = (g: BoardGroup) => {
+    setGroup(g);
+    setBoard(BOARD_KEYS_BY_GROUP[g][0]);
+  };
+
+  const rows = useMemo(
+    () =>
+      group === "checkin"
+        ? checkinRows(checkin.entries, board as CheckinBoardKey)
+        : ticketRows(tickets.entries, board as TicketBoardKey),
+    [group, board, checkin.entries, tickets.entries],
+  );
+
+  const active = group === "checkin" ? checkin : tickets;
+  const doneToday = checkin.entries.filter((e) => e.checkedInToday).length;
+  // Papan beban & molor memakai tiket aktif saat ini, jadi periode tidak berpengaruh.
+  const periodApplies = board !== "beban" && board !== "molor";
+
+  const chip = (selected: boolean, tone: string) =>
+    `px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
+      selected ? tone : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+    }`;
+
+  return (
+    <div className="p-4 md:p-8">
+      <section className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-white">
+        {/* Header */}
+        <div className="px-4 md:px-6 pt-5 pb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+              <span className="animate-lb-float inline-block">🏆</span> Papan Peringkat
+            </h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {BOARDS[board].emoji} {BOARDS[board].tagline}
+              {group === "checkin" && checkin.entries.length > 0 && (
+                <span className="ml-2 text-slate-400">
+                  · {doneToday}/{checkin.entries.length} sudah check-in hari ini
+                </span>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void active.refresh()}
+            disabled={active.loading}
+            title="Segarkan"
+            className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${active.loading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+
+        {/* Grup */}
+        <div className="px-4 md:px-6 flex gap-2 border-b border-slate-100 pb-3">
+          {GROUPS.map((g) => (
+            <button
+              key={g.key}
+              type="button"
+              onClick={() => switchGroup(g.key)}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                group === g.key
+                  ? "bg-slate-900 text-white shadow-md"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {g.emoji} {g.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Papan */}
+        <div className="px-4 md:px-6 pt-3 flex gap-2 flex-wrap">
+          {BOARD_KEYS_BY_GROUP[group].map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setBoard(key)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                board === key
+                  ? "bg-indigo-600 text-white shadow-md scale-105"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {BOARDS[key].emoji} {BOARDS[key].label}
+            </button>
+          ))}
+        </div>
+
+        {/* Filter tiket */}
+        {group === "ticket" && (
+          <div className="px-4 md:px-6 pt-3 flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              Periode
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value as LeaderboardPeriod)}
+                disabled={!periodApplies}
+                title={periodApplies ? undefined : "Papan ini menghitung tiket aktif saat ini"}
+                className="py-1.5 px-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {(Object.keys(PERIOD_LABELS) as LeaderboardPeriod[]).map((p) => (
+                  <option key={p} value={p}>{PERIOD_LABELS[p]}</option>
+                ))}
+              </select>
+            </label>
+            <div className="flex gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setCategory("")}
+                className={chip(category === "", "bg-emerald-600 border-emerald-600 text-white")}
+              >
+                Semua Kategori
+              </button>
+              {TICKET_CATEGORIES.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => setCategory(c.value)}
+                  className={chip(category === c.value, "bg-emerald-600 border-emerald-600 text-white")}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="px-4 md:px-6 pb-6">
+          {active.error && <p className="mt-3 text-sm text-red-600">{active.error}</p>}
+          {active.loading && active.entries.length === 0 ? (
+            <div className="py-12 flex items-center justify-center gap-2 text-sm text-slate-500">
+              <Loader2 className="w-4 h-4 animate-spin" /> Menghitung siapa yang paling jago…
+            </div>
+          ) : (
+            <LeaderboardBoard board={board} rows={rows} meId={meId} />
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
