@@ -9,7 +9,7 @@
 // =====================================================
 
 import { useMemo, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Share2 } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useCheckinLeaderboard } from "@/hooks/useCheckinLeaderboard";
 import {
@@ -18,6 +18,7 @@ import {
   type LeaderboardPeriod,
 } from "@/hooks/useTicketLeaderboard";
 import { LeaderboardBoard } from "@/components/LeaderboardBoard";
+import { ShareLeaderboardModal } from "@/components/ShareLeaderboardModal";
 import { TICKET_CATEGORIES } from "@/lib/constants";
 import {
   BOARDS,
@@ -44,6 +45,7 @@ export default function LeaderboardPage() {
   const [board, setBoard] = useState<BoardKey>("streak");
   const [period, setPeriod] = useState<LeaderboardPeriod>("month");
   const [category, setCategory] = useState<TicketCategory | "">("");
+  const [shareOpen, setShareOpen] = useState(false);
 
   const checkin = useCheckinLeaderboard();
   const tickets = useTicketLeaderboard(period, category);
@@ -65,6 +67,20 @@ export default function LeaderboardPage() {
   const doneToday = checkin.entries.filter((e) => e.checkedInToday).length;
   // Papan beban & molor memakai tiket aktif saat ini, jadi periode tidak berpengaruh.
   const periodApplies = board !== "beban" && board !== "molor";
+
+  // Keterangan konteks yang ikut tercetak di gambar yang dibagikan.
+  const shareSubtitle = useMemo(() => {
+    if (group === "checkin") {
+      return board === "streak"
+        ? "Streak saat ini"
+        : board === "rajin"
+          ? new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" })
+          : "30 hari terakhir";
+    }
+    const parts = [periodApplies ? PERIOD_LABELS[period] : "Tiket aktif saat ini"];
+    if (category) parts.push(TICKET_CATEGORIES.find((c) => c.value === category)?.label ?? category);
+    return parts.join(" · ");
+  }, [group, board, period, category, periodApplies]);
 
   const chip = (selected: boolean, tone: string) =>
     `px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
@@ -89,6 +105,16 @@ export default function LeaderboardPage() {
               )}
             </p>
           </div>
+          <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            disabled={rows.length === 0}
+            title="Bagikan sebagai gambar"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-fuchsia-500 to-indigo-500 hover:opacity-90 disabled:opacity-40"
+          >
+            <Share2 className="w-3.5 h-3.5" /> Bagikan
+          </button>
           <button
             type="button"
             onClick={() => void active.refresh()}
@@ -98,6 +124,7 @@ export default function LeaderboardPage() {
           >
             <RefreshCw className={`w-4 h-4 ${active.loading ? "animate-spin" : ""}`} />
           </button>
+          </div>
         </div>
 
         {/* Grup */}
@@ -186,6 +213,15 @@ export default function LeaderboardPage() {
           )}
         </div>
       </section>
+
+      {shareOpen && (
+        <ShareLeaderboardModal
+          board={board}
+          rows={rows}
+          subtitle={shareSubtitle}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </div>
   );
 }

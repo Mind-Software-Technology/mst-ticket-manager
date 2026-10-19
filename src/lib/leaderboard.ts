@@ -339,6 +339,21 @@ const AVATAR_GRADIENTS = [
   "from-lime-500 to-green-500",
 ] as const;
 
+/** Pasangan warna hex yang sama urutannya dengan AVATAR_GRADIENTS (untuk canvas). */
+const AVATAR_HEX: ReadonlyArray<readonly [string, string]> = [
+  ["#ec4899", "#f43f5e"],
+  ["#8b5cf6", "#6366f1"],
+  ["#0ea5e9", "#06b6d4"],
+  ["#10b981", "#14b8a6"],
+  ["#f59e0b", "#f97316"],
+  ["#d946ef", "#a855f7"],
+  ["#84cc16", "#22c55e"],
+];
+
+export function avatarColors(userId: string): readonly [string, string] {
+  return AVATAR_HEX[hashString(userId) % AVATAR_HEX.length];
+}
+
 export function avatarGradient(userId: string): string {
   return AVATAR_GRADIENTS[hashString(userId) % AVATAR_GRADIENTS.length];
 }
