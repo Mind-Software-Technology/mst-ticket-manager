@@ -9,7 +9,7 @@
 // =====================================================
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import type { MpMessage, MpPlayer } from "@/lib/multiplayer";
 
 interface PresenceMeta {
@@ -30,7 +30,12 @@ export function useGameRoom(code: string, me: MpPlayer) {
   const { id: meId, name: meName } = me;
 
   useEffect(() => {
-    const supabase = createClient();
+    // Klien khusus ruangan (bukan singleton aplikasi): tiap mount/remount (mis. React
+    // Strict Mode) dapat channel yang bersih, tidak bentrok dengan channel lama yang
+    // masih sedang ditutup. Broadcast + Presence tidak butuh sesi auth.
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
     const joinedAt = Date.now();
     const channel = supabase.channel(`mst-game-${code}`, {
       config: { broadcast: { self: false }, presence: { key: meId } },
@@ -61,7 +66,7 @@ export function useGameRoom(code: string, me: MpPlayer) {
 
     return () => {
       channelRef.current = null;
-      void supabase.removeChannel(channel);
+      void supabase.removeAllChannels().then(() => supabase.realtime.disconnect());
     };
   }, [code, meId, meName]);
 

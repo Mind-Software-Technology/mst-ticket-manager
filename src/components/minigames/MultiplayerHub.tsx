@@ -47,14 +47,17 @@ export function MultiplayerHub({
   tickets: GameTicket[];
   names: string[];
 }) {
-  const [code, setCode] = useState<string | null>(null);
+  const [entry, setEntry] = useState<{ code: string; tab: string } | null>(null);
   const [joinInput, setJoinInput] = useState("");
 
   if (!me) return <p className="py-10 text-center text-sm text-slate-500">Masuk dulu untuk main bareng.</p>;
 
-  if (code) {
-    return <Room key={code} code={code} me={me} tickets={tickets} names={names} onLeave={() => setCode(null)} />;
+  if (entry) {
+    // id unik per tab: akun yang sama di dua tab/perangkat tetap dihitung dua pemain.
+    const player = { id: `${me.id}~${entry.tab}`, name: me.name };
+    return <Room key={entry.code + entry.tab} code={entry.code} me={player} tickets={tickets} names={names} onLeave={() => setEntry(null)} />;
   }
+  const enter = (code: string) => setEntry({ code, tab: Math.random().toString(36).slice(2, 6) });
 
   const btn =
     "px-6 py-3 rounded-xl text-white font-black bg-gradient-to-r from-fuchsia-500 to-indigo-500 shadow-lg hover:opacity-90 active:scale-95 transition disabled:opacity-40";
@@ -68,13 +71,13 @@ export function MultiplayerHub({
       </p>
 
       <div className="mt-5 flex flex-col items-stretch gap-2">
-        <button type="button" className={btn} onClick={() => setCode(randomRoomCode())}>
+        <button type="button" className={btn} onClick={() => enter(randomRoomCode())}>
           Buat Ruangan Baru 🚀
         </button>
         <button
           type="button"
           className="px-6 py-3 rounded-xl font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100"
-          onClick={() => setCode(TEAM_ROOM)}
+          onClick={() => enter(TEAM_ROOM)}
         >
           Masuk Ruang Tim (kode {TEAM_ROOM}) 🏢
         </button>
@@ -85,7 +88,7 @@ export function MultiplayerHub({
         onSubmit={(e) => {
           e.preventDefault();
           const c = normalizeCode(joinInput);
-          if (c.length >= 3) setCode(c);
+          if (c.length >= 3) enter(c);
         }}
       >
         <input
@@ -143,7 +146,7 @@ function Room({
       room: { players, send: room.send, subscribe: room.subscribe },
       me,
       config,
-      onLobby: () => room.send({ t: "lobby" }),
+      onLobby: () => setConfig(null),
       onLeave,
     };
     // key: ronde baru = komponen baru (state permainan bersih).

@@ -45,7 +45,6 @@ export function TypeRace({
 }) {
   const queue = config.queue ?? [];
   const joined = config.players;
-  const isHost = config.hostId === me.id;
 
   const [stage, setStage] = useState<Stage>("countdown");
   const [count, setCount] = useState(COUNTDOWN);
@@ -150,7 +149,7 @@ export function TypeRace({
         players={joined}
         scores={scores}
         meId={me.id}
-        onBack={isHost ? onLobby : undefined}
+        onBack={onLobby}
         backLabel="Kembali ke Lobi 🔁"
         onLeave={onLeave}
       />

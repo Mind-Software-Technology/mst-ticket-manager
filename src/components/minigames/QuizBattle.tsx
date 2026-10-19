@@ -38,7 +38,7 @@ export function QuizBattle({
   room: RoomApi;
   me: MpPlayer;
   config: StartPayload;
-  /** Dipanggil host untuk membawa semua orang kembali ke lobi. */
+  /** Kembali ke lobi (hanya untuk diri sendiri; start baru dari host tetap menarik semua pemain). */
   onLobby: () => void;
   onLeave: () => void;
 }) {
@@ -187,7 +187,7 @@ export function QuizBattle({
         scores={scores}
         meId={me.id}
         notice={aborted && stage !== "done" ? "Host keluar, permainan dihentikan." : undefined}
-        onBack={isHost ? onLobby : undefined}
+        onBack={onLobby}
         backLabel="Kembali ke Lobi 🔁"
         onLeave={onLeave}
       />

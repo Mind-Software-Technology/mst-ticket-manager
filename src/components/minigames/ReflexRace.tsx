@@ -41,7 +41,6 @@ export function ReflexRace({
 }) {
   const delays = config.delays ?? [];
   const joined = config.players;
-  const isHost = config.hostId === me.id;
 
   const [phase, setPhase] = useState<Phase>("countdown");
   const [round, setRound] = useState(0);
@@ -115,7 +114,7 @@ export function ReflexRace({
         players={joined}
         scores={scores}
         meId={me.id}
-        onBack={isHost ? onLobby : undefined}
+        onBack={onLobby}
         backLabel="Kembali ke Lobi 🔁"
         onLeave={onLeave}
       />
