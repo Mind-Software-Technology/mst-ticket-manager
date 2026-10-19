@@ -133,12 +133,26 @@ function Room({
       subscribe((m) => {
         if (m.t === "start") setConfig(m);
         else if (m.t === "lobby") setConfig(null);
+        else if (m.t === "mode") setMode(m.mode);
       }),
     [subscribe],
   );
 
   const players: MpPlayer[] = room.players.map(({ id, name }) => ({ id, name }));
   const isHost = room.players[0]?.id === me.id;
+  const { send } = room;
+
+  // Host menyiarkan mode terpilih tiap ada pemain masuk/keluar, supaya pemain baru ikut sinkron.
+  const playerCount = players.length;
+  useEffect(() => {
+    if (isHost && !config && playerCount > 1) send({ t: "mode", mode });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, config, playerCount]);
+
+  const pickMode = (key: MpMode) => {
+    setMode(key);
+    send({ t: "mode", mode: key });
+  };
   const hostName = room.players[0]?.name;
 
   if (config) {
@@ -269,7 +283,7 @@ function Room({
                 key={key}
                 type="button"
                 disabled={!isHost}
-                onClick={() => setMode(key)}
+                onClick={() => pickMode(key)}
                 className={`rounded-xl border px-3 py-3 text-left transition ${
                   mode === key ? "border-indigo-600 bg-indigo-600 text-white shadow-md" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                 } disabled:cursor-default`}

@@ -349,6 +349,7 @@ export interface StartPayload {
 export type MpMessage =
   | ({ t: "start" } & StartPayload)
   | { t: "lobby" }
+  | { t: "mode"; mode: MpMode }
   | { t: "round"; i: number }
   | { t: "ans"; i: number; id: string; c: number; ms: number }
   | { t: "reveal"; i: number; answers: RoundAnswers }
