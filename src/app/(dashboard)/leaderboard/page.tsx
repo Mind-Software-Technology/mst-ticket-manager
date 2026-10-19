@@ -163,6 +163,8 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
+        <p className="px-4 md:px-6 pt-2 text-[11px] text-slate-400">ℹ️ {BOARDS[board].how}</p>
+
         {/* Filter tiket */}
         {group === "ticket" && (
           <div className="px-4 md:px-6 pt-3 flex flex-wrap items-center gap-3">

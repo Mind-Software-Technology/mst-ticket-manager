@@ -3,9 +3,13 @@
 // =====================================================
 // useTicketLeaderboard Hook — statistik tiket per user
 //
-// Tiket selesai (state=done) difilter periode lewat done_date;
-// tiket aktif (beban & molor) dihitung dari state saat ini.
-// Keduanya bisa dipersempit per kategori tiket.
+// Cara hitung:
+// - Tiket selesai = state "done". Periode memakai done_date; kalau
+//   done_date kosong (tiket lama / diubah di luar UI) pakai updated_at.
+// - Tiket aktif (beban & molor) dihitung dari state saat ini.
+// - Tiket dengan banyak assignee (assigned_to + ticket_assignees):
+//   SETIAP assignee dapat kredit 1 tiket; jam kerja dibagi rata.
+// - Semua bisa dipersempit per kategori tiket.
 // =====================================================
 
 import { useCallback, useEffect, useState } from "react";
@@ -37,7 +41,9 @@ const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
 
 interface TicketRow {
+  id: string;
   assigned_to: string | null;
+  extra_assignees: Array<{ user_id: string }> | null;
   state: TicketState;
   priority: TicketPriority;
   due_date: string | null;
@@ -84,20 +90,24 @@ export function useTicketLeaderboard(period: LeaderboardPeriod, category: Ticket
       const now = new Date();
       const todayStr = toISODate(now);
       const since = periodStart(period, now);
-      const cols = "assigned_to, state, priority, due_date, done_date, actual_manhours";
+      const cols =
+        "id, assigned_to, state, priority, due_date, done_date, actual_manhours, extra_assignees:ticket_assignees(user_id)";
 
       const [usersRes, doneRows, openRows] = await Promise.all([
         supabase.from("users").select("id, name, division").eq("is_active", true),
         fetchAll((from, to) => {
-          let q = supabase.from("tickets").select(cols).eq("state", "done").not("assigned_to", "is", null);
-          if (since) q = q.gte("done_date", since);
+          let q = supabase.from("tickets").select(cols).eq("state", "done");
+          if (since) {
+            q = q.or(`done_date.gte.${since},and(done_date.is.null,updated_at.gte.${since})`);
+          }
           if (category) q = q.eq("category", category);
-          return q.order("done_date", { ascending: false }).range(from, to);
+          // id sebagai tie-breaker supaya paginasi stabil (tidak ada baris dobel/terlewat)
+          return q.order("created_at", { ascending: false }).order("id").range(from, to);
         }),
         fetchAll((from, to) => {
-          let q = supabase.from("tickets").select(cols).in("state", OPEN_STATES).not("assigned_to", "is", null);
+          let q = supabase.from("tickets").select(cols).in("state", OPEN_STATES);
           if (category) q = q.eq("category", category);
-          return q.order("created_at", { ascending: false }).range(from, to);
+          return q.order("created_at", { ascending: false }).order("id").range(from, to);
         }),
       ]);
 
@@ -118,20 +128,37 @@ export function useTicketLeaderboard(period: LeaderboardPeriod, category: Ticket
         });
       }
 
+      // Gabungkan assignee utama + tambahan jadi satu daftar unik per tiket.
+      const assigneesOf = (t: TicketRow): string[] => {
+        const ids = new Set<string>();
+        if (t.assigned_to) ids.add(t.assigned_to);
+        for (const e of t.extra_assignees ?? []) ids.add(e.user_id);
+        return Array.from(ids);
+      };
+
       for (const t of doneRows) {
-        const s = t.assigned_to ? stats.get(t.assigned_to) : undefined;
-        if (!s) continue;
-        s.done += 1;
-        s.hours += Number(t.actual_manhours) || 0;
-        if (t.due_date && t.done_date && t.done_date <= t.due_date) s.onTime += 1;
-        if (t.priority === "critical" || t.priority === "high") s.urgent += 1;
+        const ids = assigneesOf(t);
+        if (ids.length === 0) continue;
+        const hoursEach = (Number(t.actual_manhours) || 0) / ids.length;
+        const doneOnTime = !!t.due_date && !!t.done_date && t.done_date <= t.due_date;
+        for (const id of ids) {
+          const s = stats.get(id);
+          if (!s) continue;
+          s.done += 1;
+          s.hours += hoursEach;
+          if (doneOnTime) s.onTime += 1;
+          if (t.priority === "critical" || t.priority === "high") s.urgent += 1;
+        }
       }
 
       for (const t of openRows) {
-        const s = t.assigned_to ? stats.get(t.assigned_to) : undefined;
-        if (!s) continue;
-        s.open += 1;
-        if (t.due_date && t.due_date < todayStr) s.overdue += 1;
+        const late = !!t.due_date && t.due_date < todayStr;
+        for (const id of assigneesOf(t)) {
+          const s = stats.get(id);
+          if (!s) continue;
+          s.open += 1;
+          if (late) s.overdue += 1;
+        }
       }
 
       setEntries(Array.from(stats.values()));

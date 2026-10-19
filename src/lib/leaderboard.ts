@@ -53,6 +53,8 @@ export const STREAK_MILESTONE = 50;
 
 interface BoardConfig {
   group: BoardGroup;
+  /** Penjelasan singkat cara menghitung (ditampilkan di bawah tab papan). */
+  how: string;
   label: string;
   emoji: string;
   tagline: string;
@@ -61,15 +63,15 @@ interface BoardConfig {
 }
 
 export const BOARDS: Record<BoardKey, BoardConfig> = {
-  streak: { group: "checkin", label: "Raja Streak", emoji: "🔥", tagline: "Api abadi, jangan sampai padam!", unit: "hari", empty: "Belum ada peserta. Jadilah yang pertama! 🚀" },
-  rajin: { group: "checkin", label: "Si Paling Rajin", emoji: "📅", tagline: "Hari check-in terbanyak bulan ini", unit: "hari", empty: "Belum ada peserta. Jadilah yang pertama! 🚀" },
-  pagi: { group: "checkin", label: "Ayam Jago", emoji: "🐓", tagline: "Rata-rata check-in paling subuh (30 hari terakhir)", unit: "", empty: "Belum ada ayam jago. Butuh minimal 3 kali check-in dalam 30 hari terakhir. 🐣" },
-  selesai: { group: "ticket", label: "Tukang Beres", emoji: "✅", tagline: "Tiket paling banyak diselesaikan", unit: "tiket", empty: "Belum ada tiket selesai di periode ini. Sepi… 🦗" },
-  jam: { group: "ticket", label: "Mesin Jam Kerja", emoji: "⏱️", tagline: "Total jam kerja aktual dari tiket selesai", unit: "jam", empty: "Belum ada jam kerja tercatat di periode ini. ⌛" },
-  tepat: { group: "ticket", label: "Dewa Tepat Waktu", emoji: "🎯", tagline: "Tiket selesai sebelum / pas deadline", unit: "tiket", empty: "Belum ada tiket selesai tepat waktu di periode ini. 🎯" },
-  urgent: { group: "ticket", label: "Pemadam Kebakaran", emoji: "🚒", tagline: "Tiket Critical & High yang berhasil dipadamkan", unit: "tiket", empty: "Tidak ada kebakaran yang dipadamkan. Aman? Semoga. 🧯" },
-  beban: { group: "ticket", label: "Pemikul Beban", emoji: "🏋️", tagline: "Tiket aktif yang sedang ditanggung sekarang", unit: "tiket", empty: "Tidak ada tiket aktif. Semua tenang. 🧘" },
-  molor: { group: "ticket", label: "Raja Molor", emoji: "🐌", tagline: "Tiket lewat deadline yang belum kelar — ayo dikebut!", unit: "tiket", empty: "Tidak ada tiket telat. Tim disiplin banget! 👏" },
+  streak: { group: "checkin", how: "Hari kerja berturut-turut yang di-check-in, mengikuti hari aktif dari Config. Hari ini belum check-in tidak memutus streak.", label: "Raja Streak", emoji: "🔥", tagline: "Api abadi, jangan sampai padam!", unit: "hari", empty: "Belum ada peserta. Jadilah yang pertama! 🚀" },
+  rajin: { group: "checkin", how: "Jumlah hari berbeda yang check-in pada bulan berjalan.", label: "Si Paling Rajin", emoji: "📅", tagline: "Hari check-in terbanyak bulan ini", unit: "hari", empty: "Belum ada peserta. Jadilah yang pertama! 🚀" },
+  pagi: { group: "checkin", how: "Rata-rata jam check-in selama 30 hari terakhir. Minimal 3 kali check-in agar masuk papan.", label: "Ayam Jago", emoji: "🐓", tagline: "Rata-rata check-in paling subuh (30 hari terakhir)", unit: "", empty: "Belum ada ayam jago. Butuh minimal 3 kali check-in dalam 30 hari terakhir. 🐣" },
+  selesai: { group: "ticket", how: "Jumlah tiket berstatus Done pada periode terpilih. Tiket dengan beberapa assignee dihitung untuk setiap assignee.", label: "Tukang Beres", emoji: "✅", tagline: "Tiket paling banyak diselesaikan", unit: "tiket", empty: "Belum ada tiket selesai di periode ini. Sepi… 🦗" },
+  jam: { group: "ticket", how: "Jumlah jam kerja aktual dari tiket Done. Kalau satu tiket dikerjakan beberapa orang, jamnya dibagi rata.", label: "Mesin Jam Kerja", emoji: "⏱️", tagline: "Total jam kerja aktual dari tiket selesai", unit: "jam", empty: "Belum ada jam kerja tercatat di periode ini. ⌛" },
+  tepat: { group: "ticket", how: "Tiket Done yang tanggal selesainya sebelum atau sama dengan deadline. Tiket tanpa deadline tidak dihitung.", label: "Dewa Tepat Waktu", emoji: "🎯", tagline: "Tiket selesai sebelum / pas deadline", unit: "tiket", empty: "Belum ada tiket selesai tepat waktu di periode ini. 🎯" },
+  urgent: { group: "ticket", how: "Tiket Done berprioritas Critical atau High pada periode terpilih.", label: "Pemadam Kebakaran", emoji: "🚒", tagline: "Tiket Critical & High yang berhasil dipadamkan", unit: "tiket", empty: "Tidak ada kebakaran yang dipadamkan. Aman? Semoga. 🧯" },
+  beban: { group: "ticket", how: "Tiket aktif saat ini (ToDo sampai Ready to Deploy, tanpa Backlog). Periode tidak berpengaruh.", label: "Pemikul Beban", emoji: "🏋️", tagline: "Tiket aktif yang sedang ditanggung sekarang", unit: "tiket", empty: "Tidak ada tiket aktif. Semua tenang. 🧘" },
+  molor: { group: "ticket", how: "Tiket aktif yang deadline-nya sudah lewat dan belum Done. Periode tidak berpengaruh.", label: "Raja Molor", emoji: "🐌", tagline: "Tiket lewat deadline yang belum kelar — ayo dikebut!", unit: "tiket", empty: "Tidak ada tiket telat. Tim disiplin banget! 👏" },
 };
 
 export const BOARD_KEYS_BY_GROUP: Record<BoardGroup, BoardKey[]> = {
