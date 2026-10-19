@@ -10,17 +10,7 @@
 
 import { useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
-import {
-  AlertTriangle,
-  CalendarClock,
-  Clock,
-  Flame,
-  Loader2,
-  RefreshCw,
-  Search,
-  UserX,
-  X,
-} from "lucide-react";
+import { Loader2, RefreshCw, Search, SlidersHorizontal, X } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useKanbanTickets } from "@/hooks/useKanbanTickets";
 import { useUsers } from "@/hooks/useUsers";
@@ -174,68 +164,49 @@ export default function KanbanPage() {
     }
   };
 
-  const inputCls =
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const advancedCount = [assignee, priority, category].filter(Boolean).length + (showCancel ? 1 : 0);
+
+  const resetAll = () => {
+    setSearch("");
+    setAssignee("");
+    setPriority("");
+    setCategory("");
+    setOnlyMine(false);
+    setShowCancel(false);
+  };
+
+  const fieldCls =
     "py-1.5 px-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
+  // Hanya tampilkan indikator yang perlu perhatian (nilai > 0).
+  const alerts = [
+    { label: "lewat deadline", value: summary.overdue, tone: "text-red-600 bg-red-50" },
+    { label: "deadline hari ini", value: summary.dueToday, tone: "text-orange-600 bg-orange-50" },
+    { label: "critical", value: summary.critical, tone: "text-rose-600 bg-rose-50" },
+    { label: "belum di-assign", value: summary.unassigned, tone: "text-slate-600 bg-slate-100" },
+  ].filter((a) => a.value > 0);
+
   return (
-    <div className="p-4 md:p-6 flex flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-3.5rem)]">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Kanban</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Pantau alur tiket tim · seret kartu untuk mengubah state
-            {updatedAt && (
-              <span className="ml-2 text-slate-400">
-                · diperbarui {updatedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
+    <div className="p-4 md:p-6 flex flex-col h-[calc(100vh-3.5rem)]">
+      {/* Header: satu baris */}
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <div className="mr-auto">
+          <h1 className="text-xl font-bold text-slate-900 leading-tight">Kanban</h1>
+          <p className="text-xs text-slate-400">
+            {summary.open} tiket aktif
+            {updatedAt &&
+              ` · ${updatedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          disabled={loading}
-          title="Segarkan"
-          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-        </button>
-      </div>
 
-      {/* Ringkasan pemantauan */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
-        {[
-          { label: "Tiket Aktif", value: summary.open, icon: Clock, tone: "text-indigo-600 bg-indigo-50" },
-          { label: "Lewat Deadline", value: summary.overdue, icon: AlertTriangle, tone: "text-red-600 bg-red-50" },
-          { label: "Deadline Hari Ini", value: summary.dueToday, icon: CalendarClock, tone: "text-orange-600 bg-orange-50" },
-          { label: "Critical", value: summary.critical, icon: Flame, tone: "text-rose-600 bg-rose-50" },
-          { label: "Belum Di-assign", value: summary.unassigned, icon: UserX, tone: "text-slate-600 bg-slate-100" },
-        ].map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="bg-white rounded-xl border border-slate-200 px-3 py-2 flex items-center gap-3">
-              <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.tone}`}>
-                <Icon className="w-4 h-4" />
-              </span>
-              <div>
-                <p className="text-lg font-black leading-none text-slate-900">{s.value}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">{s.label}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Filter */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3 mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px]">
+        <div className="relative">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari ID / subjek tiket..."
-            className={`${inputCls} w-full pl-8`}
+            placeholder="Cari tiket..."
+            className={`${fieldCls} w-44 md:w-56 pl-8`}
           />
         </div>
         <button
@@ -247,60 +218,95 @@ export default function KanbanPage() {
         >
           Tiket Saya
         </button>
-        <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className={inputCls}>
-          <option value="">Semua Assignee</option>
-          <option value="__none__">Belum di-assign</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </select>
-        <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputCls}>
-          <option value="">Semua Prioritas</option>
-          {TICKET_PRIORITIES.map((p) => (
-            <option key={p.value} value={p.value}>{p.label}</option>
-          ))}
-        </select>
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls}>
-          <option value="">Semua Kategori</option>
-          {TICKET_CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
-        <label className="flex items-center gap-1.5 text-xs text-slate-600">
-          Done/Cancel
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+            filtersOpen || advancedCount > 0
+              ? "bg-slate-900 border-slate-900 text-white"
+              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Filter
+          {advancedCount > 0 && (
+            <span className="ml-0.5 min-w-4 h-4 px-1 rounded-full bg-white text-slate-900 text-[10px] flex items-center justify-center">
+              {advancedCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          disabled={loading}
+          title="Segarkan"
+          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {/* Filter lanjutan (tersembunyi secara default) */}
+      {filtersOpen && (
+        <div className="bg-white rounded-xl border border-slate-200 p-3 mb-2 flex flex-wrap items-center gap-2">
+          <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className={fieldCls}>
+            <option value="">Semua Assignee</option>
+            <option value="__none__">Belum di-assign</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+          <select value={priority} onChange={(e) => setPriority(e.target.value)} className={fieldCls}>
+            <option value="">Semua Prioritas</option>
+            {TICKET_PRIORITIES.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className={fieldCls}>
+            <option value="">Semua Kategori</option>
+            {TICKET_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
           <select
             value={recentDays}
             onChange={(e) => setRecentDays(Number(e.target.value) as (typeof RECENT_OPTIONS)[number])}
-            className={inputCls}
+            className={fieldCls}
+            title="Berapa lama tiket Done tetap tampil"
           >
             {RECENT_OPTIONS.map((d) => (
-              <option key={d} value={d}>{d} hari terakhir</option>
+              <option key={d} value={d}>Done: {d} hari terakhir</option>
             ))}
           </select>
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-slate-600">
-          <input type="checkbox" checked={showCancel} onChange={(e) => setShowCancel(e.target.checked)} />
-          Tampilkan Cancel
-        </label>
-        {hasFilter && (
-          <button
-            type="button"
-            onClick={() => {
-              setSearch("");
-              setAssignee("");
-              setPriority("");
-              setCategory("");
-              setOnlyMine(false);
-            }}
-            className="flex items-center gap-1 px-2 py-1.5 text-xs text-slate-500 hover:text-slate-800"
-          >
-            <X className="w-3.5 h-3.5" /> Reset
-          </button>
-        )}
-      </div>
+          <label className="flex items-center gap-1.5 text-xs text-slate-600">
+            <input type="checkbox" checked={showCancel} onChange={(e) => setShowCancel(e.target.checked)} />
+            Tampilkan Cancel
+          </label>
+          {(hasFilter || showCancel) && (
+            <button
+              type="button"
+              onClick={resetAll}
+              className="ml-auto flex items-center gap-1 px-2 py-1.5 text-xs text-slate-500 hover:text-slate-800"
+            >
+              <X className="w-3.5 h-3.5" /> Reset
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Peringatan: hanya muncul kalau ada yang perlu diperhatikan */}
+      {alerts.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {alerts.map((a) => (
+            <span key={a.label} className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${a.tone}`}>
+              <strong>{a.value}</strong> {a.label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {error && (
-        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           <strong>Error:</strong> {error}
         </div>
       )}
@@ -312,12 +318,29 @@ export default function KanbanPage() {
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden no-scrollbar">
-          <div className="flex gap-3 h-full pb-2">
+          <div className="flex gap-2.5 h-full pb-2">
             {columns.map(({ state, tickets: list }) => {
               const droppable = canDrop(state.value);
               const dim = dragged && dragged.state !== state.value && !droppable;
               const highlight = overState === state.value && droppable;
+              // Kolom kosong diciutkan jadi strip tipis, kecuali sedang jadi target drag.
+              const collapsed = list.length === 0 && !droppable;
               const hours = list.reduce((sum, t) => sum + (Number(t.manhours_estimate) || 0), 0);
+
+              if (collapsed) {
+                return (
+                  <div
+                    key={state.value}
+                    title={`${state.label} — kosong`}
+                    className={`w-10 shrink-0 rounded-xl border border-slate-200 border-t-4 ${COLUMN_ACCENT[state.value]} bg-slate-100/50 flex items-start justify-center pt-3 ${dim ? "opacity-40" : ""}`}
+                  >
+                    <span className="text-[11px] font-semibold text-slate-400 [writing-mode:vertical-rl] whitespace-nowrap">
+                      {state.label}
+                    </span>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={state.value}
@@ -328,24 +351,23 @@ export default function KanbanPage() {
                   }}
                   onDragLeave={() => setOverState((s) => (s === state.value ? null : s))}
                   onDrop={(e) => void handleDrop(e, state.value)}
-                  className={`w-72 shrink-0 flex flex-col rounded-xl border border-slate-200 border-t-4 ${COLUMN_ACCENT[state.value]} transition-all ${
+                  className={`w-64 shrink-0 flex flex-col rounded-xl border border-slate-200 border-t-4 ${COLUMN_ACCENT[state.value]} transition-all ${
                     highlight ? "bg-indigo-50 ring-2 ring-indigo-300" : "bg-slate-100/70"
                   } ${dim ? "opacity-40" : ""}`}
                 >
-                  <div className="px-3 py-2 flex items-center justify-between">
+                  <div
+                    className="px-3 py-2 flex items-center justify-between"
+                    title={hours > 0 ? `Total estimasi ${hours} jam` : undefined}
+                  >
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${state.color} ${state.textColor}`}>
                       {state.label}
                     </span>
-                    <span className="text-[11px] text-slate-500">
-                      {list.length} tiket{hours > 0 && ` · ${hours}j`}
-                    </span>
+                    <span className="text-xs font-semibold text-slate-400">{list.length}</span>
                   </div>
 
                   <div className="flex-1 overflow-y-auto no-scrollbar px-2 pb-2 space-y-2">
                     {list.length === 0 && (
-                      <p className="text-center text-[11px] text-slate-400 py-6">
-                        {droppable ? "Lepas di sini" : "Kosong"}
-                      </p>
+                      <p className="text-center text-[11px] text-slate-400 py-6">Lepas di sini</p>
                     )}
                     {list.map((t) => (
                       <KanbanCard
@@ -398,13 +420,21 @@ function KanbanCard({
 }) {
   const due = dueStatus(t, today);
   const people = [t.assignee, ...(t.additional_assignees ?? [])].filter(Boolean) as Array<{ id: string; name: string }>;
-  const catLabel = TICKET_CATEGORY_BY_VALUE[t.category]?.label;
   const actual = Number(t.actual_manhours) || 0;
   const estimate = Number(t.manhours_estimate) || 0;
+  const details = [
+    t.product?.name,
+    TICKET_CATEGORY_BY_VALUE[t.category]?.label,
+    estimate > 0 ? `${actual}/${estimate} jam` : null,
+    t.need_qa ? "Perlu QA" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div
       draggable={draggable}
+      title={details || undefined}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", t.id);
@@ -414,54 +444,35 @@ function KanbanCard({
       onClick={onOpen}
       className={`relative bg-white rounded-lg border border-slate-200 shadow-sm pl-3 pr-2.5 py-2 overflow-hidden transition-all hover:shadow-md ${
         draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
-      } ${dragging ? "opacity-40 rotate-1" : ""} ${due === "overdue" ? "ring-1 ring-red-200" : ""}`}
+      } ${dragging ? "opacity-40 rotate-1" : ""}`}
     >
       <span className={`absolute left-0 top-0 bottom-0 w-1 ${PRIORITY_BAR[t.priority] ?? "bg-slate-300"}`} />
 
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[11px] font-semibold text-indigo-600">{t.ticket_id}</span>
-        {t.priority === "critical" && <Flame className="w-3.5 h-3.5 text-red-500" />}
-      </div>
-      <p className="text-sm font-medium text-slate-900 leading-snug line-clamp-2 mt-0.5">{t.subject}</p>
+      <span className="font-mono text-[10px] font-semibold text-slate-400">{t.ticket_id}</span>
+      <p className="text-[13px] font-medium text-slate-900 leading-snug line-clamp-2">{t.subject}</p>
 
-      {(t.product?.name || catLabel) && (
-        <p className="text-[10px] text-slate-400 mt-1 truncate">
-          {[t.product?.name, catLabel].filter(Boolean).join(" · ")}
-        </p>
-      )}
-
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          {t.due_date && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded ${DUE_STYLE[due]}`} title="Deadline">
-              {due === "overdue" ? "⚠ " : ""}
-              {formatShort(t.due_date)}
-            </span>
-          )}
-          {estimate > 0 && (
-            <span className="text-[10px] text-slate-400 whitespace-nowrap" title="Aktual / estimasi jam">
-              {actual}/{estimate}j
-            </span>
-          )}
-          {t.need_qa && <span className="text-[10px] text-cyan-600 font-semibold">QA</span>}
-        </div>
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        {t.due_date && due !== "none" ? (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded ${DUE_STYLE[due]}`} title="Deadline">
+            {due === "overdue" ? "⚠ " : ""}
+            {formatShort(t.due_date)}
+          </span>
+        ) : (
+          <span />
+        )}
 
         <div className="flex -space-x-1.5 shrink-0">
-          {people.length === 0 ? (
-            <span className="text-[10px] text-slate-400 italic">unassigned</span>
-          ) : (
-            people.slice(0, 3).map((u) => (
-              <span
-                key={u.id}
-                title={u.name}
-                className={`w-6 h-6 rounded-full bg-gradient-to-br ${avatarGradient(u.id)} text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white`}
-              >
-                {initials(u.name)}
-              </span>
-            ))
-          )}
+          {people.slice(0, 3).map((u) => (
+            <span
+              key={u.id}
+              title={u.name}
+              className={`w-5 h-5 rounded-full bg-gradient-to-br ${avatarGradient(u.id)} text-white text-[8px] font-bold flex items-center justify-center ring-2 ring-white`}
+            >
+              {initials(u.name)}
+            </span>
+          ))}
           {people.length > 3 && (
-            <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+            <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[8px] font-bold flex items-center justify-center ring-2 ring-white">
               +{people.length - 3}
             </span>
           )}
