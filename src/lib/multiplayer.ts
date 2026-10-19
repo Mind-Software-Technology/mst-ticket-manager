@@ -14,9 +14,22 @@ import {
   type GameTicket,
 } from "@/lib/minigame";
 
-export type MpMode = "quiz" | "rebutan" | "survival" | "race" | "whack";
+export type MpMode =
+  | "quiz"
+  | "rebutan"
+  | "survival"
+  | "race"
+  | "whack"
+  | "hitung"
+  | "trivia"
+  | "memory"
+  | "reflex";
+
+/** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
+export type MpModeGroup = "tiket" | "umum";
 
 export interface MpModeConfig {
+  group: MpModeGroup;
   label: string;
   emoji: string;
   tagline: string;
@@ -25,7 +38,56 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  hitung: {
+    group: "umum",
+    label: "Hitung Kilat",
+    emoji: "🧮",
+    tagline: "Adu hitung di kepala. Otak siapa yang paling ngebut?",
+    rules: [
+      "12 soal hitung dari mudah ke susah, 15 detik per soal.",
+      "Semua pemain dapat soal yang sama di waktu yang sama.",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+    ],
+    minPlayers: 2,
+  },
+  trivia: {
+    group: "umum",
+    label: "Trivia Seru",
+    emoji: "🧠",
+    tagline: "Pengetahuan umum, teknologi, dan tebak emoji film. Tidak ada hubungannya dengan tiket!",
+    rules: [
+      "10 soal campur: pengetahuan umum dan tebak emoji.",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+      "Yang paling cepat dan paling tahu yang menang.",
+    ],
+    minPlayers: 2,
+  },
+  memory: {
+    group: "umum",
+    label: "Memori Kilat",
+    emoji: "🃏",
+    tagline: "Cocokkan pasangan kartu. Susunan kartu sama untuk semua pemain!",
+    rules: [
+      "16 kartu (8 pasang), 60 detik.",
+      "Pasangan cocok +100, beruntun menambah bonus. Salah -10.",
+      "Selesai lebih cepat = bonus sisa waktu.",
+    ],
+    minPlayers: 2,
+  },
+  reflex: {
+    group: "umum",
+    label: "Refleks Kilat",
+    emoji: "🚦",
+    tagline: "Tunggu layar hijau lalu tap secepat kilat. Awas kepagian!",
+    rules: [
+      "6 ronde. Tunggu layar berubah hijau, baru tap.",
+      "Poin = 1000 dikurangi waktu reaksimu (ms).",
+      "Tap sebelum hijau = 0 poin untuk ronde itu.",
+    ],
+    minPlayers: 2,
+  },
   quiz: {
+    group: "tiket",
     label: "Kuis Kilat",
     emoji: "⚡",
     tagline: "Soal campur dari tiket asli. Siapa paling cepat dan paling tahu?",
@@ -37,6 +99,7 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     minPlayers: 2,
   },
   rebutan: {
+    group: "tiket",
     label: "Rebutan",
     emoji: "🏴‍☠️",
     tagline: "Soal sama seperti kuis, tapi poin ditentukan urutan jawab benar.",
@@ -48,6 +111,7 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     minPlayers: 2,
   },
   survival: {
+    group: "tiket",
     label: "Survival",
     emoji: "💀",
     tagline: "Satu salah, langsung gugur. Siapa penyintas terakhir di tim?",
@@ -60,6 +124,7 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     minPlayers: 2,
   },
   whack: {
+    group: "tiket",
     label: "Gebuk Bareng",
     emoji: "🔨",
     tagline: "Tiket yang sama muncul untuk semua. Siapa paling jago menggebuk?",
@@ -71,6 +136,7 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     minPlayers: 2,
   },
   race: {
+    group: "tiket",
     label: "Balapan Ketik",
     emoji: "🏎️",
     tagline: "Ketik ID tiket secepat mungkin. Posisi semua pemain terlihat langsung!",
@@ -83,7 +149,17 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
   },
 };
 
-export const MP_MODE_KEYS: MpMode[] = ["quiz", "rebutan", "survival", "whack", "race"];
+export const MP_MODE_KEYS: MpMode[] = [
+  "quiz",
+  "rebutan",
+  "survival",
+  "whack",
+  "race",
+  "hitung",
+  "trivia",
+  "memory",
+  "reflex",
+];
 
 export const ROUND_MS = 15_000;
 export const RACE_SECONDS = 45;
@@ -91,7 +167,7 @@ export const MP_ROUNDS = 10;
 
 // ─── Soal ────────────────────────────────────────────
 
-export type QuestionKind = "owner" | "category" | "deadline";
+export type QuestionKind = "owner" | "category" | "deadline" | "math" | "trivia" | "emoji";
 
 export interface MpQuestion {
   kind: QuestionKind;
@@ -108,6 +184,9 @@ const KIND_TITLE: Record<QuestionKind, string> = {
   owner: "🕵️ Siapa pemegang tiket ini?",
   category: "💡 Apa kategori tiket ini?",
   deadline: "⚡ Deadline tiket ini…",
+  math: "🧮 Hitung cepat!",
+  trivia: "🧠 Trivia",
+  emoji: "🎬 Tebak emoji",
 };
 
 export const kindTitle = (k: QuestionKind) => KIND_TITLE[k];
@@ -166,14 +245,14 @@ export type RoundAnswers = Record<string, RoundAnswer>;
 const RANK_POINTS = [150, 100, 70];
 
 /** Poin tiap pemain untuk satu ronde — dipanggil identik di semua klien. */
-export function scoreRound(q: MpQuestion, answers: RoundAnswers, mode: "quiz" | "rebutan" | "survival"): Record<string, number> {
+export function scoreRound(q: MpQuestion, answers: RoundAnswers, mode: MpMode): Record<string, number> {
   const correct = Object.entries(answers)
     .filter(([, a]) => a.c === q.answer)
     .sort((a, b) => a[1].ms - b[1].ms || a[0].localeCompare(b[0]));
   const pts: Record<string, number> = {};
   correct.forEach(([id, a], rank) => {
     pts[id] =
-      mode !== "quiz"
+      mode === "rebutan" || mode === "survival"
         ? (RANK_POINTS[rank] ?? 40)
         : 100 + Math.round(Math.max(0, 1 - a.ms / ROUND_MS) * 100);
   });
@@ -259,6 +338,12 @@ export interface StartPayload {
   questions?: MpQuestion[];
   queue?: RaceTicket[];
   schedule?: WhackSpawn[];
+  /** Susunan kartu Memori Kilat. */
+  deck?: string[];
+  /** Jeda tunggu tiap ronde Refleks Kilat (ms). */
+  delays?: number[];
+  /** Pembeda antar permainan supaya komponen game selalu bersih. */
+  nonce: number;
 }
 
 export type MpMessage =

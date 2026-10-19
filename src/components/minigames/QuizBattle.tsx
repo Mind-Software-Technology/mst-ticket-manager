@@ -43,7 +43,7 @@ export function QuizBattle({
   onLeave: () => void;
 }) {
   const questions = config.questions ?? [];
-  const mode = config.mode === "rebutan" || config.mode === "survival" ? config.mode : "quiz";
+  const mode = config.mode;
   const survival = mode === "survival";
   const isHost = config.hostId === me.id;
   const joined = config.players;

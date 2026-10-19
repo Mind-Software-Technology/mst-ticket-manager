@@ -24,11 +24,19 @@ import {
   type MpPlayer,
   type StartPayload,
 } from "@/lib/multiplayer";
+import { buildMathQuestions, buildMemoryDeck, buildReflexDelays, buildTriviaQuestions } from "@/lib/mp-content";
 import { QuizBattle } from "./QuizBattle";
+import { MemoryRace } from "./MemoryRace";
+import { ReflexRace } from "./ReflexRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
 const TEAM_ROOM = "TIM";
+
+// Dibungkus agar jelas dipanggil dari event handler, bukan saat render.
+const nowMs = () => Date.now();
+
+const GROUP_LABEL = { tiket: "🎫 Seputar Tiket", umum: "🎉 Seru-seruan Umum" } as const;
 
 export function MultiplayerHub({
   me,
@@ -139,27 +147,53 @@ function Room({
       onLeave,
     };
     // key: ronde baru = komponen baru (state permainan bersih).
-    const key = config.questions?.length
-      ? config.questions.map((q) => q.prompt).join("|")
-      : (config.queue?.[0]?.ticket_id ?? String(config.schedule?.[0]?.at)) + (config.schedule?.length ?? "");
-    if (config.mode === "race") return <TypeRace key={key} {...props} />;
-    if (config.mode === "whack") return <WhackRace key={key} {...props} />;
-    return <QuizBattle key={key} {...props} />;
+    const key = config.nonce;
+    switch (config.mode) {
+      case "race":
+        return <TypeRace key={key} {...props} />;
+      case "whack":
+        return <WhackRace key={key} {...props} />;
+      case "memory":
+        return <MemoryRace key={key} {...props} />;
+      case "reflex":
+        return <ReflexRace key={key} {...props} />;
+      default:
+        return <QuizBattle key={key} {...props} />;
+    }
   }
 
   const cfg = MP_MODES[mode];
   const playable =
-    mode === "race" ? canPlayRace(tickets) : mode === "whack" ? canPlayWhack(tickets) : canPlayMp(tickets, names);
+    cfg.group === "umum"
+      ? true
+      : mode === "race"
+        ? canPlayRace(tickets)
+        : mode === "whack"
+          ? canPlayWhack(tickets)
+          : canPlayMp(tickets, names);
   const enough = players.length >= cfg.minPlayers;
 
   const start = () => {
-    const base = { hostId: me.id, players, mode } as const;
-    const payload: StartPayload =
-      mode === "race"
-        ? { ...base, queue: buildRaceQueue(tickets) }
-        : mode === "whack"
-          ? { ...base, schedule: buildWhackSchedule(tickets) }
-          : { ...base, questions: buildMpQuestions(tickets, names) };
+    const base = { hostId: me.id, players, mode, nonce: nowMs() } as const;
+    const build = (): StartPayload => {
+      switch (mode) {
+        case "race":
+          return { ...base, queue: buildRaceQueue(tickets) };
+        case "whack":
+          return { ...base, schedule: buildWhackSchedule(tickets) };
+        case "hitung":
+          return { ...base, questions: buildMathQuestions() };
+        case "trivia":
+          return { ...base, questions: buildTriviaQuestions() };
+        case "memory":
+          return { ...base, deck: buildMemoryDeck() };
+        case "reflex":
+          return { ...base, delays: buildReflexDelays() };
+        default:
+          return { ...base, questions: buildMpQuestions(tickets, names) };
+      }
+    };
+    const payload = build();
     room.send({ t: "start", ...payload });
   };
 
@@ -223,22 +257,27 @@ function Room({
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {MP_MODE_KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            disabled={!isHost}
-            onClick={() => setMode(key)}
-            className={`rounded-xl border px-3 py-3 text-left transition ${
-              mode === key ? "border-indigo-600 bg-indigo-600 text-white shadow-md" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            } disabled:cursor-default`}
-          >
-            <span className="text-2xl">{MP_MODES[key].emoji}</span>
-            <span className="block text-sm font-bold">{MP_MODES[key].label}</span>
-          </button>
-        ))}
-      </div>
+      {(["tiket", "umum"] as const).map((g) => (
+        <div key={g} className="mt-4">
+          <p className="mb-1.5 text-xs font-bold text-slate-500">{GROUP_LABEL[g]}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {MP_MODE_KEYS.filter((k) => MP_MODES[k].group === g).map((key) => (
+              <button
+                key={key}
+                type="button"
+                disabled={!isHost}
+                onClick={() => setMode(key)}
+                className={`rounded-xl border px-3 py-3 text-left transition ${
+                  mode === key ? "border-indigo-600 bg-indigo-600 text-white shadow-md" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                } disabled:cursor-default`}
+              >
+                <span className="text-2xl">{MP_MODES[key].emoji}</span>
+                <span className="block text-sm font-bold">{MP_MODES[key].label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
       {!isHost && <p className="mt-1 text-center text-[11px] text-slate-400">Hanya host ({hostName}) yang memilih mode &amp; memulai.</p>}
 
       <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4 text-left">

@@ -4,7 +4,46 @@
 // MpParts — potongan UI bersama untuk minigame multiplayer
 // =====================================================
 
-import { avatarFor, type MpPlayer } from "@/lib/multiplayer";
+import { useEffect, useState } from "react";
+import { avatarFor, type MpMessage, type MpPlayer } from "@/lib/multiplayer";
+
+const FINAL_WAIT_MS = 6000;
+
+/**
+ * Sinkronisasi skor untuk game "tiap pemain main sendiri": dengar siaran
+ * `prog` pemain lain, gabungkan dengan skor sendiri, dan tentukan kapan
+ * hasil akhir ditampilkan (semua selesai, atau batas tunggu).
+ */
+export function useRaceSync(
+  subscribe: (fn: (msg: MpMessage) => void) => () => void,
+  meId: string,
+  joined: MpPlayer[],
+  myScore: number,
+  myDone: boolean,
+) {
+  const [progress, setProgress] = useState<Record<string, { score: number; done: boolean }>>({});
+  const [finalized, setFinalized] = useState(false);
+
+  useEffect(
+    () =>
+      subscribe((m) => {
+        if (m.t === "prog") setProgress((prev) => ({ ...prev, [m.id]: { score: m.score, done: !!m.done } }));
+      }),
+    [subscribe],
+  );
+
+  const scores: Record<string, number> = {};
+  for (const p of joined) scores[p.id] = p.id === meId ? myScore : (progress[p.id]?.score ?? 0);
+
+  const allDone = joined.every((p) => (p.id === meId ? myDone : progress[p.id]?.done));
+  useEffect(() => {
+    if (!myDone) return;
+    const id = setTimeout(() => setFinalized(true), allDone ? 800 : FINAL_WAIT_MS);
+    return () => clearTimeout(id);
+  }, [myDone, allDone]);
+
+  return { scores, finalized };
+}
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
