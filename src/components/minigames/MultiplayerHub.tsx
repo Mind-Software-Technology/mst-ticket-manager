@@ -37,6 +37,7 @@ import {
   buildStroopSequence,
   buildTriviaQuestions,
 } from "@/lib/mp-content";
+import { ReplayContext } from "./MpParts";
 import { QuizBattle } from "./QuizBattle";
 import { MemoryRace } from "./MemoryRace";
 import { ReflexRace } from "./ReflexRace";
@@ -174,56 +175,17 @@ function Room({
   };
   const hostName = room.players[0]?.name;
 
-  if (config) {
-    const props = {
-      room: { players, send: room.send, subscribe: room.subscribe },
-      me,
-      config,
-      onLobby: () => setConfig(null),
-      onLeave,
-    };
-    // key: ronde baru = komponen baru (state permainan bersih).
-    const key = config.nonce;
-    switch (config.mode) {
-      case "race":
-        return <TypeRace key={key} {...props} />;
-      case "whack":
-        return <WhackRace key={key} {...props} />;
-      case "memory":
-        return <MemoryRace key={key} {...props} />;
-      case "reflex":
-        return <ReflexRace key={key} {...props} />;
-      case "lari":
-        return <RunRace key={key} {...props} />;
-      case "simon":
-        return <SimonRace key={key} {...props} />;
-      case "warna":
-        return <StroopRace key={key} {...props} />;
-      case "angka":
-        return <NumberRace key={key} {...props} />;
-      case "beda":
-        return <BedaRace key={key} {...props} />;
-      case "besar":
-        return <BesarRace key={key} {...props} />;
-      case "gambar":
-        return <DrawBattle key={key} {...props} />;
-      default:
-        return <QuizBattle key={key} {...props} />;
-    }
-  }
-
-  const cfg = MP_MODES[mode];
-  const playable =
-    cfg.group === "umum"
+  const dataReady = (m: MpMode) =>
+    MP_MODES[m].group === "umum"
       ? true
-      : mode === "race"
+      : m === "race"
         ? canPlayRace(tickets)
-        : mode === "whack"
+        : m === "whack"
           ? canPlayWhack(tickets)
           : canPlayMp(tickets, names);
-  const enough = players.length >= cfg.minPlayers;
+  const canStart = (m: MpMode) => dataReady(m) && players.length >= MP_MODES[m].minPlayers;
 
-  const start = () => {
+  const startMode = (mode: MpMode) => {
     const base = { hostId: me.id, players, mode, nonce: nowMs() } as const;
     const build = (): StartPayload => {
       switch (mode) {
@@ -263,6 +225,59 @@ function Room({
     const payload = build();
     room.send({ t: "start", ...payload });
   };
+
+  if (config) {
+    const props = {
+      room: { players, send: room.send, subscribe: room.subscribe },
+      me,
+      config,
+      onLobby: () => setConfig(null),
+      onLeave,
+    };
+    // key: ronde baru = komponen baru (state permainan bersih).
+    const key = config.nonce;
+    const renderGame = () => {
+    switch (config.mode) {
+      case "race":
+        return <TypeRace key={key} {...props} />;
+      case "whack":
+        return <WhackRace key={key} {...props} />;
+      case "memory":
+        return <MemoryRace key={key} {...props} />;
+      case "reflex":
+        return <ReflexRace key={key} {...props} />;
+      case "lari":
+        return <RunRace key={key} {...props} />;
+      case "simon":
+        return <SimonRace key={key} {...props} />;
+      case "warna":
+        return <StroopRace key={key} {...props} />;
+      case "angka":
+        return <NumberRace key={key} {...props} />;
+      case "beda":
+        return <BedaRace key={key} {...props} />;
+      case "besar":
+        return <BesarRace key={key} {...props} />;
+      case "gambar":
+        return <DrawBattle key={key} {...props} />;
+      default:
+        return <QuizBattle key={key} {...props} />;
+    }
+    };
+    // Host bisa mengulang mode yang sama dari layar hasil akhir.
+    return (
+      <ReplayContext.Provider
+        value={{ isHost, canReplay: canStart(config.mode), replay: () => startMode(config.mode) }}
+      >
+        {renderGame()}
+      </ReplayContext.Provider>
+    );
+  }
+
+  const cfg = MP_MODES[mode];
+  const playable = dataReady(mode);
+  const enough = players.length >= cfg.minPlayers;
+  const start = () => startMode(mode);
 
   const copy = async () => {
     try {

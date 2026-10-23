@@ -4,10 +4,18 @@
 // MpParts — potongan UI bersama untuk minigame multiplayer
 // =====================================================
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { avatarFor, type MpMessage, type MpPlayer } from "@/lib/multiplayer";
 
 const FINAL_WAIT_MS = 6000;
+
+/** Disediakan ruangan: host bisa mengulang permainan yang sama dari layar hasil akhir. */
+export interface ReplayApi {
+  isHost: boolean;
+  canReplay: boolean;
+  replay: () => void;
+}
+export const ReplayContext = createContext<ReplayApi | null>(null);
 
 /**
  * Sinkronisasi skor untuk game "tiap pemain main sendiri": dengar siaran
@@ -121,6 +129,7 @@ export function FinalPodium({
   backLabel: string;
   onLeave: () => void;
 }) {
+  const replay = useContext(ReplayContext);
   const ranked = [...players].sort((a, b) => (scores[b.id] ?? 0) - (scores[a.id] ?? 0));
   const winner = ranked[0];
   const iWon = winner?.id === meId && (scores[meId] ?? 0) > 0;
@@ -135,12 +144,26 @@ export function FinalPodium({
       <div className="mt-4 text-left">
         <Scoreboard players={players} scores={scores} meId={meId} />
       </div>
-      <div className="mt-5 flex items-center justify-center gap-2">
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        {replay?.isHost && (
+          <button
+            type="button"
+            onClick={replay.replay}
+            disabled={!replay.canReplay}
+            className="px-6 py-3 rounded-xl text-white font-black bg-gradient-to-r from-fuchsia-500 to-indigo-500 shadow-lg hover:opacity-90 active:scale-95 transition disabled:opacity-40"
+          >
+            Main Lagi 🔁
+          </button>
+        )}
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
-            className="px-6 py-3 rounded-xl text-white font-black bg-gradient-to-r from-fuchsia-500 to-indigo-500 shadow-lg hover:opacity-90 active:scale-95 transition"
+            className={
+              replay?.isHost
+                ? "px-5 py-3 rounded-xl font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100"
+                : "px-6 py-3 rounded-xl text-white font-black bg-gradient-to-r from-fuchsia-500 to-indigo-500 shadow-lg hover:opacity-90 active:scale-95 transition"
+            }
           >
             {backLabel}
           </button>
@@ -155,6 +178,12 @@ export function FinalPodium({
           Keluar
         </button>
       </div>
+      {replay && !replay.isHost && (
+        <p className="mt-3 text-xs text-slate-400">Host bisa langsung mengulang permainan — kamu otomatis ikut.</p>
+      )}
+      {replay?.isHost && !replay.canReplay && (
+        <p className="mt-3 text-xs text-amber-600">Pemain kurang untuk mengulang. Tunggu rekan gabung dulu.</p>
+      )}
     </div>
   );
 }
