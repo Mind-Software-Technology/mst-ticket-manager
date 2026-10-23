@@ -283,3 +283,33 @@ export function buildBesarSequence(count = 80): BesarItem[] {
     return [l[0], l[1], r[0], r[1]] as const;
   });
 }
+
+// ─── Tebak Gambar ────────────────────────────────────
+
+const DRAW_WORDS = [
+  "Kucing", "Rumah", "Pohon", "Matahari", "Sepeda", "Pesawat", "Payung", "Kacamata", "Laptop", "Kopi",
+  "Pizza", "Gunung", "Ikan", "Burung", "Mobil", "Kapal", "Bunga", "Bintang", "Jam", "Kunci",
+  "Gitar", "Topi", "Sepatu", "Buku", "Telepon", "Kamera", "Robot", "Roket", "Jembatan", "Pelangi",
+  "Es krim", "Kura-kura", "Gajah", "Jerapah", "Kelinci", "Ular", "Laba-laba", "Pisang", "Semangka", "Burger",
+  "Lampu", "Kursi", "Meja", "Tangga", "Mahkota", "Hantu", "Naga", "Keyboard", "Printer", "Awan",
+  "Kalender", "Kalkulator", "Gembok", "Balon", "Kembang api", "Tenda", "Pancing", "Jam pasir", "Sendok", "Kaktus",
+  "Kupu-kupu", "Lebah", "Panda", "Pinguin", "Kepiting", "Cumi-cumi", "Pesta", "Hujan", "Salju", "Piala",
+];
+
+/** Satu kata per ronde, tidak berulang selama kata masih cukup. */
+export function buildDrawWords(count: number): string[] {
+  const out: string[] = [];
+  while (out.length < count) out.push(...shuffle(DRAW_WORDS));
+  return out.slice(0, count);
+}
+
+/** Samakan tebakan dan kata: abaikan huruf besar/kecil, spasi, dan tanda baca. */
+export const normalizeGuess = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** Petunjuk "_ _ _ _"; huruf pertama dibuka kalau `reveal`. */
+export function drawHint(word: string, reveal: boolean): string {
+  return word
+    .split("")
+    .map((ch, i) => (/[a-z0-9]/i.test(ch) ? (reveal && i === 0 ? ch.toUpperCase() : "_") : ch === " " ? "  " : ch))
+    .join(" ");
+}

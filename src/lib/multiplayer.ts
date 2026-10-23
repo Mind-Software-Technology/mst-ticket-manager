@@ -30,7 +30,8 @@ export type MpMode =
   | "warna"
   | "angka"
   | "beda"
-  | "besar";
+  | "besar"
+  | "gambar";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -45,6 +46,19 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  gambar: {
+    group: "umum",
+    label: "Tebak Gambar",
+    emoji: "🎨",
+    tagline: "Satu orang menggambar kata rahasia, yang lain menebak. Gantian jadi tukang gambar!",
+    rules: [
+      "Jumlah ronde = jumlah pemain x 2, tukang gambar bergiliran tiap ronde.",
+      "Tukang gambar dapat kata rahasia dan menggambarnya (dilarang menulis huruf!). Waktu 60 detik.",
+      "Penebak mengetik tebakan di kolom jawaban. Benar lebih cepat = poin lebih besar.",
+      "Tukang gambar dapat poin dari tiap penebak yang berhasil, bonus kalau semua berhasil.",
+    ],
+    minPlayers: 2,
+  },
   beda: {
     group: "umum",
     label: "Cari Beda",
@@ -257,11 +271,13 @@ export const MP_MODE_KEYS: MpMode[] = [
   "angka",
   "beda",
   "besar",
+  "gambar",
 ];
 
 export const ROUND_MS = 15_000;
 export const RACE_SECONDS = 45;
 export const MP_ROUNDS = 10;
+export const DRAW_SECONDS = 60;
 
 // ─── Soal ────────────────────────────────────────────
 
@@ -358,6 +374,25 @@ export function scoreRound(q: MpQuestion, answers: RoundAnswers, mode: MpMode): 
   return pts;
 }
 
+// ─── Tebak Gambar ────────────────────────────────────
+
+/**
+ * Poin satu ronde. `hits` = penebak yang benar (ms = waktu tebak).
+ * Penebak: 100 + bonus kecepatan. Tukang gambar: 50 per penebak, +50 kalau semua berhasil.
+ */
+export function scoreDraw(drawerId: string, hits: RoundAnswers, guesserIds: string[]): Record<string, number> {
+  const pts: Record<string, number> = {};
+  let n = 0;
+  for (const id of guesserIds) {
+    const h = hits[id];
+    if (!h) continue;
+    n++;
+    pts[id] = 100 + Math.round(Math.max(0, 1 - h.ms / (DRAW_SECONDS * 1000)) * 100);
+  }
+  if (n > 0) pts[drawerId] = n * 50 + (n === guesserIds.length ? 50 : 0);
+  return pts;
+}
+
 // ─── Balapan ketik ───────────────────────────────────
 
 export interface RaceTicket {
@@ -451,6 +486,8 @@ export interface StartPayload {
   beda?: Array<readonly [number, number, number]>;
   /** Soal Lebih Besar: [teks kiri, nilai kiri, teks kanan, nilai kanan]. */
   besar?: Array<readonly [string, number, string, number]>;
+  /** Kata rahasia Tebak Gambar, satu per ronde (jumlah pemain x 2). */
+  words?: string[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }
@@ -463,7 +500,12 @@ export type MpMessage =
   | { t: "ans"; i: number; id: string; c: number; ms: number }
   | { t: "reveal"; i: number; answers: RoundAnswers }
   | { t: "end" }
-  | { t: "prog"; id: string; score: number; n: number; done?: boolean };
+  | { t: "prog"; id: string; score: number; n: number; done?: boolean }
+  /** Tebak Gambar: potongan goresan (koordinat 0-1000, x lalu y berselang-seling). */
+  | { t: "stroke"; i: number; c: number; w: number; s: boolean; p: number[] }
+  | { t: "clear"; i: number }
+  | { t: "guess"; i: number; id: string; text: string }
+  | { t: "hit"; i: number; id: string; ms: number };
 
 const AVATARS = ["🦊", "🐼", "🐸", "🦁", "🐙", "🦄", "🐯", "🐧", "🦉", "🐳", "🦖", "🐝"];
 

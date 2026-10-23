@@ -31,6 +31,7 @@ import {
   buildScrambleQuestions,
   buildBedaSequence,
   buildBesarSequence,
+  buildDrawWords,
   buildNumberGrid,
   buildSimonPattern,
   buildStroopSequence,
@@ -45,6 +46,7 @@ import { StroopRace } from "./StroopRace";
 import { NumberRace } from "./NumberRace";
 import { BedaRace } from "./BedaRace";
 import { BesarRace } from "./BesarRace";
+import { DrawBattle } from "./DrawBattle";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -203,6 +205,8 @@ function Room({
         return <BedaRace key={key} {...props} />;
       case "besar":
         return <BesarRace key={key} {...props} />;
+      case "gambar":
+        return <DrawBattle key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }
@@ -249,6 +253,9 @@ function Room({
           return { ...base, beda: buildBedaSequence() };
         case "besar":
           return { ...base, besar: buildBesarSequence() };
+        case "gambar":
+          // Ronde = jumlah pemain x 2, tukang gambar bergiliran.
+          return { ...base, words: buildDrawWords(players.length * 2) };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
