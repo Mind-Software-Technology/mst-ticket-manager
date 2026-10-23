@@ -34,7 +34,8 @@ export type MpMode =
   | "gambar"
   | "sandi"
   | "labirin"
-  | "dua4";
+  | "dua4"
+  | "slither";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -49,6 +50,19 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  slither: {
+    group: "umum",
+    label: "Slither Arena",
+    emoji: "🐍",
+    tagline: "Arena ular real-time ala slither.io. Makan, tumbuh, dan jebak lawan!",
+    rules: [
+      "Arahkan ular dengan mouse/jari. Tahan Spasi atau tombol ⚡ untuk ngebut (ekor memendek).",
+      "Makan pelet = ular memanjang & +10 poin. Pelet besar bernilai lebih.",
+      "Kepalamu menabrak badan lawan = kamu mati (bisa respawn). Lawan yang menabrak badanmu = +100 untukmu.",
+      "Waktu 120 detik, skor tertinggi menang. Dinding arena tidak mematikan.",
+    ],
+    minPlayers: 2,
+  },
   sandi: {
     group: "umum",
     label: "Sandi Rahasia",
@@ -314,6 +328,7 @@ export const MP_MODE_KEYS: MpMode[] = [
   "sandi",
   "labirin",
   "dua4",
+  "slither",
 ];
 
 export const ROUND_MS = 15_000;
@@ -536,6 +551,8 @@ export interface StartPayload {
   maze?: number[];
   /** Hitung 24: 4 angka per soal. */
   puzzles?: number[][];
+  /** Slither Arena: seed untuk pelet awal yang sama di semua klien. */
+  seed?: number;
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }
@@ -553,7 +570,13 @@ export type MpMessage =
   | { t: "stroke"; i: number; c: number; w: number; s: boolean; p: number[] }
   | { t: "clear"; i: number }
   | { t: "guess"; i: number; id: string; text: string }
-  | { t: "hit"; i: number; id: string; ms: number };
+  | { t: "hit"; i: number; id: string; ms: number }
+  /** Slither Arena: posisi ular (seg = titik kepala lalu badan, x,y berselang-seling). */
+  | { t: "snk"; id: string; a: number; b: boolean; len: number; seg: number[] }
+  /** Pelet dimakan / ditambah / dijatuhkan ular mati: f = id atau [id,x,y,nilai] berulang. */
+  | { t: "eat"; f: number[] }
+  | { t: "food"; f: number[] }
+  | { t: "dead"; id: string; by: string | null; f: number[] };
 
 const AVATARS = ["🦊", "🐼", "🐸", "🦁", "🐙", "🦄", "🐯", "🐧", "🦉", "🐳", "🦖", "🐝"];
 

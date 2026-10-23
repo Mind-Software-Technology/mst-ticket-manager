@@ -54,6 +54,7 @@ import { DrawBattle } from "./DrawBattle";
 import { SandiRace } from "./SandiRace";
 import { MazeRace } from "./MazeRace";
 import { Dua4Race } from "./Dua4Race";
+import { SlitherRace } from "./SlitherRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -230,6 +231,8 @@ function Room({
           return { ...base, maze: buildMaze() };
         case "dua4":
           return { ...base, puzzles: buildDua4Puzzles() };
+        case "slither":
+          return { ...base, seed: Math.floor(Math.random() * 2 ** 31) };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
@@ -278,6 +281,8 @@ function Room({
         return <MazeRace key={key} {...props} />;
       case "dua4":
         return <Dua4Race key={key} {...props} />;
+      case "slither":
+        return <SlitherRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }
