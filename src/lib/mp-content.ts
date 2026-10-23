@@ -296,10 +296,124 @@ const DRAW_WORDS = [
   "Kupu-kupu", "Lebah", "Panda", "Pinguin", "Kepiting", "Cumi-cumi", "Pesta", "Hujan", "Salju", "Piala",
 ];
 
+const EXTRA_DRAW_WORDS = [
+  // Benda sehari-hari
+  "Kipas angin", "Kulkas", "Mesin cuci", "Setrika", "Vacuum cleaner",
+  "Sapu", "Pel", "Bantal", "Kasur", "Selimut",
+  "Cermin", "Lemari", "Jam dinding", "Gunting", "Penggaris",
+  "Pensil", "Penghapus", "Ransel", "Dompet", "Koper",
+  "Botol minum", "Termos", "Payung terbalik", "Korek api", "Lilin",
+  "Senter", "Teropong", "Mikroskop", "Teleskop", "Mesin tik",
+
+  // Makanan dan minuman
+  "Martabak", "Rendang", "Sate", "Bakso", "Soto",
+  "Nasi goreng", "Mie ayam", "Seblak", "Pempek", "Ketoprak",
+  "Donat", "Pancake", "Waffle", "Cupcake", "Puding",
+  "Popcorn", "Cokelat", "Permen lolipop", "Cotton candy", "Roti tawar",
+  "Keju", "Telur ceplok", "Sushi", "Ramen", "Hot dog",
+  "Kentang goreng", "Taco", "Spaghetti", "Dimsum", "Kebab",
+  "Jus jeruk", "Susu", "Bubble tea", "Air kelapa", "Es teh",
+  "Durian", "Mangga", "Nanas", "Anggur", "Stroberi",
+
+  // Hewan
+  "Singa", "Harimau", "Zebra", "Monyet", "Gorila",
+  "Koala", "Kanguru", "Beruang", "Serigala", "Rubah",
+  "Rusa", "Kuda", "Sapi", "Kambing", "Domba",
+  "Ayam", "Bebek", "Angsa", "Burung hantu", "Merak",
+  "Flamingo", "Elang", "Burung beo", "Lumba-lumba", "Paus",
+  "Hiu", "Gurita", "Ubur-ubur", "Bintang laut", "Kuda laut",
+  "Katak", "Buaya", "Bunglon", "Kelelawar", "Landak",
+  "Siput", "Cacing", "Nyamuk", "Capung", "Belalang",
+
+  // Alam dan cuaca
+  "Gunung meletus", "Air terjun", "Pantai", "Gurun pasir", "Hutan",
+  "Pulau", "Gua", "Danau", "Sungai", "Pelangi ganda",
+  "Tornado", "Petir", "Gempa bumi", "Banjir", "Ombak",
+  "Gunung es", "Pohon kelapa", "Bunga matahari", "Bunga mawar", "Jamur",
+  "Daun gugur", "Api unggun", "Bulan sabit", "Gerhana matahari", "Bintang jatuh",
+
+  // Transportasi
+  "Helikopter", "Kapal selam", "Kereta api", "Kereta cepat", "Truk",
+  "Ambulans", "Mobil pemadam kebakaran", "Becak", "Delman", "Bajaj",
+  "Skateboard", "Roller skate", "Balon udara", "Parasut", "Jet ski",
+  "Kapal bajak laut", "Traktor", "Forklift", "Pesawat tempur", "Kereta gantung",
+
+  // Profesi
+  "Dokter", "Perawat", "Guru", "Polisi", "Pemadam kebakaran",
+  "Koki", "Astronaut", "Pilot", "Nelayan", "Petani",
+  "Penyanyi", "Penari", "Pelukis", "Fotografer", "Programmer",
+  "Detektif", "Pesulap", "Badut", "Arkeolog", "Montir",
+  "Dokter gigi", "Wasit", "Kondektur", "Presenter", "Youtuber",
+
+  // Olahraga dan aktivitas
+  "Sepak bola", "Bola basket", "Bulu tangkis", "Tenis meja", "Tinju",
+  "Bersepeda", "Memancing", "Berenang", "Mendaki gunung", "Berselancar",
+  "Bermain layangan", "Lompat tali", "Angkat besi", "Panahan", "Bowling",
+  "Bermain catur", "Bermain gitar", "Karaoke", "Berkemah", "Yoga",
+
+  // Tempat dan bangunan
+  "Rumah sakit", "Sekolah", "Perpustakaan", "Bandara", "Stasiun",
+  "Pasar", "Mal", "Bioskop", "Restoran", "Hotel",
+  "Istana", "Mercusuar", "Menara Eiffel", "Candi", "Masjid",
+  "Gereja", "Museum", "Kebun binatang", "Akuarium", "Taman bermain",
+  "Rumah pohon", "Rumah hantu", "Kastil", "Penjara", "Laboratorium",
+
+  // Teknologi
+  "Drone", "Headphone", "Joystick", "Mouse komputer", "Flashdisk",
+  "Hard disk", "Smartwatch", "Konsol game", "VR headset", "Proyektor",
+  "Kamera CCTV", "Router Wi-Fi", "Power bank", "Charger", "Mikrofon",
+  "Speaker", "Kartu memori", "Mesin ATM", "Robot vacuum", "Mesin kasir",
+
+  // Fantasi dan karakter
+  "Putri duyung", "Peri", "Vampir", "Zombie", "Manusia serigala",
+  "Penyihir", "Penyihir terbang", "Alien", "Monster", "Unicorn",
+  "Phoenix", "Centaur", "Raksasa", "Kurcaci", "Malaikat",
+  "Iblis", "Superhero", "Ninja", "Samurai", "Ksatria",
+  "Bajak laut", "Mumi", "Raja", "Ratu", "Pangeran",
+
+  // Benda dan konsep unik
+  "Mesin waktu", "Kotak harta karun", "Lampu ajaib", "Cincin ajaib",
+  "Pintu rahasia", "Kapal luar angkasa", "Portal dimensi", "Mesin teleportasi",
+  "Kartu remi", "Dadu", "Domino", "Puzzle", "Boneka",
+  "Boneka salju", "Orang-orangan sawah", "Patung", "Topeng", "Lonceng",
+  "Terompet", "Drum", "Biola", "Piano", "Harmonika",
+  "Bola kristal", "Kaca pembesar", "Kompas", "Peta harta karun", "Kapal dalam botol",
+
+  // Ekspresi dan situasi lucu
+  "Orang mengantuk", "Orang bersin", "Orang tersandung", "Orang menangis",
+  "Orang tertawa", "Orang jatuh cinta", "Orang kebingungan", "Orang kepanasan",
+  "Orang kedinginan", "Orang ketakutan", "Orang sedang ngambek",
+  "Orang lupa ingatan", "Orang kesiangan", "Orang dikejar ayam",
+  "Kucing mencuri ikan", "Monyet makan pisang", "Ayam naik motor",
+  "Bebek memakai sepatu", "Sapi bermain gitar", "Gajah naik sepeda",
+  "Pinguin bermain ski", "Ikan terbang", "Hantu bermain HP",
+  "Zombie pergi ke sekolah", "Alien makan bakso",
+  "Robot sedang tidur", "Naga menyemburkan api", "Kambing memanjat pohon",
+  "Anjing memakai kacamata", "Kelinci bermain basket",
+
+  // Pakaian dan aksesori
+  "Jas hujan", "Dasi", "Dasi kupu-kupu", "Kemeja", "Gaun pengantin",
+  "Kebaya", "Sarung", "Batik", "Kaos kaki", "Sarung tangan",
+  "Helm", "Mahkota bunga", "Anting-anting", "Kalung", "Gelang",
+  "Cincin kawin", "Kacamata hitam", "Syal", "Sepatu roda", "Sandal jepit",
+
+  // Benda khas Indonesia
+  "Angklung", "Gamelan", "Wayang kulit", "Keris", "Tifa",
+  "Rumah gadang", "Rumah joglo", "Monas", "Borobudur", "Prambanan",
+  "Ondel-ondel", "Kuda lumping", "Reog Ponorogo", "Batik tulis", "Tumpeng",
+  "Ketupat", "Lemper", "Klepon", "Onde-onde", "Kerupuk",
+  "Gerobak bakso", "Warung kopi", "Pos ronda", "Gapura", "Becak motor"
+];
+
+/** Gabungan semua kata, tanpa duplikat (huruf besar/kecil diabaikan). */
+const ALL_DRAW_WORDS = Array.from(
+  new Map([...DRAW_WORDS, ...EXTRA_DRAW_WORDS].map((w) => [w.toLowerCase(), w])).values(),
+);
+
 /** Satu kata per ronde, tidak berulang selama kata masih cukup. */
 export function buildDrawWords(count: number): string[] {
   const out: string[] = [];
-  while (out.length < count) out.push(...shuffle(DRAW_WORDS));
+  while (out.length < count) out.push(...shuffle(ALL_DRAW_WORDS));
   return out.slice(0, count);
 }
 
