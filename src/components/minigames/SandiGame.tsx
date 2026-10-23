@@ -19,6 +19,7 @@ import {
   scoreSandi,
 } from "@/lib/mp-content";
 import { ResultCard, StartCard, useBest, useInterval } from "./GameParts";
+import { SandiHelp } from "./SandiHelp";
 
 type Phase = "start" | "play" | "result";
 interface Guess {
@@ -153,6 +154,8 @@ export function SandiGame({ userId }: { userId?: string }) {
           </div>
         ))}
       </div>
+
+      <SandiHelp />
 
       <div className="mt-3 flex items-center justify-center gap-2">
         {slots.map((c, i) => (

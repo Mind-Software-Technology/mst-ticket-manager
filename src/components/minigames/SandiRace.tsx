@@ -21,6 +21,7 @@ import {
 } from "@/lib/mp-content";
 import { FinalPodium, Scoreboard, useRaceSync } from "./MpParts";
 import { useInterval } from "./GameParts";
+import { SandiHelp } from "./SandiHelp";
 
 type Stage = "countdown" | "play" | "done";
 interface Guess {
@@ -154,7 +155,7 @@ export function SandiRace({
       <div className="max-w-md mx-auto text-center py-10">
         <div className="text-6xl">{MP_MODES.sandi.emoji}</div>
         <h3 className="mt-3 text-2xl font-black text-slate-900">Sandi Rahasia</h3>
-        <p className="mt-1 text-sm text-slate-500">Pecahkan 3 sandi 4 warna. Pakai petunjuk ● dan ○ dengan cerdik!</p>
+        <p className="mt-1 text-sm text-slate-500">Tebak 4 warna rahasia berurutan. ● = warna & posisi benar, ○ = warna benar tapi posisi salah.</p>
         <p className="mt-4 text-7xl font-black text-indigo-600 animate-lb-pop" key={count}>
           {count}
         </p>
@@ -206,6 +207,8 @@ export function SandiRace({
           </div>
         ))}
       </div>
+
+      <SandiHelp />
 
       <div className="mt-3 flex items-center justify-center gap-2">
         {slots.map((c, i) => (
