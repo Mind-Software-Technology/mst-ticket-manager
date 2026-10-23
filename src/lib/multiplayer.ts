@@ -28,7 +28,9 @@ export type MpMode =
   | "kata"
   | "simon"
   | "warna"
-  | "angka";
+  | "angka"
+  | "beda"
+  | "besar";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -43,6 +45,30 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  beda: {
+    group: "umum",
+    label: "Cari Beda",
+    emoji: "🔍",
+    tagline: "Temukan emoji yang beda sendiri. Papan sama untuk semua pemain!",
+    rules: [
+      "30 detik, papan makin besar tiap beberapa soal.",
+      "Tap emoji yang beda. Benar +10, salah -5.",
+      "Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  besar: {
+    group: "umum",
+    label: "Lebih Besar",
+    emoji: "⚖️",
+    tagline: "Mana yang nilainya lebih besar? Soal sama untuk semua, adu cepat!",
+    rules: [
+      "30 detik, dari angka biasa sampai hitungan campur.",
+      "Tap sisi dengan nilai lebih besar. Benar +10, salah -5.",
+      "Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
   warna: {
     group: "umum",
     label: "Warna Mengecoh",
@@ -229,6 +255,8 @@ export const MP_MODE_KEYS: MpMode[] = [
   "simon",
   "warna",
   "angka",
+  "beda",
+  "besar",
 ];
 
 export const ROUND_MS = 15_000;
@@ -419,6 +447,10 @@ export interface StartPayload {
   stroop?: Array<readonly [number, number]>;
   /** Susunan angka 1..16 Sentuh Angka. */
   grid?: number[];
+  /** Soal Cari Beda: [pasangan, sisi biasa, posisi si beda]. */
+  beda?: Array<readonly [number, number, number]>;
+  /** Soal Lebih Besar: [teks kiri, nilai kiri, teks kanan, nilai kanan]. */
+  besar?: Array<readonly [string, number, string, number]>;
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

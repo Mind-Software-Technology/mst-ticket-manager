@@ -29,6 +29,8 @@ import {
   buildMemoryDeck,
   buildReflexDelays,
   buildScrambleQuestions,
+  buildBedaSequence,
+  buildBesarSequence,
   buildNumberGrid,
   buildSimonPattern,
   buildStroopSequence,
@@ -41,6 +43,8 @@ import { RunRace } from "./RunRace";
 import { SimonRace } from "./SimonRace";
 import { StroopRace } from "./StroopRace";
 import { NumberRace } from "./NumberRace";
+import { BedaRace } from "./BedaRace";
+import { BesarRace } from "./BesarRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -195,6 +199,10 @@ function Room({
         return <StroopRace key={key} {...props} />;
       case "angka":
         return <NumberRace key={key} {...props} />;
+      case "beda":
+        return <BedaRace key={key} {...props} />;
+      case "besar":
+        return <BesarRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }
@@ -237,6 +245,10 @@ function Room({
           return { ...base, stroop: buildStroopSequence() };
         case "angka":
           return { ...base, grid: buildNumberGrid() };
+        case "beda":
+          return { ...base, beda: buildBedaSequence() };
+        case "besar":
+          return { ...base, besar: buildBesarSequence() };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }

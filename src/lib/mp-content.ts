@@ -213,3 +213,73 @@ export function numberScore(tapped: number, elapsedMs: number): number {
     tapped >= NUMBER_COUNT ? Math.round(Math.max(0, 1 - elapsedMs / (NUMBER_SECONDS * 1000)) * 400) : 0;
   return tapped * 20 + bonus;
 }
+
+// ─── Cari Beda ───────────────────────────────────────
+
+export const BEDA_SECONDS = 30;
+
+/** Pasangan emoji yang mirip; satu jadi "biasa", satu lagi jadi "si beda". */
+export const BEDA_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ["😀", "😃"],
+  ["🌑", "🌚"],
+  ["🍎", "🍅"],
+  ["🐶", "🐺"],
+  ["🔵", "🟣"],
+  ["🕐", "🕑"],
+  ["🐱", "🐯"],
+  ["🍋", "🌕"],
+  ["🧡", "❤️"],
+  ["🍩", "🧿"],
+];
+
+/** Ukuran papan makin besar tiap beberapa soal: 3x3 sampai 6x6. */
+export const bedaSize = (i: number) => Math.min(6, 3 + Math.floor(i / 4));
+
+/** [indeks pasangan, 0/1 = emoji mana yang jadi biasa, posisi si beda]. */
+export type BedaItem = readonly [number, number, number];
+
+export function buildBedaSequence(count = 60): BedaItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = bedaSize(i);
+    return [rand(0, BEDA_PAIRS.length - 1), rand(0, 1), rand(0, n * n - 1)] as const;
+  });
+}
+
+// ─── Lebih Besar ─────────────────────────────────────
+
+export const BESAR_SECONDS = 30;
+
+/** [teks kiri, nilai kiri, teks kanan, nilai kanan]. */
+export type BesarItem = readonly [string, number, string, number];
+
+function besarSide(level: number): readonly [string, number] {
+  if (level === 0) {
+    const v = rand(10, 99);
+    return [String(v), v];
+  }
+  const kind = rand(0, level >= 2 ? 2 : 1);
+  if (kind === 0) {
+    const a = rand(10, 60);
+    const b = rand(5, 40);
+    return [`${a} + ${b}`, a + b];
+  }
+  if (kind === 1) {
+    const a = rand(3, 12);
+    const b = rand(3, 12);
+    return [`${a} × ${b}`, a * b];
+  }
+  const a = rand(60, 150);
+  const b = rand(10, 55);
+  return [`${a} − ${b}`, a - b];
+}
+
+export function buildBesarSequence(count = 80): BesarItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const level = Math.min(2, Math.floor(i / 6));
+    let l = besarSide(level);
+    let r = besarSide(level);
+    for (let tries = 0; l[1] === r[1] && tries < 10; tries++) r = besarSide(level);
+    if (l[1] === r[1]) l = [String(l[1] + 1), l[1] + 1];
+    return [l[0], l[1], r[0], r[1]] as const;
+  });
+}

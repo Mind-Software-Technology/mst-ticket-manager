@@ -23,7 +23,9 @@ export type GameKey =
   | "lari"
   | "simon"
   | "warna"
-  | "angka";
+  | "angka"
+  | "beda"
+  | "besar";
 
 export interface GameTicket {
   id: string;
@@ -220,6 +222,30 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  beda: {
+    group: "umum",
+    label: "Cari Beda",
+    emoji: "🔍",
+    tagline: "Satu emoji di papan sedikit berbeda dari yang lain. Temukan secepat mungkin!",
+    rules: [
+      "30 detik, papan makin besar tiap beberapa soal (3x3 sampai 6x6).",
+      "Tap emoji yang beda sendiri.",
+      "Benar +10 (bonus kombo), salah -5 dan kombo hangus.",
+    ],
+    needs: "",
+  },
+  besar: {
+    group: "umum",
+    label: "Lebih Besar",
+    emoji: "⚖️",
+    tagline: "Dua angka atau hitungan, mana yang nilainya lebih besar? Putuskan dalam sekejap!",
+    rules: [
+      "30 detik, dari angka biasa sampai hitungan tambah, kali, kurang.",
+      "Tap sisi yang nilainya lebih besar (keyboard: F kiri, J kanan, atau ← →).",
+      "Benar +10 (bonus kombo), salah -5 dan kombo hangus.",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -238,6 +264,8 @@ export const GAME_KEYS: GameKey[] = [
   "simon",
   "warna",
   "angka",
+  "beda",
+  "besar",
 ];
 
 export function shuffle<T>(input: readonly T[]): T[] {
@@ -521,6 +549,18 @@ export function resultMessage(game: GameKey, score: number): string {
       [450, "Cepat dan teliti, mantap. 🔢"],
       [250, "Lumayan, angkanya masih suka ngumpet. 🙈"],
       [0, "Angka 1 di mana ya… coba lagi! 🔍"],
+    ],
+    beda: [
+      [250, "Mata detektif! Tak ada yang lolos darimu. 🕵️"],
+      [150, "Teliti dan cepat, mantap. 🔍"],
+      [70, "Lumayan, emojinya mirip-mirip ya. 😵"],
+      [0, "Semuanya kelihatan sama… coba lagi! 👀"],
+    ],
+    besar: [
+      [250, "Kalkulator hidup! Selisih sekecil apa pun ketahuan. ⚖️"],
+      [150, "Intuisi angkamu tajam. 🧮"],
+      [70, "Lumayan, tinggal diasah lagi. ✏️"],
+      [0, "Besar atau kecil… sama-sama membingungkan. 🌀"],
     ],
   };
   return (tiers[game].find(([min]) => score >= min) ?? tiers[game][3])[1];
