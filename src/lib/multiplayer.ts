@@ -26,7 +26,9 @@ export type MpMode =
   | "reflex"
   | "lari"
   | "kata"
-  | "simon";
+  | "simon"
+  | "warna"
+  | "angka";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -41,6 +43,30 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  warna: {
+    group: "umum",
+    label: "Warna Mengecoh",
+    emoji: "🌈",
+    tagline: "Tap warna TINTA kata, bukan tulisannya. Awas tertipu!",
+    rules: [
+      "30 detik, urutan kata & warna sama untuk semua pemain.",
+      "Benar +10, salah -5. Skor semua pemain terlihat langsung.",
+      "Makin cepat tap, makin banyak soal yang terjawab.",
+    ],
+    minPlayers: 2,
+  },
+  angka: {
+    group: "umum",
+    label: "Sentuh Angka",
+    emoji: "🔢",
+    tagline: "Tap angka 1-16 berurutan. Papan sama untuk semua, siapa paling cepat?",
+    rules: [
+      "16 angka teracak (sama untuk semua pemain), batas 45 detik.",
+      "Tap berurutan mulai dari 1. Tiap angka benar +20.",
+      "Selesai semua = bonus sisa waktu (maks +400).",
+    ],
+    minPlayers: 2,
+  },
   lari: {
     group: "umum",
     label: "Lomba Lari",
@@ -201,6 +227,8 @@ export const MP_MODE_KEYS: MpMode[] = [
   "lari",
   "kata",
   "simon",
+  "warna",
+  "angka",
 ];
 
 export const ROUND_MS = 15_000;
@@ -387,6 +415,10 @@ export interface StartPayload {
   delays?: number[];
   /** Pola pad Pola Ajaib (0-3). */
   pattern?: number[];
+  /** Urutan [kata, tinta] Warna Mengecoh. */
+  stroop?: Array<readonly [number, number]>;
+  /** Susunan angka 1..16 Sentuh Angka. */
+  grid?: number[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

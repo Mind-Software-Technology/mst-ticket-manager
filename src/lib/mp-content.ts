@@ -180,3 +180,36 @@ export const SIMON_MAX = 40;
 export function buildSimonPattern(): number[] {
   return Array.from({ length: SIMON_MAX }, () => rand(0, 3));
 }
+
+// ─── Warna Mengecoh (Stroop) ─────────────────────────
+
+export const STROOP_COLORS = ["MERAH", "BIRU", "HIJAU", "KUNING"] as const;
+export const STROOP_SECONDS = 30;
+
+/** [indeks kata, indeks warna tinta]. Jawaban benar = warna tintanya, bukan tulisannya. */
+export type StroopItem = readonly [number, number];
+
+export function buildStroopSequence(count = 150): StroopItem[] {
+  return Array.from({ length: count }, () => {
+    const word = rand(0, 3);
+    const ink = Math.random() < 0.7 ? (word + rand(1, 3)) % 4 : word;
+    return [word, ink] as const;
+  });
+}
+
+// ─── Sentuh Angka ────────────────────────────────────
+
+export const NUMBER_COUNT = 16;
+export const NUMBER_SECONDS = 45;
+
+/** Susunan angka 1..16 di papan; sama untuk semua pemain di mode bareng. */
+export function buildNumberGrid(): number[] {
+  return shuffle(Array.from({ length: NUMBER_COUNT }, (_, i) => i + 1));
+}
+
+/** 20 poin per angka benar; selesai semua = bonus sisa waktu (maks +400). */
+export function numberScore(tapped: number, elapsedMs: number): number {
+  const bonus =
+    tapped >= NUMBER_COUNT ? Math.round(Math.max(0, 1 - elapsedMs / (NUMBER_SECONDS * 1000)) * 400) : 0;
+  return tapped * 20 + bonus;
+}

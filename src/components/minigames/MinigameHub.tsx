@@ -15,6 +15,15 @@ import { PrioritySortGame } from "./PrioritySortGame";
 import { CategoryGuessGame } from "./CategoryGuessGame";
 import { SpeedTypeGame } from "./SpeedTypeGame";
 import { MultiplayerHub } from "./MultiplayerHub";
+import { ContentQuizGame } from "./ContentQuizGame";
+import { MemoryGame } from "./MemoryGame";
+import { ReflexGame } from "./ReflexGame";
+import { RunGame } from "./RunGame";
+import { SimonGame } from "./SimonGame";
+import { StroopGame } from "./StroopGame";
+import { NumberGame } from "./NumberGame";
+
+const GROUP_LABEL = { tiket: "🎫 Seputar Tiket", umum: "🎉 Seru-seruan Umum" } as const;
 
 export function MinigameHub({ userId, userName }: { userId?: string; userName?: string }) {
   const { tickets, names, loading, error } = useMinigameTickets();
@@ -39,23 +48,30 @@ export function MinigameHub({ userId, userName }: { userId?: string; userName?: 
         ))}
       </div>
       {!multi && (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        {GAME_KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setGame(key)}
-            className={`text-left px-4 py-3 rounded-xl border transition-all ${
-              game === key
-                ? "bg-indigo-600 border-indigo-600 text-white shadow-md scale-[1.02]"
-                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            <span className="text-2xl">{GAMES[key].emoji}</span>
-            <span className="block text-sm font-bold mt-0.5">{GAMES[key].label}</span>
-          </button>
-        ))}
-      </div>
+        <div className="space-y-3">
+          {(["tiket", "umum"] as const).map((g) => (
+            <div key={g}>
+              <p className="mb-1.5 text-xs font-bold text-slate-500">{GROUP_LABEL[g]}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {GAME_KEYS.filter((k) => GAMES[k].group === g).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setGame(key)}
+                    className={`text-left px-4 py-3 rounded-xl border transition-all ${
+                      game === key
+                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md scale-[1.02]"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="text-2xl">{GAMES[key].emoji}</span>
+                    <span className="block text-sm font-bold mt-0.5">{GAMES[key].label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-5 min-h-[22rem]">
@@ -79,6 +95,15 @@ export function MinigameHub({ userId, userName }: { userId?: string; userName?: 
             {game === "priority_sort" && <PrioritySortGame key="priority_sort" tickets={tickets} userId={userId} />}
             {game === "category_guess" && <CategoryGuessGame key="category_guess" tickets={tickets} userId={userId} />}
             {game === "speed_type" && <SpeedTypeGame key="speed_type" tickets={tickets} userId={userId} />}
+            {(game === "hitung" || game === "trivia" || game === "kata") && (
+              <ContentQuizGame key={game} game={game} userId={userId} />
+            )}
+            {game === "memory" && <MemoryGame key="memory" userId={userId} />}
+            {game === "reflex" && <ReflexGame key="reflex" userId={userId} />}
+            {game === "lari" && <RunGame key="lari" userId={userId} />}
+            {game === "simon" && <SimonGame key="simon" userId={userId} />}
+            {game === "warna" && <StroopGame key="warna" userId={userId} />}
+            {game === "angka" && <NumberGame key="angka" userId={userId} />}
           </>
           )
         )}

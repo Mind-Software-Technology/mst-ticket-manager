@@ -29,7 +29,9 @@ import {
   buildMemoryDeck,
   buildReflexDelays,
   buildScrambleQuestions,
+  buildNumberGrid,
   buildSimonPattern,
+  buildStroopSequence,
   buildTriviaQuestions,
 } from "@/lib/mp-content";
 import { QuizBattle } from "./QuizBattle";
@@ -37,6 +39,8 @@ import { MemoryRace } from "./MemoryRace";
 import { ReflexRace } from "./ReflexRace";
 import { RunRace } from "./RunRace";
 import { SimonRace } from "./SimonRace";
+import { StroopRace } from "./StroopRace";
+import { NumberRace } from "./NumberRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -187,6 +191,10 @@ function Room({
         return <RunRace key={key} {...props} />;
       case "simon":
         return <SimonRace key={key} {...props} />;
+      case "warna":
+        return <StroopRace key={key} {...props} />;
+      case "angka":
+        return <NumberRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }
@@ -225,6 +233,10 @@ function Room({
           return { ...base, questions: buildScrambleQuestions() };
         case "simon":
           return { ...base, pattern: buildSimonPattern() };
+        case "warna":
+          return { ...base, stroop: buildStroopSequence() };
+        case "angka":
+          return { ...base, grid: buildNumberGrid() };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
