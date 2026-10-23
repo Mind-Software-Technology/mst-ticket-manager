@@ -27,7 +27,10 @@ export type GameKey =
   | "beda"
   | "besar"
   | "g2048"
-  | "ular";
+  | "ular"
+  | "dua4"
+  | "sandi"
+  | "ranjau";
 
 export interface GameTicket {
   id: string;
@@ -272,6 +275,42 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  dua4: {
+    group: "umum",
+    label: "Hitung 24",
+    emoji: "🎯",
+    tagline: "Susun 4 angka dengan + − × ÷ dan kurung sampai hasilnya tepat 24!",
+    rules: [
+      "150 detik, soal tak terbatas (4 angka 1-9, dijamin ada jawabannya).",
+      "Pakai tiap angka tepat satu kali. Boleh pakai kurung.",
+      "Benar = 150 + bonus kecepatan (maks +100). Soal buntu boleh dilewati.",
+    ],
+    needs: "",
+  },
+  sandi: {
+    group: "umum",
+    label: "Sandi Rahasia",
+    emoji: "🔐",
+    tagline: "Pecahkan sandi 4 warna dari petunjuk. Seberapa jeli logikamu?",
+    rules: [
+      "3 sandi (4 warna, boleh berulang), 180 detik total, maks 10 tebakan per sandi.",
+      "● = warna & posisi pas, ○ = warna ada tapi posisi salah.",
+      "Makin sedikit tebakan & makin cepat, makin besar poin.",
+    ],
+    needs: "",
+  },
+  ranjau: {
+    group: "umum",
+    label: "Cari Ranjau",
+    emoji: "💣",
+    tagline: "Buka semua kotak aman tanpa menginjak ranjau. Pakai logika, bukan tebakan!",
+    rules: [
+      "Papan 9x9 berisi 10 ranjau. Angka = jumlah ranjau di 8 kotak sekitarnya.",
+      "Klik pertama selalu aman. Tandai ranjau dengan klik kanan atau Mode bendera.",
+      "Menang = 500 + bonus waktu. Kalah = 5 poin per kotak aman yang terbuka.",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -294,6 +333,9 @@ export const GAME_KEYS: GameKey[] = [
   "besar",
   "g2048",
   "ular",
+  "dua4",
+  "sandi",
+  "ranjau",
 ];
 
 export function shuffle<T>(input: readonly T[]): T[] {
@@ -601,6 +643,24 @@ export function resultMessage(game: GameKey, score: number): string {
       [150, "Gerakanmu lincah, perutnya kenyang. 🍎"],
       [60, "Lumayan, mulai paham belokannya. 👍"],
       [0, "Ularnya masih lapar dan bingung. Coba lagi! 😵"],
+    ],
+    dua4: [
+      [1500, "Jenius angka! 24 muncul dari mana saja. 🎯"],
+      [900, "Otak hitungmu tajam, mantap. 🧮"],
+      [300, "Lumayan, mulai dapat feel-nya. ✏️"],
+      [0, "Angkanya licin ya. Coba lagi! 🌀"],
+    ],
+    sandi: [
+      [1000, "Pemecah sandi kelas agen rahasia! 🕵️"],
+      [600, "Logikamu rapi, sandi pun menyerah. 🔐"],
+      [250, "Lumayan, tinggal diasah deduksinya. 🔎"],
+      [0, "Sandinya masih rahasia besar… coba lagi! 🤐"],
+    ],
+    ranjau: [
+      [900, "Penjinak ranjau handal, cepat dan teliti! 💣"],
+      [500, "Papan bersih, nyawa selamat. 🎖️"],
+      [200, "Hampir saja! Sedikit lagi. 😅"],
+      [0, "Duar! Ranjaunya bersembunyi di mana-mana. 💥"],
     ],
   };
   return (tiers[game].find(([min]) => score >= min) ?? tiers[game][3])[1];
