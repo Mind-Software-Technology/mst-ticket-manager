@@ -8,7 +8,7 @@
 // =====================================================
 
 export const SLITHER_SECONDS = 120;
-export const WORLD = 1800;
+export const WORLD = 3600;
 export const VIEW_W = 640;
 export const VIEW_H = 400;
 export const BASE_SPEED = 140;
@@ -16,13 +16,22 @@ export const BOOST_SPEED = 250;
 export const TURN_RATE = 4;
 export const SPACING = 9;
 export const START_LEN = 10;
-export const MAX_LEN = 220;
+export const MAX_LEN = 360;
 export const MIN_BOOST_LEN = 12;
 export const SEG_SEND_STEP = 3;
 export const SEND_MS = 125;
-export const FOOD_TARGET = 240;
+export const FOOD_TARGET = 650;
 export const KILL_POINTS = 100;
 export const PELLET_POINTS = 10;
+export const BOT_COUNT = 5;
+export const BOT_PREFIX = "bot-";
+const BOT_NAMES = ["Kobra", "Piton", "Anaconda", "Mamba", "Sanca", "Welang", "Derik"];
+
+export const isBot = (id: string) => id.startsWith(BOT_PREFIX);
+export const botName = (id: string) => `🤖 ${BOT_NAMES[Number(id.slice(BOT_PREFIX.length)) % BOT_NAMES.length] ?? "Bot"}`;
+
+/** Makin panjang, kamera makin menjauh supaya ular besar tetap terlihat utuh. */
+export const viewScale = (len: number) => Math.max(0.62, Math.min(1, 1.04 - len * 0.0014));
 
 export interface Pellet {
   x: number;
@@ -42,7 +51,7 @@ export function mulberry32(seed: number) {
   };
 }
 
-export function seedPellets(seed: number, count = 180): Map<number, Pellet> {
+export function seedPellets(seed: number, count = 600): Map<number, Pellet> {
   const rnd = mulberry32(seed);
   const map = new Map<number, Pellet>();
   for (let id = 0; id < count; id++) {
@@ -59,7 +68,8 @@ export function hueOf(key: string | number): number {
   return Math.abs(h) % 360;
 }
 
-export const snakeRadius = (len: number) => 6 + Math.min(len, MAX_LEN) / 40;
+/** Ular makin gemuk seiring panjangnya (6 → ±22). */
+export const snakeRadius = (len: number) => 6 + Math.min(len, MAX_LEN) * 0.045;
 
 /** Jarak titik (px,py) ke ruas garis (ax,ay)-(bx,by). */
 export function pointSegDist(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
@@ -92,11 +102,11 @@ export function followBody(segs: number[]) {
   }
 }
 
-/** Kirim kepala + tiap ruas ke-3 + ekor, dibulatkan, supaya pesan tetap kecil. */
-export function packBody(segs: number[]): number[] {
+/** Kirim kepala + tiap ruas ke-N + ekor, dibulatkan, supaya pesan tetap kecil. */
+export function packBody(segs: number[], step = SEG_SEND_STEP): number[] {
   const out: number[] = [];
   const n = segs.length / 2;
-  for (let i = 0; i < n; i += SEG_SEND_STEP) out.push(Math.round(segs[i * 2]), Math.round(segs[i * 2 + 1]));
-  if ((n - 1) % SEG_SEND_STEP !== 0) out.push(Math.round(segs[(n - 1) * 2]), Math.round(segs[(n - 1) * 2 + 1]));
+  for (let i = 0; i < n; i += step) out.push(Math.round(segs[i * 2]), Math.round(segs[i * 2 + 1]));
+  if ((n - 1) % step !== 0) out.push(Math.round(segs[(n - 1) * 2]), Math.round(segs[(n - 1) * 2 + 1]));
   return out;
 }

@@ -54,14 +54,14 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     group: "umum",
     label: "Slither Arena",
     emoji: "🐍",
-    tagline: "Arena ular real-time ala slither.io. Makan, tumbuh, dan jebak lawan!",
+    tagline: "Arena ular besar ala slither.io dengan ular bot. Makan, tumbuh, dan jebak lawan!",
     rules: [
       "Arahkan ular dengan mouse/jari. Tahan Spasi atau tombol ⚡ untuk ngebut (ekor memendek).",
-      "Makan pelet = ular memanjang & +10 poin. Pelet besar bernilai lebih.",
-      "Kepalamu menabrak badan lawan = kamu mati (bisa respawn). Lawan yang menabrak badanmu = +100 untukmu.",
-      "Waktu 120 detik, skor tertinggi menang. Dinding arena tidak mematikan.",
+      "Makan pelet = ular makin panjang & gemuk (+10 poin per pelet). Ada 5 ular bot 🤖 yang ikut berkeliaran.",
+      "Kepalamu menabrak badan ular lain = kamu mati (bisa respawn). Ular (pemain atau bot) yang menabrak badanmu = +100 untukmu.",
+      "Panah di tepi layar & minimap menunjukkan lokasi teman. Waktu 120 detik, skor tertinggi menang.",
     ],
-    minPlayers: 2,
+    minPlayers: 1,
   },
   sandi: {
     group: "umum",
@@ -572,7 +572,17 @@ export type MpMessage =
   | { t: "guess"; i: number; id: string; text: string }
   | { t: "hit"; i: number; id: string; ms: number }
   /** Slither Arena: posisi ular (seg = titik kepala lalu badan, x,y berselang-seling). */
-  | { t: "snk"; id: string; a: number; b: boolean; len: number; seg: number[] }
+  | {
+      t: "snk";
+      id: string;
+      a: number;
+      b: boolean;
+      len: number;
+      /** Kosong kalau pengirim sedang mati (host tetap mengirim bot). */
+      seg: number[];
+      /** Hanya dari host: ular bot yang sedang hidup. */
+      bots?: Array<{ id: string; a: number; len: number; seg: number[] }>;
+    }
   /** Pelet dimakan / ditambah / dijatuhkan ular mati: f = id atau [id,x,y,nilai] berulang. */
   | { t: "eat"; f: number[] }
   | { t: "food"; f: number[] }
