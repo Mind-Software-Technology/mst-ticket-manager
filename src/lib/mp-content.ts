@@ -427,3 +427,171 @@ export function drawHint(word: string, reveal: boolean): string {
     .map((ch, i) => (/[a-z0-9]/i.test(ch) ? (reveal && i === 0 ? ch.toUpperCase() : "_") : ch === " " ? "  " : ch))
     .join(" ");
 }
+
+// ─── Sandi Rahasia (Mastermind) ──────────────────────
+
+export const SANDI_COLORS = ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣"] as const;
+export const SANDI_LEN = 4;
+export const SANDI_CODES = 3;
+export const SANDI_MAX_TRIES = 10;
+export const SANDI_SECONDS = 180;
+
+/** 3 sandi rahasia (4 warna, boleh berulang); sama untuk semua pemain. */
+export function buildSandiCodes(): number[][] {
+  return Array.from({ length: SANDI_CODES }, () =>
+    Array.from({ length: SANDI_LEN }, () => rand(0, SANDI_COLORS.length - 1)),
+  );
+}
+
+/** exact = warna & posisi pas, partial = warna ada tapi posisi salah. */
+export function scoreSandi(code: number[], guess: number[]): { exact: number; partial: number } {
+  let exact = 0;
+  const left = Array<number>(SANDI_COLORS.length).fill(0);
+  const mine = Array<number>(SANDI_COLORS.length).fill(0);
+  for (let i = 0; i < SANDI_LEN; i++) {
+    if (code[i] === guess[i]) exact++;
+    else {
+      left[code[i]]++;
+      mine[guess[i]]++;
+    }
+  }
+  let partial = 0;
+  for (let c = 0; c < left.length; c++) partial += Math.min(left[c], mine[c]);
+  return { exact, partial };
+}
+
+/** Makin sedikit percobaan & makin cepat, makin besar poinnya. */
+export const sandiPoints = (tries: number, secondsLeft: number) =>
+  100 + (SANDI_MAX_TRIES - tries + 1) * 25 + Math.round((Math.max(0, secondsLeft) / SANDI_SECONDS) * 100);
+
+// ─── Labirin Kilat ───────────────────────────────────
+
+export const MAZE_SIZE = 15;
+export const MAZE_SECONDS = 90;
+export const MAZE_N = 1;
+export const MAZE_E = 2;
+export const MAZE_S = 4;
+export const MAZE_W = 8;
+
+/** Labirin sempurna (DFS). Tiap sel = bitmask sisi yang terbuka. Mulai di sel 0, finish di sel terakhir. */
+export function buildMaze(size = MAZE_SIZE): number[] {
+  const cells = Array<number>(size * size).fill(0);
+  const seen = Array<boolean>(size * size).fill(false);
+  const stack = [0];
+  seen[0] = true;
+  while (stack.length) {
+    const cur = stack[stack.length - 1];
+    const r = Math.floor(cur / size);
+    const c = cur % size;
+    const opts: Array<[number, number, number]> = [];
+    if (r > 0 && !seen[cur - size]) opts.push([cur - size, MAZE_N, MAZE_S]);
+    if (c < size - 1 && !seen[cur + 1]) opts.push([cur + 1, MAZE_E, MAZE_W]);
+    if (r < size - 1 && !seen[cur + size]) opts.push([cur + size, MAZE_S, MAZE_N]);
+    if (c > 0 && !seen[cur - 1]) opts.push([cur - 1, MAZE_W, MAZE_E]);
+    if (opts.length === 0) {
+      stack.pop();
+      continue;
+    }
+    const [next, here, there] = opts[rand(0, opts.length - 1)];
+    cells[cur] |= here;
+    cells[next] |= there;
+    seen[next] = true;
+    stack.push(next);
+  }
+  return cells;
+}
+
+/** Sel tujuan kalau bergerak ke arah tertentu; sel yang sama kalau terhalang dinding. */
+export function mazeStep(maze: number[], pos: number, dir: "U" | "D" | "L" | "R", size = MAZE_SIZE): number {
+  const bit = { U: MAZE_N, R: MAZE_E, D: MAZE_S, L: MAZE_W }[dir];
+  if (!(maze[pos] & bit)) return pos;
+  return pos + { U: -size, R: 1, D: size, L: -1 }[dir];
+}
+
+/** Jarak langkah dari tiap sel ke finish (BFS). */
+export function mazeDistances(maze: number[], size = MAZE_SIZE): number[] {
+  const dist = Array<number>(size * size).fill(-1);
+  const goal = size * size - 1;
+  dist[goal] = 0;
+  const queue = [goal];
+  for (let q = 0; q < queue.length; q++) {
+    const cur = queue[q];
+    for (const dir of ["U", "D", "L", "R"] as const) {
+      const nx = mazeStep(maze, cur, dir, size);
+      if (nx !== cur && dist[nx] < 0) {
+        dist[nx] = dist[cur] + 1;
+        queue.push(nx);
+      }
+    }
+  }
+  return dist;
+}
+
+// ─── Hitung 24 ───────────────────────────────────────
+
+export const DUA4_SECONDS = 150;
+export const DUA4_PUZZLES = 6;
+
+function canMake24(nums: number[]): boolean {
+  if (nums.length === 1) return Math.abs(nums[0] - 24) < 1e-6;
+  for (let i = 0; i < nums.length; i++) {
+    for (let j = i + 1; j < nums.length; j++) {
+      const rest = nums.filter((_, k) => k !== i && k !== j);
+      const a = nums[i];
+      const b = nums[j];
+      const results = [a + b, a * b, a - b, b - a];
+      if (b !== 0) results.push(a / b);
+      if (a !== 0) results.push(b / a);
+      if (results.some((v) => canMake24([...rest, v]))) return true;
+    }
+  }
+  return false;
+}
+
+/** Soal berisi 4 angka (1-9) yang dijamin bisa dijadikan 24. */
+export function buildDua4Puzzles(): number[][] {
+  const out: number[][] = [];
+  while (out.length < DUA4_PUZZLES) {
+    const nums = Array.from({ length: 4 }, () => rand(1, 9));
+    if (canMake24(nums)) out.push(nums);
+  }
+  return out;
+}
+
+/** Hitung ekspresi (+ − × ÷ dan kurung). null kalau tidak valid atau membagi nol. */
+export function evalExpr(tokens: string[]): number | null {
+  let p = 0;
+  let bad = false;
+  const expr = (): number => {
+    let v = term();
+    while (tokens[p] === "+" || tokens[p] === "-") {
+      const op = tokens[p++];
+      const r = term();
+      v = op === "+" ? v + r : v - r;
+    }
+    return v;
+  };
+  const term = (): number => {
+    let v = factor();
+    while (tokens[p] === "*" || tokens[p] === "/") {
+      const op = tokens[p++];
+      const r = factor();
+      if (op === "/" && r === 0) bad = true;
+      v = op === "*" ? v * r : r === 0 ? 0 : v / r;
+    }
+    return v;
+  };
+  const factor = (): number => {
+    const t = tokens[p++];
+    if (t === "(") {
+      const v = expr();
+      if (tokens[p++] !== ")") bad = true;
+      return v;
+    }
+    if (t !== undefined && /^\d+$/.test(t)) return Number(t);
+    bad = true;
+    return 0;
+  };
+  const value = expr();
+  return bad || p !== tokens.length || !Number.isFinite(value) ? null : value;
+}

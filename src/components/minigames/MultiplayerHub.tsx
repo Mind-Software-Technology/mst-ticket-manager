@@ -32,6 +32,9 @@ import {
   buildBedaSequence,
   buildBesarSequence,
   buildDrawWords,
+  buildDua4Puzzles,
+  buildMaze,
+  buildSandiCodes,
   buildNumberGrid,
   buildSimonPattern,
   buildStroopSequence,
@@ -48,6 +51,9 @@ import { NumberRace } from "./NumberRace";
 import { BedaRace } from "./BedaRace";
 import { BesarRace } from "./BesarRace";
 import { DrawBattle } from "./DrawBattle";
+import { SandiRace } from "./SandiRace";
+import { MazeRace } from "./MazeRace";
+import { Dua4Race } from "./Dua4Race";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -218,6 +224,12 @@ function Room({
         case "gambar":
           // Ronde = jumlah pemain x 2, tukang gambar bergiliran.
           return { ...base, words: buildDrawWords(players.length * 2) };
+        case "sandi":
+          return { ...base, codes: buildSandiCodes() };
+        case "labirin":
+          return { ...base, maze: buildMaze() };
+        case "dua4":
+          return { ...base, puzzles: buildDua4Puzzles() };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
@@ -260,6 +272,12 @@ function Room({
         return <BesarRace key={key} {...props} />;
       case "gambar":
         return <DrawBattle key={key} {...props} />;
+      case "sandi":
+        return <SandiRace key={key} {...props} />;
+      case "labirin":
+        return <MazeRace key={key} {...props} />;
+      case "dua4":
+        return <Dua4Race key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

@@ -31,7 +31,10 @@ export type MpMode =
   | "angka"
   | "beda"
   | "besar"
-  | "gambar";
+  | "gambar"
+  | "sandi"
+  | "labirin"
+  | "dua4";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -46,6 +49,42 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  sandi: {
+    group: "umum",
+    label: "Sandi Rahasia",
+    emoji: "🔐",
+    tagline: "Pecahkan sandi 4 warna dari petunjuk. Siapa paling jeli dan hemat percobaan?",
+    rules: [
+      "3 sandi (4 warna, boleh berulang), 180 detik total, maks 10 tebakan per sandi.",
+      "● = warna & posisi pas, ○ = warna ada tapi posisi salah.",
+      "Sandi sama untuk semua pemain. Makin sedikit tebakan & makin cepat, makin besar poin.",
+    ],
+    minPlayers: 2,
+  },
+  labirin: {
+    group: "umum",
+    label: "Labirin Kilat",
+    emoji: "🧭",
+    tagline: "Cari jalan keluar dari labirin gelap. Kamu hanya melihat sekitar dirimu!",
+    rules: [
+      "Labirin 15x15 yang sama untuk semua, 90 detik. Gerak dengan panah / WASD / tombol arah.",
+      "Kabut menutupi labirin — area yang sudah dijelajahi tetap terlihat.",
+      "Sampai finish = 400 + bonus waktu. Belum sampai = poin sesuai kedekatan dengan finish.",
+    ],
+    minPlayers: 2,
+  },
+  dua4: {
+    group: "umum",
+    label: "Hitung 24",
+    emoji: "🎯",
+    tagline: "Susun 4 angka dengan + − × ÷ dan kurung sampai hasilnya tepat 24!",
+    rules: [
+      "6 soal (4 angka 1-9, dijamin ada jawabannya), 150 detik total.",
+      "Pakai tiap angka tepat satu kali. Soal sama untuk semua pemain.",
+      "Benar = 150 + bonus kecepatan (maks +100). Boleh lewati soal yang buntu.",
+    ],
+    minPlayers: 2,
+  },
   gambar: {
     group: "umum",
     label: "Tebak Gambar",
@@ -272,6 +311,9 @@ export const MP_MODE_KEYS: MpMode[] = [
   "beda",
   "besar",
   "gambar",
+  "sandi",
+  "labirin",
+  "dua4",
 ];
 
 export const ROUND_MS = 15_000;
@@ -488,6 +530,12 @@ export interface StartPayload {
   besar?: Array<readonly [string, number, string, number]>;
   /** Kata rahasia Tebak Gambar, satu per ronde (jumlah pemain x 2). */
   words?: string[];
+  /** Sandi Rahasia: 3 sandi, tiap sandi 4 indeks warna. */
+  codes?: number[][];
+  /** Labirin Kilat: bitmask sisi terbuka tiap sel. */
+  maze?: number[];
+  /** Hitung 24: 4 angka per soal. */
+  puzzles?: number[][];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }
