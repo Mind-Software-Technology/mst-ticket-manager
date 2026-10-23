@@ -35,7 +35,9 @@ export type MpMode =
   | "sandi"
   | "labirin"
   | "dua4"
-  | "slither";
+  | "slither"
+  | "ketik"
+  | "buah";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -50,6 +52,30 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  ketik: {
+    group: "umum",
+    label: "Ketik Kata",
+    emoji: "⌨️",
+    tagline: "Adu cepat mengetik kata yang sama. Siapa jarinya paling lincah?",
+    rules: [
+      "45 detik, urutan kata sama untuk semua pemain.",
+      "Otomatis lanjut begitu kata benar. 10 poin per huruf, +20 kalau tanpa salah.",
+      "Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  buah: {
+    group: "umum",
+    label: "Tangkap Buah",
+    emoji: "🧺",
+    tagline: "Geser keranjang menangkap buah. Jadwal jatuh sama untuk semua pemain!",
+    rules: [
+      "40 detik, geser keranjang dengan mouse/jari atau panah / A D.",
+      "Buah +10, bintang emas ⭐ +30, bom 💣 -20.",
+      "Barang yang jatuh persis sama untuk semua pemain, jadi murni adu skill.",
+    ],
+    minPlayers: 2,
+  },
   slither: {
     group: "umum",
     label: "Slither Arena",
@@ -329,6 +355,8 @@ export const MP_MODE_KEYS: MpMode[] = [
   "labirin",
   "dua4",
   "slither",
+  "ketik",
+  "buah",
 ];
 
 export const ROUND_MS = 15_000;
@@ -553,6 +581,10 @@ export interface StartPayload {
   puzzles?: number[][];
   /** Slither Arena: seed untuk pelet awal yang sama di semua klien. */
   seed?: number;
+  /** Ketik Kata: urutan kata. */
+  typing?: string[];
+  /** Tangkap Buah: jadwal [ms, x%, jenis, variasi]. */
+  buah?: Array<readonly [number, number, number, number]>;
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

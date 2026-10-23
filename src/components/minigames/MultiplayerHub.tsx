@@ -30,6 +30,8 @@ import {
   buildReflexDelays,
   buildScrambleQuestions,
   buildBedaSequence,
+  buildBuahSchedule,
+  buildKetikWords,
   buildBesarSequence,
   buildDrawWords,
   buildDua4Puzzles,
@@ -55,6 +57,8 @@ import { SandiRace } from "./SandiRace";
 import { MazeRace } from "./MazeRace";
 import { Dua4Race } from "./Dua4Race";
 import { SlitherRace } from "./SlitherRace";
+import { KetikRace } from "./KetikRace";
+import { BuahRace } from "./BuahRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -233,6 +237,10 @@ function Room({
           return { ...base, puzzles: buildDua4Puzzles() };
         case "slither":
           return { ...base, seed: Math.floor(Math.random() * 2 ** 31) };
+        case "ketik":
+          return { ...base, typing: buildKetikWords() };
+        case "buah":
+          return { ...base, buah: buildBuahSchedule() };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
@@ -283,6 +291,10 @@ function Room({
         return <Dua4Race key={key} {...props} />;
       case "slither":
         return <SlitherRace key={key} {...props} />;
+      case "ketik":
+        return <KetikRace key={key} {...props} />;
+      case "buah":
+        return <BuahRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

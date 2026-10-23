@@ -30,7 +30,9 @@ export type GameKey =
   | "ular"
   | "dua4"
   | "sandi"
-  | "ranjau";
+  | "ranjau"
+  | "ketik"
+  | "buah";
 
 export interface GameTicket {
   id: string;
@@ -311,6 +313,30 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  ketik: {
+    group: "umum",
+    label: "Ketik Kata",
+    emoji: "⌨️",
+    tagline: "Ketik kata yang tampil secepat dan sebenar mungkin. Uji kecepatan jarimu!",
+    rules: [
+      "45 detik, kata muncul satu per satu (istilah kantor & IT).",
+      "Otomatis lanjut begitu kata diketik dengan benar.",
+      "10 poin per huruf, +20 bonus kalau tanpa salah, plus bonus kombo.",
+    ],
+    needs: "",
+  },
+  buah: {
+    group: "umum",
+    label: "Tangkap Buah",
+    emoji: "🧺",
+    tagline: "Geser keranjang menangkap buah yang berjatuhan. Awas bom!",
+    rules: [
+      "40 detik, geser keranjang dengan mouse/jari atau panah / A D.",
+      "Buah +10, bintang emas ⭐ +30, bom 💣 -20.",
+      "Makin lama barang makin cepat jatuh.",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -336,6 +362,8 @@ export const GAME_KEYS: GameKey[] = [
   "dua4",
   "sandi",
   "ranjau",
+  "ketik",
+  "buah",
 ];
 
 export function shuffle<T>(input: readonly T[]): T[] {
@@ -661,6 +689,18 @@ export function resultMessage(game: GameKey, score: number): string {
       [500, "Papan bersih, nyawa selamat. 🎖️"],
       [200, "Hampir saja! Sedikit lagi. 😅"],
       [0, "Duar! Ranjaunya bersembunyi di mana-mana. 💥"],
+    ],
+    ketik: [
+      [2200, "Jari kilat! Keyboard-mu sampai berasap. 🔥"],
+      [1400, "Ketikanmu cepat dan rapi, mantap. ⌨️"],
+      [700, "Lumayan, tinggal diasah lagi. 💪"],
+      [0, "Pelan tapi pasti. Latihan lagi yuk! 🐢"],
+    ],
+    buah: [
+      [650, "Keranjang sakti! Tak ada yang lolos. 🧺"],
+      [400, "Tangkapanmu jitu, bom pun terhindar. 🍎"],
+      [200, "Lumayan, keranjangnya masih bolong. 😅"],
+      [0, "Buahnya jatuh semua… coba lagi! 🍌"],
     ],
   };
   return (tiers[game].find(([min]) => score >= min) ?? tiers[game][3])[1];

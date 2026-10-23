@@ -595,3 +595,50 @@ export function evalExpr(tokens: string[]): number | null {
   const value = expr();
   return bad || p !== tokens.length || !Number.isFinite(value) ? null : value;
 }
+
+// ─── Ketik Kata ──────────────────────────────────────
+
+export const KETIK_SECONDS = 45;
+
+const KETIK_WORDS = [
+  "kopi", "laptop", "server", "kolaborasi", "deadline", "rapat", "laporan", "prioritas", "jaringan", "keyboard",
+  "semangat", "proyek", "klien", "desain", "produk", "strategi", "presentasi", "koordinasi", "evaluasi", "inovasi",
+  "database", "aplikasi", "internet", "browser", "monitor", "password", "backend", "frontend", "sprint", "review",
+  "testing", "deploy", "pelanggan", "marketing", "keuangan", "anggaran", "jadwal", "target", "capaian", "kinerja",
+  "karyawan", "manajer", "direktur", "kantor", "meja", "kursi", "printer", "scanner", "proyektor", "dokumen",
+  "arsip", "folder", "surel", "pesan", "telepon", "kamera", "mikrofon", "speaker", "baterai", "pengisi",
+  "pelatihan", "seminar", "workshop", "diskusi", "usulan", "keputusan", "tanggung", "jawab", "disiplin", "teliti",
+  "cepat", "tepat", "lembur", "libur", "cuti", "gajian", "bonus", "tunjangan", "asuransi", "kontrak",
+  "negosiasi", "penawaran", "faktur", "pembayaran", "pengiriman", "gudang", "stok", "pemasok", "distribusi", "layanan",
+];
+
+export function buildKetikWords(count = 90): string[] {
+  const out: string[] = [];
+  while (out.length < count) out.push(...shuffle(KETIK_WORDS));
+  return out.slice(0, count);
+}
+
+/** 10 poin per huruf, +20 kalau diketik tanpa salah. */
+export const ketikPoints = (word: string, clean: boolean) => word.length * 10 + (clean ? 20 : 0);
+
+// ─── Tangkap Buah ────────────────────────────────────
+
+export const BUAH_SECONDS = 40;
+export const BUAH_FRUITS = ["🍎", "🍌", "🍇", "🍉", "🍊", "🍓"];
+
+/** [muncul pada ms ke-N, posisi x (6-94 %), jenis (0 buah, 1 bintang emas, 2 bom), variasi emoji]. */
+export type BuahItem = readonly [number, number, number, number];
+
+export function buildBuahSchedule(): BuahItem[] {
+  const out: BuahItem[] = [];
+  let t = 600;
+  while (t < BUAH_SECONDS * 1000 - 1500) {
+    const r = Math.random();
+    out.push([Math.round(t), rand(6, 94), r < 0.18 ? 2 : r < 0.28 ? 1 : 0, rand(0, BUAH_FRUITS.length - 1)] as const);
+    t += Math.max(280, 620 - t * 0.007) + rand(0, 160);
+  }
+  return out;
+}
+
+/** Lama jatuh (ms); makin lama permainan makin cepat. */
+export const buahFall = (at: number) => Math.max(1300, 2600 - at * 0.03);
