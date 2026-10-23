@@ -24,6 +24,8 @@ import { StroopGame } from "./StroopGame";
 import { NumberGame } from "./NumberGame";
 import { BedaGame } from "./BedaGame";
 import { BesarGame } from "./BesarGame";
+import { Game2048 } from "./Game2048";
+import { SnakeGame } from "./SnakeGame";
 
 const GROUP_LABEL = { tiket: "🎫 Seputar Tiket", umum: "🎉 Seru-seruan Umum" } as const;
 
@@ -108,6 +110,8 @@ export function MinigameHub({ userId, userName }: { userId?: string; userName?: 
             {game === "angka" && <NumberGame key="angka" userId={userId} />}
             {game === "beda" && <BedaGame key="beda" userId={userId} />}
             {game === "besar" && <BesarGame key="besar" userId={userId} />}
+            {game === "g2048" && <Game2048 key="g2048" userId={userId} />}
+            {game === "ular" && <SnakeGame key="ular" userId={userId} />}
           </>
           )
         )}

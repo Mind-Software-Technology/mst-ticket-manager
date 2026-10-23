@@ -25,7 +25,9 @@ export type GameKey =
   | "warna"
   | "angka"
   | "beda"
-  | "besar";
+  | "besar"
+  | "g2048"
+  | "ular";
 
 export interface GameTicket {
   id: string;
@@ -246,6 +248,30 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  g2048: {
+    group: "umum",
+    label: "Gabung 2048",
+    emoji: "🟧",
+    tagline: "Geser dan gabungkan kotak bernilai sama sampai mencapai 2048!",
+    rules: [
+      "Geser papan 4x4 (panah / WASD / swipe). Semua kotak ikut bergeser.",
+      "Dua kotak sama bergabung jadi dua kali lipat, skor bertambah sebesar hasil gabungannya.",
+      "Selesai saat papan penuh dan tidak ada gerakan lagi.",
+    ],
+    needs: "",
+  },
+  ular: {
+    group: "umum",
+    label: "Ular Lapar",
+    emoji: "🐍",
+    tagline: "Makan apel sebanyak mungkin tanpa menabrak dinding atau badan sendiri!",
+    rules: [
+      "Kendalikan ular dengan panah / WASD / swipe / tombol arah.",
+      "Tiap 🍎 +10, ular makin panjang dan makin cepat.",
+      "Menabrak dinding atau badan sendiri = selesai.",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -266,6 +292,8 @@ export const GAME_KEYS: GameKey[] = [
   "angka",
   "beda",
   "besar",
+  "g2048",
+  "ular",
 ];
 
 export function shuffle<T>(input: readonly T[]): T[] {
@@ -561,6 +589,18 @@ export function resultMessage(game: GameKey, score: number): string {
       [150, "Intuisi angkamu tajam. 🧮"],
       [70, "Lumayan, tinggal diasah lagi. ✏️"],
       [0, "Besar atau kecil… sama-sama membingungkan. 🌀"],
+    ],
+    g2048: [
+      [20000, "Master 2048! Otak strategimu luar biasa. 👑"],
+      [8000, "Mencapai kotak raksasa, mantap. 🏆"],
+      [2500, "Gabunganmu rapi, tinggal sedikit lagi. 🧩"],
+      [0, "Papannya cepat penuh ya. Coba strategi sudut! 🧱"],
+    ],
+    ular: [
+      [300, "Ular piton level dewa! Papan nyaris penuh. 🐍"],
+      [150, "Gerakanmu lincah, perutnya kenyang. 🍎"],
+      [60, "Lumayan, mulai paham belokannya. 👍"],
+      [0, "Ularnya masih lapar dan bingung. Coba lagi! 😵"],
     ],
   };
   return (tiers[game].find(([min]) => score >= min) ?? tiers[game][3])[1];
