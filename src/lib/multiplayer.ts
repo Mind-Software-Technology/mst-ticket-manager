@@ -45,7 +45,11 @@ export type MpMode =
   | "antonim"
   | "peribahasa"
   | "ibukota"
-  | "bidik";
+  | "bidik"
+  | "pola"
+  | "singkatan"
+  | "fakta"
+  | "ketuk";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -153,6 +157,54 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
       "30 detik, target muncul di tempat dan waktu yang sama untuk semua pemain.",
       "Target biasa +10 sampai +20 (makin cepat makin besar), emas ⭐ +30 sampai +50, bom 💣 -20.",
       "Makin lama target makin cepat menghilang.",
+    ],
+    minPlayers: 2,
+  },
+  pola: {
+    group: "umum",
+    label: "Pola Angka",
+    emoji: "🔢",
+    tagline: "Lanjutkan deret angka yang punya pola tersembunyi. Otak logika diuji!",
+    rules: [
+      "10 deret angka dari mudah ke sulit, 15 detik per soal. Soal sama untuk semua pemain.",
+      "Pilih angka berikutnya dari 4 pilihan.",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+    ],
+    minPlayers: 2,
+  },
+  singkatan: {
+    group: "umum",
+    label: "Kepanjangan Singkatan",
+    emoji: "🔠",
+    tagline: "CPU, KPI, SOP, API… masih ingat kepanjangannya? Istilah kantor & IT!",
+    rules: [
+      "10 singkatan, 15 detik per soal. Soal sama untuk semua pemain.",
+      "Pilih kepanjangan yang benar dari 4 pilihan.",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+    ],
+    minPlayers: 2,
+  },
+  fakta: {
+    group: "umum",
+    label: "Fakta atau Mitos",
+    emoji: "🧐",
+    tagline: "Pernyataan ini benar atau cuma mitos? Jangan sampai tertipu!",
+    rules: [
+      "10 pernyataan, 15 detik per soal. Soal sama untuk semua pemain.",
+      "Pilih Benar atau Salah. Cuma 2 pilihan, tapi banyak jebakan!",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+    ],
+    minPlayers: 2,
+  },
+  ketuk: {
+    group: "umum",
+    label: "Adu Ketuk",
+    emoji: "👆",
+    tagline: "10 detik, ketuk tombol sebanyak mungkin. Jari siapa paling cepat?",
+    rules: [
+      "Hitung mundur 3 detik, lalu ketuk tombol besar secepat mungkin selama 10 detik.",
+      "Tiap ketukan +1 poin (keyboard: Spasi atau Enter juga bisa).",
+      "Skor semua pemain terlihat langsung.",
     ],
     minPlayers: 2,
   },
@@ -469,6 +521,10 @@ export const MP_MODE_KEYS: MpMode[] = [
   "peribahasa",
   "ibukota",
   "bidik",
+  "pola",
+  "singkatan",
+  "fakta",
+  "ketuk",
 ];
 
 export const ROUND_MS = 15_000;
@@ -488,7 +544,10 @@ export type QuestionKind =
   | "scramble"
   | "antonim"
   | "peribahasa"
-  | "ibukota";
+  | "ibukota"
+  | "pola"
+  | "singkatan"
+  | "fakta";
 
 export interface MpQuestion {
   kind: QuestionKind;
@@ -512,6 +571,9 @@ const KIND_TITLE: Record<QuestionKind, string> = {
   antonim: "↔️ Apa lawan katanya?",
   peribahasa: "📜 Lengkapi peribahasa",
   ibukota: "🌍 Geografi dunia",
+  pola: "🔢 Angka berikutnya?",
+  singkatan: "🔠 Kepanjangan singkatan",
+  fakta: "🧐 Fakta atau mitos?",
 };
 
 export const kindTitle = (k: QuestionKind) => KIND_TITLE[k];

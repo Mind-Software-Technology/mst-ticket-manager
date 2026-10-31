@@ -77,7 +77,7 @@ const asQuestion = (kind: "trivia" | "emoji", [prompt, answer, wrong]: Item, hin
 };
 
 export interface ContentQuestion {
-  kind: "trivia" | "emoji" | "math" | "scramble" | "antonim" | "peribahasa" | "ibukota";
+  kind: "trivia" | "emoji" | "math" | "scramble" | "antonim" | "peribahasa" | "ibukota" | "pola" | "singkatan" | "fakta";
   prompt: string;
   hint: string;
   options: string[];
@@ -965,3 +965,119 @@ export function bidikPoints(kind: number, remainingFraction: number): number {
   const f = Math.max(0, Math.min(1, remainingFraction));
   return kind === 1 ? 30 + Math.round(f * 20) : 10 + Math.round(f * 10);
 }
+
+// ─── Pola Angka, Singkatan, Fakta/Mitos (dipakai QuizBattle) ───
+
+type QuizKind2 = "pola" | "singkatan" | "fakta";
+
+function quizQuestion2(kind: QuizKind2, prompt: string, hint: string, options: string[], answerIdx: number): ContentQuestion {
+  return { kind, prompt, hint, options, answer: answerIdx };
+}
+
+/** Soal ke-i (0-9): makin besar i makin sulit polanya. */
+function polaQuestion(i: number): ContentQuestion {
+  let terms: number[];
+  if (i < 4) {
+    const start = rand(1, 20);
+    const d = rand(2, 9);
+    terms = Array.from({ length: 6 }, (_, k) => start + d * k);
+  } else if (i < 7) {
+    const start = rand(1, 4);
+    const r = rand(2, 3);
+    terms = Array.from({ length: 6 }, (_, k) => start * r ** k);
+  } else if (i === 7) {
+    const n = rand(1, 5);
+    terms = Array.from({ length: 6 }, (_, k) => (n + k) ** 2);
+  } else if (i === 8) {
+    const t: number[] = [rand(1, 4), rand(1, 4)];
+    while (t.length < 6) t.push(t[t.length - 1] + t[t.length - 2]);
+    terms = t;
+  } else {
+    const start = rand(1, 10);
+    const a = rand(2, 5);
+    const b = rand(6, 9);
+    terms = [start];
+    for (let k = 0; k < 5; k++) terms.push(terms[k] + (k % 2 === 0 ? a : b));
+  }
+  const answer = terms[5];
+  const spread = Math.max(3, Math.round(answer * 0.15));
+  const wrong = new Set<number>();
+  while (wrong.size < 3) {
+    const v = answer + rand(1, spread) * (Math.random() < 0.5 ? -1 : 1);
+    if (v !== answer && v > 0) wrong.add(v);
+  }
+  const options = shuffle([answer, ...wrong]).map(String);
+  return quizQuestion2("pola", `${terms.slice(0, 5).join(", ")}, ?`, "Lanjutkan pola angkanya", options, options.indexOf(String(answer)));
+}
+
+export function buildPolaQuestions(count = 10): ContentQuestion[] {
+  return Array.from({ length: count }, (_, i) => polaQuestion(i));
+}
+
+const SINGKATAN: Item[] = [
+  ["CPU", "Central Processing Unit", ["Central Program Utility", "Computer Personal Unit", "Control Processing Update"]],
+  ["RAM", "Random Access Memory", ["Read Access Memory", "Rapid Application Module", "Random Application Memory"]],
+  ["URL", "Uniform Resource Locator", ["Universal Resource Link", "Unified Reference Locator", "User Resource Location"]],
+  ["HTML", "HyperText Markup Language", ["HighText Machine Language", "Hyperlink Text Mode Language", "HyperTool Markup Logic"]],
+  ["USB", "Universal Serial Bus", ["United System Bus", "Universal Storage Block", "Unique Serial Binary"]],
+  ["PDF", "Portable Document Format", ["Printable Data File", "Personal Document Form", "Portable Data Folder"]],
+  ["GPS", "Global Positioning System", ["General Position Signal", "Global Placement Service", "Grid Positioning System"]],
+  ["API", "Application Programming Interface", ["Applied Program Integration", "Automated Process Input", "Application Protocol Interchange"]],
+  ["CEO", "Chief Executive Officer", ["Chief Economic Officer", "Central Executive Office", "Chief Engineering Operator"]],
+  ["KPI", "Key Performance Indicator", ["Key Process Index", "Known Performance Item", "Key Product Indicator"]],
+  ["ROI", "Return on Investment", ["Rate of Income", "Return on Inventory", "Ratio of Impact"]],
+  ["SOP", "Standard Operating Procedure", ["Standard Office Policy", "System Operation Plan", "Simple Operating Process"]],
+  ["VPN", "Virtual Private Network", ["Visual Public Node", "Verified Protected Network", "Virtual Personal Node"]],
+  ["SEO", "Search Engine Optimization", ["Site Engine Operation", "Search Entry Order", "Social Engine Output"]],
+  ["UI", "User Interface", ["Unified Input", "Universal Interaction", "User Integration"]],
+  ["FAQ", "Frequently Asked Questions", ["Fast Answer Queue", "Frequent Access Query", "Final Answer Quotation"]],
+  ["ATM", "Automated Teller Machine", ["Automatic Transfer Money", "Advanced Transaction Module", "Authorized Teller Merchant"]],
+  ["LAN", "Local Area Network", ["Long Area Network", "Linked Access Node", "Large Area Node"]],
+  ["PIN", "Personal Identification Number", ["Private Index Number", "Personal Input Node", "Protected Identity Number"]],
+  ["QR", "Quick Response", ["Quality Reading", "Quantum Router", "Query Result"]],
+];
+
+export function buildSingkatanQuestions(count = 10): ContentQuestion[] {
+  return shuffle(SINGKATAN)
+    .slice(0, count)
+    .map(([abbr, answer, wrong]) => {
+      const options = shuffle([answer, ...wrong]);
+      return quizQuestion2("singkatan", `Kepanjangan dari ${abbr}?`, "Istilah kantor & IT", options, options.indexOf(answer));
+    });
+}
+
+/** [pernyataan, benar?] */
+const FAKTA: ReadonlyArray<readonly [string, boolean]> = [
+  ["Madu tidak pernah basi jika disimpan dengan baik.", true],
+  ["Lidah jerapah berwarna kehitaman.", true],
+  ["Cahaya matahari butuh sekitar 8 menit untuk sampai ke Bumi.", true],
+  ["Secara botani, pisang termasuk buah beri (berry).", true],
+  ["Gurita punya tiga jantung.", true],
+  ["Air mendidih pada suhu lebih rendah di pegunungan tinggi.", true],
+  ["Venus adalah planet terpanas di tata surya.", true],
+  ["Lumba-lumba adalah mamalia.", true],
+  ["Secara botani, tomat adalah buah.", true],
+  ["Indonesia memiliki lebih dari 17.000 pulau.", true],
+  ["Kelelawar adalah jenis burung.", false],
+  ["Manusia hanya memakai 10% otaknya.", false],
+  ["Petir tidak pernah menyambar tempat yang sama dua kali.", false],
+  ["Tembok Besar Tiongkok terlihat jelas dari Bulan dengan mata telanjang.", false],
+  ["Unta menyimpan air di dalam punuknya.", false],
+  ["Matahari mengelilingi Bumi.", false],
+  ["Sidik jari anak kembar identik sama persis.", false],
+  ["Ikan mas hanya mengingat sesuatu selama 3 detik.", false],
+  ["Bulan memancarkan cahayanya sendiri.", false],
+  ["Internet dan World Wide Web adalah hal yang persis sama.", false],
+  ["Ibu kota Australia adalah Sydney.", false],
+  ["Python adalah bahasa pemrograman buatan Google.", false],
+];
+
+export function buildFaktaQuestions(count = 10): ContentQuestion[] {
+  return shuffle(FAKTA)
+    .slice(0, count)
+    .map(([text, isTrue]) => quizQuestion2("fakta", text, "Benar atau salah?", ["Benar", "Salah"], isTrue ? 0 : 1));
+}
+
+// ─── Adu Ketuk ───────────────────────────────────────
+
+export const KETUK_SECONDS = 10;

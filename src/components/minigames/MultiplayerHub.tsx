@@ -40,6 +40,9 @@ import {
   buildPeribahasaQuestions,
   buildIbukotaQuestions,
   buildBidikSchedule,
+  buildPolaQuestions,
+  buildSingkatanQuestions,
+  buildFaktaQuestions,
   buildBesarSequence,
   buildDrawChoices,
   buildDua4Puzzles,
@@ -72,6 +75,7 @@ import { LampuRace } from "./LampuRace";
 import { GeserRace } from "./GeserRace";
 import { PetunjukRace } from "./PetunjukRace";
 import { BidikRace } from "./BidikRace";
+import { KetukRace } from "./KetukRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -270,6 +274,14 @@ function Room({
           return { ...base, questions: buildIbukotaQuestions() };
         case "bidik":
           return { ...base, bidik: buildBidikSchedule() };
+        case "pola":
+          return { ...base, questions: buildPolaQuestions() };
+        case "singkatan":
+          return { ...base, questions: buildSingkatanQuestions() };
+        case "fakta":
+          return { ...base, questions: buildFaktaQuestions() };
+        case "ketuk":
+          return { ...base };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
@@ -334,6 +346,8 @@ function Room({
         return <PetunjukRace key={key} {...props} />;
       case "bidik":
         return <BidikRace key={key} {...props} />;
+      case "ketuk":
+        return <KetukRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }
