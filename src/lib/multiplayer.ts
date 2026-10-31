@@ -50,7 +50,10 @@ export type MpMode =
   | "singkatan"
   | "fakta"
   | "ketuk"
-  | "gp";
+  | "gp"
+  | "unik"
+  | "mayoritas"
+  | "tarik";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -218,6 +221,42 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
       "Semua pemain mengetik kalimat yang sama, maksimal 90 detik. Mobilmu maju tiap huruf yang benar.",
       "Salah ketik? Mobil berhenti sampai kamu memperbaikinya (hapus lalu ketik ulang). Tempel teks dimatikan.",
       "5 poin per huruf benar. Sampai finish +300 plus 10 per detik tersisa, jadi yang tercepat menang.",
+    ],
+    minPlayers: 2,
+  },
+  unik: {
+    group: "umum",
+    label: "Angka Unik",
+    emoji: "🎲",
+    tagline: "Pilih angka 1-8 bersamaan. Angka terkecil yang dipilih SENDIRIAN yang menang. Main tebak-tebakan pikiran!",
+    rules: [
+      "6 ronde, tiap ronde 12 detik. Semua pemain memilih satu angka (1-8) secara rahasia.",
+      "Pemenang ronde = pemilik angka TERKECIL yang tidak dipilih orang lain: +300 poin.",
+      "Kalau angkamu sama dengan orang lain, angka itu gugur. Tidak ada angka unik = tidak ada yang menang.",
+    ],
+    minPlayers: 3,
+  },
+  mayoritas: {
+    group: "umum",
+    label: "Ikuti Mayoritas",
+    emoji: "🗳️",
+    tagline: "Tebak apa yang akan dipilih kebanyakan rekan setimu. Siapa yang paling kompak?",
+    rules: [
+      "8 pertanyaan selera (kopi atau teh? gunung atau pantai?), tiap ronde 12 detik.",
+      "Pilih jawaban secara rahasia. Yang memilih opsi terbanyak (minimal 2 orang) dapat +100.",
+      "Setelah semua menjawab, pilihan semua orang dibuka. Tebak selera tim, bukan seleramu!",
+    ],
+    minPlayers: 3,
+  },
+  tarik: {
+    group: "umum",
+    label: "Tarik Tambang",
+    emoji: "🪢",
+    tagline: "Dua tim beradu ketuk! Semakin cepat timmu mengetuk, semakin tali tertarik ke sisimu.",
+    rules: [
+      "Pemain dibagi dua tim (Merah & Biru) bergantian sesuai urutan masuk.",
+      "20 detik, ketuk tombol sebanyak mungkin (keyboard: Spasi atau Enter juga bisa).",
+      "Tim dengan rata-rata ketukan per pemain lebih tinggi menang. Skor pribadi = jumlah ketukan.",
     ],
     minPlayers: 2,
   },
@@ -539,6 +578,9 @@ export const MP_MODE_KEYS: MpMode[] = [
   "fakta",
   "ketuk",
   "gp",
+  "unik",
+  "mayoritas",
+  "tarik",
 ];
 
 export const ROUND_MS = 15_000;
@@ -561,7 +603,9 @@ export type QuestionKind =
   | "ibukota"
   | "pola"
   | "singkatan"
-  | "fakta";
+  | "fakta"
+  | "unik"
+  | "mayoritas";
 
 export interface MpQuestion {
   kind: QuestionKind;
@@ -588,6 +632,8 @@ const KIND_TITLE: Record<QuestionKind, string> = {
   pola: "🔢 Angka berikutnya?",
   singkatan: "🔠 Kepanjangan singkatan",
   fakta: "🧐 Fakta atau mitos?",
+  unik: "🎲 Pilih angka rahasiamu",
+  mayoritas: "🗳️ Tebak selera mayoritas",
 };
 
 export const kindTitle = (k: QuestionKind) => KIND_TITLE[k];
@@ -657,6 +703,29 @@ export function scoreRound(q: MpQuestion, answers: RoundAnswers, mode: MpMode): 
         ? (RANK_POINTS[rank] ?? 40)
         : 100 + Math.round(Math.max(0, 1 - a.ms / ROUND_MS) * 100);
   });
+  return pts;
+}
+
+// ─── Pilih bareng (Angka Unik & Ikuti Mayoritas) ─────
+
+/**
+ * Poin satu ronde dari pilihan semua pemain — dipanggil identik di semua klien.
+ * unik: angka terkecil yang dipilih SENDIRIAN menang 300 (c = indeks, angka = c + 1).
+ * mayoritas: pemain yang memilih opsi terbanyak (minimal 2 orang) dapat 100.
+ */
+export function scorePilih(mode: MpMode, answers: RoundAnswers): Record<string, number> {
+  const byChoice = new Map<number, string[]>();
+  for (const [id, a] of Object.entries(answers)) byChoice.set(a.c, [...(byChoice.get(a.c) ?? []), id]);
+  const pts: Record<string, number> = {};
+  if (mode === "unik") {
+    const lowest = [...byChoice.entries()]
+      .filter(([, ids]) => ids.length === 1)
+      .sort((a, b) => a[0] - b[0])[0];
+    if (lowest) pts[lowest[1][0]] = 300;
+    return pts;
+  }
+  const top = Math.max(0, ...[...byChoice.values()].map((ids) => ids.length));
+  if (top >= 2) for (const ids of byChoice.values()) if (ids.length === top) for (const id of ids) pts[id] = 100;
   return pts;
 }
 

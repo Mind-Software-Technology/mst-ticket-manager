@@ -77,7 +77,7 @@ const asQuestion = (kind: "trivia" | "emoji", [prompt, answer, wrong]: Item, hin
 };
 
 export interface ContentQuestion {
-  kind: "trivia" | "emoji" | "math" | "scramble" | "antonim" | "peribahasa" | "ibukota" | "pola" | "singkatan" | "fakta";
+  kind: "trivia" | "emoji" | "math" | "scramble" | "antonim" | "peribahasa" | "ibukota" | "pola" | "singkatan" | "fakta" | "unik" | "mayoritas";
   prompt: string;
   hint: string;
   options: string[];
@@ -1121,3 +1121,48 @@ export function gpCorrectPrefix(typed: string, text: string): number {
 /** 5 poin per huruf benar; sampai finish +300 plus 10 per detik tersisa. */
 export const gpScore = (correctChars: number, finished: boolean, secsLeft: number) =>
   correctChars * GP_POINTS_PER_CHAR + (finished ? 300 + Math.max(0, Math.floor(secsLeft)) * 10 : 0);
+
+// ─── Angka Unik, Ikuti Mayoritas, Tarik Tambang ──────
+
+export const PILIH_ROUNDS_UNIK = 6;
+export const PILIH_ROUNDS_MAYORITAS = 8;
+export const TARIK_SECONDS = 20;
+
+const MAYORITAS: ReadonlyArray<readonly [string, readonly string[]]> = [
+  ["Liburan ideal?", ["Gunung", "Pantai"]],
+  ["Jam kerja favorit?", ["Pagi", "Siang", "Malam"]],
+  ["Makan siang paling enak?", ["Nasi padang", "Bakso", "Ayam geprek", "Mie ayam"]],
+  ["Minuman sehari-hari?", ["Kopi", "Teh", "Air putih"]],
+  ["Hewan peliharaan terbaik?", ["Kucing", "Anjing", "Ikan", "Burung"]],
+  ["Paling nyaman bekerja dari mana?", ["Kantor", "Rumah", "Kafe"]],
+  ["Sistem operasi favorit?", ["Windows", "macOS", "Linux"]],
+  ["Genre film favorit?", ["Aksi", "Komedi", "Horor", "Romantis"]],
+  ["Ponsel pilihan?", ["Android", "iPhone"]],
+  ["Camilan paling pas buat nonton?", ["Popcorn", "Keripik", "Cokelat"]],
+  ["Pilih mana?", ["Gaji naik", "Libur panjang"]],
+  ["Rapat paling baik dilakukan…", ["Tatap muka", "Online", "Tidak usah rapat"]],
+  ["Hujan paling cocok untuk…", ["Tidur", "Ngopi", "Hujan-hujanan", "Lembur"]],
+  ["Kalau punya kekuatan super?", ["Terbang", "Menghilang", "Baca pikiran", "Hentikan waktu"]],
+];
+
+/** Soal untuk mode pilih-bareng; `answer` tidak dipakai (-1), skor ditentukan dari pilihan semua pemain. */
+export function buildPilihQuestions(mode: "unik" | "mayoritas"): ContentQuestion[] {
+  if (mode === "unik") {
+    return Array.from({ length: PILIH_ROUNDS_UNIK }, () => ({
+      kind: "unik" as const,
+      prompt: "Pilih satu angka. Angka TERKECIL yang dipilih sendirian menang!",
+      hint: "Kalau ada yang memilih angka yang sama, angka itu gugur",
+      options: Array.from({ length: 8 }, (_, i) => String(i + 1)),
+      answer: -1,
+    }));
+  }
+  return shuffle(MAYORITAS)
+    .slice(0, PILIH_ROUNDS_MAYORITAS)
+    .map(([prompt, options]) => ({
+      kind: "mayoritas" as const,
+      prompt,
+      hint: "Pilih yang paling banyak dipilih pemain lain",
+      options: [...options],
+      answer: -1,
+    }));
+}
