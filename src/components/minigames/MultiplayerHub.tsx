@@ -35,6 +35,7 @@ import {
   buildTebakSecrets,
   buildLampuBoards,
   buildGeserBoard,
+  buildPetunjukPicks,
   buildBesarSequence,
   buildDrawWords,
   buildDua4Puzzles,
@@ -65,6 +66,7 @@ import { BuahRace } from "./BuahRace";
 import { TebakRace } from "./TebakRace";
 import { LampuRace } from "./LampuRace";
 import { GeserRace } from "./GeserRace";
+import { PetunjukRace } from "./PetunjukRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -253,6 +255,8 @@ function Room({
           return { ...base, lampu: buildLampuBoards() };
         case "geser":
           return { ...base, geser: buildGeserBoard() };
+        case "petunjuk":
+          return { ...base, petunjuk: buildPetunjukPicks() };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
@@ -313,6 +317,8 @@ function Room({
         return <LampuRace key={key} {...props} />;
       case "geser":
         return <GeserRace key={key} {...props} />;
+      case "petunjuk":
+        return <PetunjukRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

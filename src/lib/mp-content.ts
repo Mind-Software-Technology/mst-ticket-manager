@@ -734,3 +734,115 @@ export const geserCorrect = (t: number[]) => t.filter((v, i) => v !== 0 && v ===
 /** Selesai = 400 + 4 per detik tersisa + bonus sedikit langkah (maks +200). */
 export const geserSolveScore = (secsLeft: number, moves: number) =>
   400 + Math.max(0, secsLeft) * 4 + Math.max(0, 200 - moves * 2);
+
+// ─── Tebak Petunjuk ──────────────────────────────────
+
+export const PETUNJUK_ROUNDS = 8;
+/** Lama tiap ronde; petunjuk ke-2 dan ke-3 terbuka tiap PETUNJUK_REVEAL_MS. */
+export const PETUNJUK_ROUND_MS = 24_000;
+export const PETUNJUK_REVEAL_MS = 8_000;
+
+export interface PetunjukItem {
+  answer: string;
+  /** Jawaban lain yang diterima. */
+  alt: string[];
+  /** Tiga petunjuk satu kata: dari yang paling samar ke yang paling jelas. */
+  clues: [string, string, string];
+}
+
+const P = (answer: string, clues: [string, string, string], alt: string[] = []): PetunjukItem => ({ answer, alt, clues });
+
+export const PETUNJUK_BANK: PetunjukItem[] = [
+  P("Kulkas", ["Dapur", "Dingin", "Es"], ["lemari es", "refrigerator"]),
+  P("Payung", ["Gagang", "Basah", "Hujan"]),
+  P("Sepeda", ["Roda", "Pedal", "Dikayuh"]),
+  P("Kacamata", ["Hidung", "Lensa", "Mata"], ["kaca mata"]),
+  P("Jam", ["Angka", "Jarum", "Waktu"], ["jam dinding", "jam tangan"]),
+  P("Pisang", ["Kuning", "Kupas", "Monyet"]),
+  P("Bulan", ["Malam", "Purnama", "Satelit"]),
+  P("Matahari", ["Panas", "Siang", "Terbit"]),
+  P("Pesawat", ["Sayap", "Bandara", "Terbang"], ["pesawat terbang"]),
+  P("Kereta", ["Rel", "Stasiun", "Gerbong"], ["kereta api"]),
+  P("Gitar", ["Senar", "Petik", "Musik"]),
+  P("Kamera", ["Lensa", "Foto", "Jepret"]),
+  P("Laptop", ["Layar", "Keyboard", "Portabel"], ["notebook"]),
+  P("Printer", ["Kertas", "Tinta", "Cetak"]),
+  P("Mouse", ["Kursor", "Klik", "Tikus"], ["tetikus"]),
+  P("Sendok", ["Garpu", "Makan", "Sup"]),
+  P("Kunci", ["Logam", "Gembok", "Pintu"]),
+  P("Gunting", ["Tajam", "Kertas", "Potong"]),
+  P("Pensil", ["Grafit", "Penghapus", "Tulis"]),
+  P("Sapu", ["Ijuk", "Debu", "Lantai"]),
+  P("Kasur", ["Empuk", "Bantal", "Tidur"], ["tempat tidur", "ranjang"]),
+  P("Tangga", ["Anak", "Naik", "Pijakan"]),
+  P("Lilin", ["Lelehan", "Sumbu", "Api"]),
+  P("Cermin", ["Pantulan", "Wajah", "Kaca"]),
+  P("Balon", ["Karet", "Udara", "Meletus"]),
+  P("Roti", ["Tepung", "Oven", "Sarapan"]),
+  P("Telur", ["Cangkang", "Ayam", "Dadar"]),
+  P("Semangka", ["Hijau", "Biji", "Merah"]),
+  P("Es Krim", ["Cone", "Meleleh", "Dingin"], ["eskrim", "ice cream"]),
+  P("Kopi", ["Pahit", "Kafein", "Cangkir"]),
+  P("Pizza", ["Italia", "Bulat", "Keju"]),
+  P("Gajah", ["Besar", "Gading", "Belalai"]),
+  P("Jerapah", ["Afrika", "Tinggi", "Leher"]),
+  P("Pinguin", ["Kutub", "Es", "Burung"]),
+  P("Lebah", ["Sengat", "Madu", "Sarang"]),
+  P("Kucing", ["Kumis", "Cakar", "Meong"]),
+  P("Spidol", ["Papan", "Tinta", "Tulis"]),
+  P("Kalkulator", ["Angka", "Tombol", "Hitung"]),
+  P("Proyektor", ["Cahaya", "Layar", "Presentasi"], ["infocus", "lcd"]),
+  P("Dispenser", ["Galon", "Air", "Panas"]),
+  P("Tas", ["Punggung", "Resleting", "Bawa"], ["ransel"]),
+  P("Sepatu", ["Kaki", "Tali", "Sol"]),
+  P("Mobil", ["Roda", "Bensin", "Setir"]),
+  P("Helm", ["Pengaman", "Motor", "Kepala"]),
+  P("Telepon", ["Dering", "Nomor", "Halo"], ["telpon", "hp", "handphone"]),
+  P("Remote", ["Baterai", "Tombol", "Televisi"], ["remot"]),
+  P("Kipas", ["Baling", "Berputar", "Angin"], ["kipas angin"]),
+  P("Setrika", ["Panas", "Licin", "Baju"]),
+  P("Termos", ["Vakum", "Botol", "Panas"]),
+];
+
+/** Indeks objek untuk satu permainan; dikirim host supaya sama untuk semua pemain. */
+export const buildPetunjukPicks = (): number[] =>
+  shuffle(PETUNJUK_BANK.map((_, i) => i)).slice(0, PETUNJUK_ROUNDS);
+
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+function withinOneEdit(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++;
+    else if (a.length < b.length) j++;
+    else {
+      i++;
+      j++;
+    }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+/** Spasi/huruf besar diabaikan; salah ketik 1 huruf dimaafkan untuk kata >= 5 huruf. */
+export function isPetunjukCorrect(guess: string, item: PetunjukItem): boolean {
+  const g = norm(guess);
+  if (!g) return false;
+  return [item.answer, ...item.alt].some((a) => {
+    const n = norm(a);
+    return g === n || (n.length >= 5 && withinOneEdit(g, n));
+  });
+}
+
+/** Makin sedikit petunjuk terbuka, makin besar poin. Tiap tebakan salah -10 (minimal 50). */
+export const petunjukPoints = (cluesShown: number, wrong: number) =>
+  Math.max(50, [300, 200, 120][Math.min(Math.max(cluesShown, 1), 3) - 1] - wrong * 10);

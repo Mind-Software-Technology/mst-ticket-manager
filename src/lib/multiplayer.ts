@@ -40,7 +40,8 @@ export type MpMode =
   | "buah"
   | "tebak"
   | "lampu"
-  | "geser";
+  | "geser"
+  | "petunjuk";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -88,6 +89,18 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
       "Papan 3x3 yang sama untuk semua pemain, 120 detik.",
       "Tap kotak di sebelah ruang kosong untuk menggesernya.",
       "Selesai = 400 + bonus waktu + bonus sedikit langkah. Belum selesai = 20 poin per kotak pas.",
+    ],
+    minPlayers: 2,
+  },
+  petunjuk: {
+    group: "umum",
+    label: "Tebak Petunjuk",
+    emoji: "🕵️",
+    tagline: "Tebak satu objek dari 3 petunjuk satu kata. Makin cepat tebak, makin besar poinnya!",
+    rules: [
+      "8 objek sama untuk semua pemain, tiap ronde 24 detik.",
+      "Petunjuk muncul bertahap tiap 8 detik: dari yang samar sampai yang jelas.",
+      "Tebak dengan mengetik. Benar di petunjuk 1 = 300, petunjuk 2 = 200, petunjuk 3 = 120. Tiap salah -10.",
     ],
     minPlayers: 2,
   },
@@ -399,6 +412,7 @@ export const MP_MODE_KEYS: MpMode[] = [
   "tebak",
   "lampu",
   "geser",
+  "petunjuk",
 ];
 
 export const ROUND_MS = 15_000;
@@ -633,6 +647,8 @@ export interface StartPayload {
   lampu?: number[][];
   /** Puzzle Geser: susunan awal papan 3x3 (0 = kosong). */
   geser?: number[];
+  /** Tebak Petunjuk: indeks objek (PETUNJUK_BANK) tiap ronde. */
+  petunjuk?: number[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }
