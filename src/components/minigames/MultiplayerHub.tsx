@@ -41,7 +41,7 @@ import {
   buildIbukotaQuestions,
   buildBidikSchedule,
   buildBesarSequence,
-  buildDrawWords,
+  buildDrawChoices,
   buildDua4Puzzles,
   buildMaze,
   buildSandiCodes,
@@ -241,7 +241,7 @@ function Room({
           return { ...base, besar: buildBesarSequence() };
         case "gambar":
           // Ronde = jumlah pemain x 2, tukang gambar bergiliran.
-          return { ...base, words: buildDrawWords(players.length * 2) };
+          return { ...base, words: buildDrawChoices(players.length * 2) };
         case "sandi":
           return { ...base, codes: buildSandiCodes() };
         case "labirin":

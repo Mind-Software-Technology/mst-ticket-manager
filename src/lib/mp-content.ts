@@ -417,6 +417,14 @@ export function buildDrawWords(count: number): string[] {
   return out.slice(0, count);
 }
 
+export const DRAW_CHOICES = 3;
+
+/** Pilihan kata tiap ronde (tidak ada kata yang muncul dua kali selama kata masih cukup). */
+export function buildDrawChoices(rounds: number): string[][] {
+  const flat = buildDrawWords(rounds * DRAW_CHOICES);
+  return Array.from({ length: rounds }, (_, r) => flat.slice(r * DRAW_CHOICES, (r + 1) * DRAW_CHOICES));
+}
+
 /** Samakan tebakan dan kata: abaikan huruf besar/kecil, spasi, dan tanda baca. */
 export const normalizeGuess = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 

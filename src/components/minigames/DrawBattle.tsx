@@ -23,9 +23,12 @@ import { drawHint, normalizeGuess } from "@/lib/mp-content";
 import { FinalPodium, Scoreboard } from "./MpParts";
 import { useInterval } from "./GameParts";
 
-type Stage = "intro" | "draw" | "reveal" | "done";
+type Stage = "intro" | "pick" | "draw" | "reveal" | "done";
 
 const INTRO_MS = 3000;
+const PICK_MS = 10_000;
+/** Jeda tambahan sebelum host memilihkan kata untuk tukang gambar yang diam/keluar. */
+const PICK_GRACE_MS = 1200;
 const REVEAL_MS = 5000;
 const GRACE_MS = 2000;
 const FLUSH_MS = 130;
@@ -93,13 +96,16 @@ export function DrawBattle({
   onLobby: () => void;
   onLeave: () => void;
 }) {
-  const words = config.words ?? [];
+  const choicesByRound = config.words ?? [];
   const joined = config.players;
   const isHost = config.hostId === me.id;
-  const total = words.length;
+  const total = choicesByRound.length;
 
   const [stage, setStage] = useState<Stage>("intro");
   const [idx, setIdx] = useState(0);
+  /** Kata yang dipilih tukang gambar ronde ini ("" = belum dipilih). */
+  const [word, setWord] = useState("");
+  const [pickLeft, setPickLeft] = useState(PICK_MS);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [gain, setGain] = useState<Record<string, number>>({});
   const [guessed, setGuessed] = useState<string[]>([]);
@@ -112,6 +118,9 @@ export function DrawBattle({
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const roundStart = useRef(0);
+  const pickStart = useRef(0);
+  /** Ronde yang kata-nya sudah dipilih (pilihan pertama yang masuk berlaku). */
+  const picked = useRef<Set<number>>(new Set());
   const hostHits = useRef<Record<number, RoundAnswers>>({});
   const hostRevealed = useRef<Set<number>>(new Set());
   const scored = useRef<Set<number>>(new Set());
@@ -164,19 +173,38 @@ export function DrawBattle({
       switch (m.t) {
         case "round":
           setIdx(m.i);
-          setStage("draw");
+          setStage("pick");
+          setWord("");
           setGuessed([]);
           setFeed([]);
           setText("");
+          setPickLeft(PICK_MS);
           setTimeLeft(DRAW_MS);
-          roundStart.current = nowMs();
+          pickStart.current = nowMs();
           remoteLast.current = null;
           buf.current = [];
           drawing.current = false;
           newStroke.current = true;
           wipe(canvasRef.current);
+          // Tukang gambar diam / sudah keluar: host memilihkan kata pertama.
+          if (isHost) {
+            later(() => {
+              if (!picked.current.has(m.i)) room.send({ t: "pick", i: m.i, k: 0 });
+            }, PICK_MS + PICK_GRACE_MS);
+          }
+          break;
+        case "pick": {
+          if (picked.current.has(m.i)) break;
+          picked.current.add(m.i);
+          const options = choicesByRound[m.i] ?? [];
+          setIdx(m.i);
+          setWord(options[m.k] ?? options[0] ?? "");
+          setTimeLeft(DRAW_MS);
+          roundStart.current = nowMs();
+          setStage("draw");
           if (isHost) later(() => hostReveal(m.i), DRAW_MS + GRACE_MS);
           break;
+        }
         case "stroke": {
           if (m.i !== idxRef.current || stageRef.current !== "draw") break;
           if (drawerOf(m.i)?.id === me.id) break;
@@ -259,10 +287,19 @@ export function DrawBattle({
     () => setTimeLeft(Math.max(0, DRAW_MS - (nowMs() - roundStart.current))),
     stage === "draw" ? 200 : null,
   );
+  useInterval(
+    () => setPickLeft(Math.max(0, PICK_MS - (nowMs() - pickStart.current))),
+    stage === "pick" ? 200 : null,
+  );
 
   const drawer = drawerOf(idx);
   const iAmDrawer = drawer?.id === me.id;
-  const word = words[idx] ?? "";
+  const choices = choicesByRound[idx] ?? [];
+
+  const choose = (k: number) => {
+    if (stage !== "pick" || !iAmDrawer) return;
+    room.send({ t: "pick", i: idx, k });
+  };
 
   // Tukang gambar mengirim potongan goresan secara berkala.
   const flush = () => {
@@ -353,6 +390,51 @@ export function DrawBattle({
           {total} ronde — tiap pemain jadi tukang gambar 2 kali. Siapkan jarimu!
         </p>
         <p className="mt-4 text-xs text-slate-400">{joined.map((p) => p.name).join(" · ")}</p>
+      </div>
+    );
+  }
+
+  if (stage === "pick") {
+    return (
+      <div className="max-w-md mx-auto text-center py-6">
+        <p className="text-xs font-bold text-slate-500">
+          Ronde {idx + 1}/{total}
+        </p>
+        <div className="text-5xl mt-1">{iAmDrawer ? "🎨" : "⏳"}</div>
+        {iAmDrawer ? (
+          <>
+            <h3 className="mt-2 text-xl font-black text-slate-900">Mau gambar yang mana?</h3>
+            <p className="mt-1 text-sm text-slate-500">Pilih salah satu. Yang lain akan menebaknya!</p>
+            <div className="mt-4 grid gap-2.5">
+              {choices.map((c, k) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => choose(k)}
+                  className="rounded-2xl border-2 border-indigo-200 bg-white px-5 py-4 text-2xl font-black text-indigo-700 shadow-sm transition hover:border-indigo-500 hover:bg-indigo-50 active:scale-[0.98]"
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="mt-2 text-xl font-black text-slate-900">{drawer?.name} sedang memilih kata…</h3>
+            <p className="mt-1 text-sm text-slate-500">Bersiap menebak gambarnya!</p>
+          </>
+        )}
+        <div className="mx-auto mt-4 h-2 max-w-xs overflow-hidden rounded-full bg-slate-100">
+          <div
+            className={`h-full rounded-full transition-[width] duration-200 ease-linear ${
+              pickLeft < 4000 ? "bg-red-500" : "bg-gradient-to-r from-emerald-400 to-indigo-500"
+            }`}
+            style={{ width: `${(pickLeft / PICK_MS) * 100}%` }}
+          />
+        </div>
+        <p className="mt-1 text-xs font-semibold text-slate-400">
+          {Math.ceil(pickLeft / 1000)} detik{iAmDrawer ? " — kalau tidak memilih, kata pertama dipakai" : ""}
+        </p>
       </div>
     );
   }

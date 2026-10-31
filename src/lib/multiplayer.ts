@@ -236,7 +236,7 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     tagline: "Satu orang menggambar kata rahasia, yang lain menebak. Gantian jadi tukang gambar!",
     rules: [
       "Jumlah ronde = jumlah pemain x 2, tukang gambar bergiliran tiap ronde.",
-      "Tukang gambar dapat kata rahasia dan menggambarnya (dilarang menulis huruf!). Waktu 60 detik.",
+      "Tukang gambar memilih 1 dari 3 kata (10 detik, otomatis kata pertama), lalu menggambarnya (dilarang menulis huruf!). Waktu 60 detik.",
       "Penebak mengetik tebakan di kolom jawaban. Benar lebih cepat = poin lebih besar.",
       "Tukang gambar dapat poin dari tiap penebak yang berhasil, bonus kalau semua berhasil.",
     ],
@@ -697,7 +697,7 @@ export interface StartPayload {
   /** Soal Lebih Besar: [teks kiri, nilai kiri, teks kanan, nilai kanan]. */
   besar?: Array<readonly [string, number, string, number]>;
   /** Kata rahasia Tebak Gambar, satu per ronde (jumlah pemain x 2). */
-  words?: string[];
+  words?: string[][];
   /** Sandi Rahasia: 3 sandi, tiap sandi 4 indeks warna. */
   codes?: number[][];
   /** Labirin Kilat: bitmask sisi terbuka tiap sel. */
@@ -736,6 +736,8 @@ export type MpMessage =
   /** Tebak Gambar: potongan goresan (koordinat 0-1000, x lalu y berselang-seling). */
   | { t: "stroke"; i: number; c: number; w: number; s: boolean; p: number[] }
   | { t: "clear"; i: number }
+  /** Tebak Gambar: tukang gambar memilih kata ke-k dari pilihan ronde i. */
+  | { t: "pick"; i: number; k: number }
   | { t: "guess"; i: number; id: string; text: string }
   | { t: "hit"; i: number; id: string; ms: number }
   /** Slither Arena: posisi ular (seg = titik kepala lalu badan, x,y berselang-seling). */
