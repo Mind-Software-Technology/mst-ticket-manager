@@ -77,7 +77,7 @@ const asQuestion = (kind: "trivia" | "emoji", [prompt, answer, wrong]: Item, hin
 };
 
 export interface ContentQuestion {
-  kind: "trivia" | "emoji" | "math" | "scramble";
+  kind: "trivia" | "emoji" | "math" | "scramble" | "antonim" | "peribahasa" | "ibukota";
   prompt: string;
   hint: string;
   options: string[];
@@ -846,3 +846,114 @@ export function isPetunjukCorrect(guess: string, item: PetunjukItem): boolean {
 /** Makin sedikit petunjuk terbuka, makin besar poin. Tiap tebakan salah -10 (minimal 50). */
 export const petunjukPoints = (cluesShown: number, wrong: number) =>
   Math.max(50, [300, 200, 120][Math.min(Math.max(cluesShown, 1), 3) - 1] - wrong * 10);
+
+// ─── Kuis bahasa & dunia (dipakai QuizBattle) ────────
+
+type QuizKind = "antonim" | "peribahasa" | "ibukota";
+
+function quizQuestion(kind: QuizKind, prompt: string, hint: string, answer: string, wrong: readonly string[]): ContentQuestion {
+  const options = shuffle([answer, ...wrong]);
+  return { kind, prompt, hint, options, answer: options.indexOf(answer) };
+}
+
+/** Pasangan [kata, lawan kata]; dipilih supaya jawaban pasangan lain tidak bisa dianggap benar. */
+const ANTONIM: ReadonlyArray<readonly [string, string]> = [
+  ["Besar", "Kecil"], ["Panjang", "Pendek"], ["Naik", "Turun"], ["Siang", "Malam"], ["Panas", "Dingin"],
+  ["Cepat", "Lambat"], ["Berat", "Ringan"], ["Terang", "Gelap"], ["Kaya", "Miskin"], ["Rajin", "Malas"],
+  ["Buka", "Tutup"], ["Senang", "Sedih"], ["Mudah", "Sulit"], ["Kering", "Basah"], ["Jauh", "Dekat"],
+  ["Tebal", "Tipis"], ["Maju", "Mundur"], ["Awal", "Akhir"], ["Ramai", "Sepi"], ["Masuk", "Keluar"],
+  ["Kuat", "Lemah"], ["Bersih", "Kotor"], ["Pintar", "Bodoh"], ["Dalam", "Dangkal"],
+];
+
+export function buildAntonimQuestions(count = 10): ContentQuestion[] {
+  return shuffle(ANTONIM)
+    .slice(0, count)
+    .map(([word, answer]) =>
+      quizQuestion(
+        "antonim",
+        word.toUpperCase(),
+        "Pilih lawan katanya",
+        answer,
+        shuffle(ANTONIM.filter(([w]) => w !== word)).slice(0, 3).map(([, a]) => a),
+      ),
+    );
+}
+
+const PERIBAHASA: Item[] = [
+  ["Air tenang …", "menghanyutkan", ["menenggelamkan", "menyegarkan", "mengalir deras"]],
+  ["Berakit-rakit ke hulu, …", "berenang-renang ke tepian", ["berlari-lari ke hilir", "berjalan-jalan ke pantai", "berlayar-layar ke muara"]],
+  ["Sedia payung …", "sebelum hujan", ["sesudah hujan", "saat terik", "di musim kemarau"]],
+  ["Tong kosong …", "nyaring bunyinya", ["berat isinya", "tak berbunyi", "mudah pecah"]],
+  ["Rajin pangkal …", "pandai", ["cantik", "tinggi", "lelah"]],
+  ["Ada gula ada …", "semut", ["lebah", "kupu-kupu", "lalat"]],
+  ["Sekali merengkuh dayung, …", "dua tiga pulau terlampaui", ["sampai ke seberang", "perahu tenggelam", "angin pun reda"]],
+  ["Bersatu kita teguh, …", "bercerai kita runtuh", ["berpisah kita kuat", "sendiri kita menang", "berbeda kita maju"]],
+  ["Gajah di pelupuk mata tidak tampak, …", "semut di seberang lautan tampak", ["kuman di seberang lautan terlihat", "tikus di lumbung terlihat", "burung di dahan tampak"]],
+  ["Sambil menyelam …", "minum air", ["mencari mutiara", "menahan napas", "berenang jauh"]],
+  ["Buah jatuh tidak jauh dari …", "pohonnya", ["tanahnya", "akarnya", "kebunnya"]],
+  ["Seperti pinang dibelah …", "dua", ["tiga", "empat", "tengah"]],
+  ["Malu bertanya, …", "sesat di jalan", ["tak punya teman", "lupa jalan pulang", "rugi waktu"]],
+  ["Di mana bumi dipijak, …", "di situ langit dijunjung", ["di situ rumah dibangun", "di situ kita makan", "di situ air diminum"]],
+  ["Lain ladang lain …", "belalang", ["rumput", "hujan", "padi"]],
+  ["Tak ada gading yang …", "tak retak", ["tak mahal", "tak indah", "tak tajam"]],
+  ["Habis manis sepah …", "dibuang", ["dimakan", "disimpan", "dijual"]],
+  ["Bagai kacang lupa …", "akan kulitnya", ["pada tanahnya", "akan akarnya", "dengan petaninya"]],
+  ["Ringan sama dijinjing, berat sama …", "dipikul", ["diangkat", "dibuang", "diseret"]],
+  ["Pagar makan …", "tanaman", ["rumput", "pemilik", "kebun"]],
+];
+
+export function buildPeribahasaQuestions(count = 10): ContentQuestion[] {
+  return shuffle(PERIBAHASA)
+    .slice(0, count)
+    .map(([prompt, answer, wrong]) => quizQuestion("peribahasa", prompt, "Lengkapi peribahasanya", answer, wrong));
+}
+
+const IBUKOTA: ReadonlyArray<readonly [string, string]> = [
+  ["Indonesia", "Jakarta"], ["Malaysia", "Kuala Lumpur"], ["Thailand", "Bangkok"], ["Vietnam", "Hanoi"],
+  ["Filipina", "Manila"], ["Jepang", "Tokyo"], ["Korea Selatan", "Seoul"], ["Tiongkok", "Beijing"],
+  ["India", "New Delhi"], ["Australia", "Canberra"], ["Selandia Baru", "Wellington"], ["Prancis", "Paris"],
+  ["Jerman", "Berlin"], ["Italia", "Roma"], ["Spanyol", "Madrid"], ["Inggris", "London"],
+  ["Belanda", "Amsterdam"], ["Mesir", "Kairo"], ["Arab Saudi", "Riyadh"], ["Turki", "Ankara"],
+  ["Rusia", "Moskow"], ["Kanada", "Ottawa"], ["Brasil", "Brasilia"], ["Argentina", "Buenos Aires"],
+  ["Kenya", "Nairobi"], ["Portugal", "Lisabon"], ["Swedia", "Stockholm"], ["Yunani", "Athena"],
+];
+
+export function buildIbukotaQuestions(count = 10): ContentQuestion[] {
+  return shuffle(IBUKOTA)
+    .slice(0, count)
+    .map(([country, answer]) =>
+      quizQuestion(
+        "ibukota",
+        `Ibu kota ${country}?`,
+        "Geografi dunia",
+        answer,
+        shuffle(IBUKOTA.filter(([c]) => c !== country)).slice(0, 3).map(([, cap]) => cap),
+      ),
+    );
+}
+
+// ─── Bidik Cepat ─────────────────────────────────────
+
+export const BIDIK_SECONDS = 30;
+
+/** [muncul pada ms ke-N, x (8-92 %), y (10-90 %), lama tampil ms, jenis (0 biasa, 1 emas, 2 bom)]. */
+export type BidikTarget = readonly [number, number, number, number, number];
+
+export function buildBidikSchedule(): BidikTarget[] {
+  const out: BidikTarget[] = [];
+  let t = 500;
+  while (t < BIDIK_SECONDS * 1000 - 900) {
+    const r = Math.random();
+    const life = Math.max(900, Math.round(1600 - t * 0.024));
+    out.push([Math.round(t), rand(8, 92), rand(10, 90), life, r < 0.14 ? 2 : r < 0.24 ? 1 : 0] as const);
+    t += Math.max(280, 520 - t * 0.008) + rand(0, 120);
+  }
+  return out;
+}
+
+/** Biasa 10-20 (makin cepat makin besar), emas 30-50, bom -20. */
+export function bidikPoints(kind: number, remainingFraction: number): number {
+  if (kind === 2) return -20;
+  const f = Math.max(0, Math.min(1, remainingFraction));
+  return kind === 1 ? 30 + Math.round(f * 20) : 10 + Math.round(f * 10);
+}

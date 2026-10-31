@@ -41,7 +41,11 @@ export type MpMode =
   | "tebak"
   | "lampu"
   | "geser"
-  | "petunjuk";
+  | "petunjuk"
+  | "antonim"
+  | "peribahasa"
+  | "ibukota"
+  | "bidik";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -101,6 +105,54 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
       "8 objek sama untuk semua pemain, tiap ronde 24 detik.",
       "Petunjuk muncul bertahap tiap 8 detik: dari yang samar sampai yang jelas.",
       "Tebak dengan mengetik. Benar di petunjuk 1 = 300, petunjuk 2 = 200, petunjuk 3 = 120. Tiap salah -10.",
+    ],
+    minPlayers: 2,
+  },
+  antonim: {
+    group: "umum",
+    label: "Lawan Kata",
+    emoji: "↔️",
+    tagline: "Pilih lawan kata yang tepat. Siapa kosa katanya paling lincah?",
+    rules: [
+      "10 kata, 15 detik per soal. Soal sama untuk semua pemain.",
+      "Pilih lawan kata dari 4 pilihan.",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+    ],
+    minPlayers: 2,
+  },
+  peribahasa: {
+    group: "umum",
+    label: "Lengkapi Peribahasa",
+    emoji: "📜",
+    tagline: "Lanjutkan peribahasa yang terpotong. Seberapa hafal pepatah nenek moyang?",
+    rules: [
+      "10 peribahasa, 15 detik per soal. Soal sama untuk semua pemain.",
+      "Pilih kelanjutan yang tepat dari 4 pilihan.",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+    ],
+    minPlayers: 2,
+  },
+  ibukota: {
+    group: "umum",
+    label: "Ibu Kota Dunia",
+    emoji: "🌍",
+    tagline: "Tebak ibu kota negara-negara dunia. Jangan kalah dari peta!",
+    rules: [
+      "10 negara, 15 detik per soal. Soal sama untuk semua pemain.",
+      "Pilih ibu kotanya dari 4 pilihan.",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+    ],
+    minPlayers: 2,
+  },
+  bidik: {
+    group: "umum",
+    label: "Bidik Cepat",
+    emoji: "🎯",
+    tagline: "Tap target yang bermunculan sebelum hilang. Awas bom!",
+    rules: [
+      "30 detik, target muncul di tempat dan waktu yang sama untuk semua pemain.",
+      "Target biasa +10 sampai +20 (makin cepat makin besar), emas ⭐ +30 sampai +50, bom 💣 -20.",
+      "Makin lama target makin cepat menghilang.",
     ],
     minPlayers: 2,
   },
@@ -413,6 +465,10 @@ export const MP_MODE_KEYS: MpMode[] = [
   "lampu",
   "geser",
   "petunjuk",
+  "antonim",
+  "peribahasa",
+  "ibukota",
+  "bidik",
 ];
 
 export const ROUND_MS = 15_000;
@@ -422,7 +478,17 @@ export const DRAW_SECONDS = 60;
 
 // ─── Soal ────────────────────────────────────────────
 
-export type QuestionKind = "owner" | "category" | "deadline" | "math" | "trivia" | "emoji" | "scramble";
+export type QuestionKind =
+  | "owner"
+  | "category"
+  | "deadline"
+  | "math"
+  | "trivia"
+  | "emoji"
+  | "scramble"
+  | "antonim"
+  | "peribahasa"
+  | "ibukota";
 
 export interface MpQuestion {
   kind: QuestionKind;
@@ -443,6 +509,9 @@ const KIND_TITLE: Record<QuestionKind, string> = {
   trivia: "🧠 Trivia",
   emoji: "🎬 Tebak emoji",
   scramble: "🔤 Susun huruf ini jadi kata",
+  antonim: "↔️ Apa lawan katanya?",
+  peribahasa: "📜 Lengkapi peribahasa",
+  ibukota: "🌍 Geografi dunia",
 };
 
 export const kindTitle = (k: QuestionKind) => KIND_TITLE[k];
@@ -649,6 +718,8 @@ export interface StartPayload {
   geser?: number[];
   /** Tebak Petunjuk: indeks objek (PETUNJUK_BANK) tiap ronde. */
   petunjuk?: number[];
+  /** Bidik Cepat: jadwal target [ms, x%, y%, lama ms, jenis]. */
+  bidik?: Array<readonly [number, number, number, number, number]>;
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }
