@@ -9,39 +9,19 @@
 // =====================================================
 
 import { useRef, useState } from "react";
+import {
+  LAMPU_BOARDS as BOARDS,
+  LAMPU_SECONDS as SECONDS,
+  buildLampuBoard as buildBoard,
+  lampuBoardScore,
+  lampuPress as press,
+} from "@/lib/mp-content";
 import { Hud, ResultCard, StartCard, useBest, useInterval } from "./GameParts";
 
 type Phase = "start" | "play" | "result";
 
-const SIZE = 4;
-const BOARDS = 3;
-const SECONDS = 120;
-
 // Dibungkus agar jelas dipanggil dari event handler, bukan saat render.
 const nowMs = () => Date.now();
-
-function press(board: boolean[], i: number): boolean[] {
-  const next = [...board];
-  const r = Math.floor(i / SIZE);
-  const c = i % SIZE;
-  for (const [dr, dc] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
-    const rr = r + dr;
-    const cc = c + dc;
-    if (rr >= 0 && rr < SIZE && cc >= 0 && cc < SIZE) next[rr * SIZE + cc] = !next[rr * SIZE + cc];
-  }
-  return next;
-}
-
-/** Papan acak yang pasti bisa diselesaikan: mulai dari padam, lalu tekan acak. */
-function buildBoard(): boolean[] {
-  for (;;) {
-    let board: boolean[] = Array(SIZE * SIZE).fill(false);
-    const cells = Array.from({ length: SIZE * SIZE }, (_, i) => i).sort(() => Math.random() - 0.5);
-    const presses = 5 + Math.floor(Math.random() * 4);
-    for (const i of cells.slice(0, presses)) board = press(board, i);
-    if (board.some(Boolean)) return board;
-  }
-}
 
 export function LampuGame({ userId }: { userId?: string }) {
   const { best, submit } = useBest(userId, "lampu");
@@ -95,7 +75,7 @@ export function LampuGame({ userId }: { userId?: string }) {
       return;
     }
     // Papan padam.
-    let gained = 150 + Math.max(0, 60 - m * 3);
+    let gained = lampuBoardScore(m);
     if (boardNo + 1 >= BOARDS) {
       gained += Math.floor((endRef.current - nowMs()) / 1000) * 2;
       finish(score + gained);

@@ -37,7 +37,10 @@ export type MpMode =
   | "dua4"
   | "slither"
   | "ketik"
-  | "buah";
+  | "buah"
+  | "tebak"
+  | "lampu"
+  | "geser";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -52,6 +55,42 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  tebak: {
+    group: "umum",
+    label: "Tebak Angka",
+    emoji: "🔮",
+    tagline: "Tebak angka rahasia 1-100. Angkanya sama untuk semua, siapa paling hemat tebakan?",
+    rules: [
+      "3 angka rahasia (1-100, sama untuk semua pemain), maks 7 tebakan per angka, 120 detik total.",
+      "Petunjuk: terlalu besar atau terlalu kecil.",
+      "Benar = 100 + 50 per sisa tebakan. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  lampu: {
+    group: "umum",
+    label: "Lampu Padam",
+    emoji: "💡",
+    tagline: "Matikan semua lampu secepat mungkin. Papan sama untuk semua pemain!",
+    rules: [
+      "3 papan 4x4 (sama untuk semua), total 120 detik.",
+      "Tap lampu = balik lampu itu plus atas, bawah, kiri, kanan.",
+      "Papan padam = 150 + bonus sedikit langkah. Semua selesai = bonus sisa waktu.",
+    ],
+    minPlayers: 2,
+  },
+  geser: {
+    group: "umum",
+    label: "Puzzle Geser",
+    emoji: "🧩",
+    tagline: "Susun angka 1-8 lebih cepat dari rekan setim. Papan acak sama untuk semua!",
+    rules: [
+      "Papan 3x3 yang sama untuk semua pemain, 120 detik.",
+      "Tap kotak di sebelah ruang kosong untuk menggesernya.",
+      "Selesai = 400 + bonus waktu + bonus sedikit langkah. Belum selesai = 20 poin per kotak pas.",
+    ],
+    minPlayers: 2,
+  },
   ketik: {
     group: "umum",
     label: "Ketik Kata",
@@ -357,6 +396,9 @@ export const MP_MODE_KEYS: MpMode[] = [
   "slither",
   "ketik",
   "buah",
+  "tebak",
+  "lampu",
+  "geser",
 ];
 
 export const ROUND_MS = 15_000;
@@ -585,6 +627,12 @@ export interface StartPayload {
   typing?: string[];
   /** Tangkap Buah: jadwal [ms, x%, jenis, variasi]. */
   buah?: Array<readonly [number, number, number, number]>;
+  /** Tebak Angka: angka rahasia tiap ronde. */
+  tebak?: number[];
+  /** Lampu Padam: papan awal (0/1) tiap ronde. */
+  lampu?: number[][];
+  /** Puzzle Geser: susunan awal papan 3x3 (0 = kosong). */
+  geser?: number[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

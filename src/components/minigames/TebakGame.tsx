@@ -8,12 +8,10 @@
 // =====================================================
 
 import { useState } from "react";
+import { TEBAK_MAX_GUESSES as MAX_GUESSES, TEBAK_ROUNDS as ROUNDS, tebakScore } from "@/lib/mp-content";
 import { ResultCard, StartCard, useBest } from "./GameParts";
 
 type Phase = "start" | "play" | "end";
-
-const ROUNDS = 3;
-const MAX_GUESSES = 7;
 
 const randomSecret = () => 1 + Math.floor(Math.random() * 100);
 
@@ -54,7 +52,7 @@ export function TebakGame({ userId }: { userId?: string }) {
     setGuesses(next);
     setInput("");
     if (n === secret) {
-      setScore((s) => s + 100 + (MAX_GUESSES - next.length) * 50);
+      setScore((s) => s + tebakScore(next.length));
       setSolved((c) => c + 1);
       setRoundWon(true);
     } else if (next.length >= MAX_GUESSES) {

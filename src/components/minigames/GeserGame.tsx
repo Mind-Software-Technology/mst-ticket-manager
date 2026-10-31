@@ -9,47 +9,20 @@
 // =====================================================
 
 import { useRef, useState } from "react";
+import {
+  GESER_SECONDS as SECONDS,
+  GESER_SOLVED as SOLVED,
+  buildGeserBoard as shuffled,
+  geserCorrect as countCorrect,
+  geserNeighbours as neighbours,
+  geserSolveScore,
+} from "@/lib/mp-content";
 import { Hud, ResultCard, StartCard, useBest, useInterval } from "./GameParts";
 
 type Phase = "start" | "play" | "result";
 
-const N = 3;
-const SECONDS = 120;
-const SOLVED = [1, 2, 3, 4, 5, 6, 7, 8, 0];
-
 // Dibungkus agar jelas dipanggil dari event handler, bukan saat render.
 const nowMs = () => Date.now();
-
-const neighbours = (blank: number) => {
-  const r = Math.floor(blank / N);
-  const c = blank % N;
-  const out: number[] = [];
-  if (r > 0) out.push(blank - N);
-  if (r < N - 1) out.push(blank + N);
-  if (c > 0) out.push(blank - 1);
-  if (c < N - 1) out.push(blank + 1);
-  return out;
-};
-
-/** Acak lewat gerakan legal dari kondisi selesai, jadi pasti bisa dipecahkan. */
-function shuffled(): number[] {
-  for (;;) {
-    const t = [...SOLVED];
-    let blank = 8;
-    let prev = -1;
-    for (let k = 0; k < 90; k++) {
-      const options = neighbours(blank).filter((p) => p !== prev);
-      const pick = options[Math.floor(Math.random() * options.length)];
-      t[blank] = t[pick];
-      t[pick] = 0;
-      prev = blank;
-      blank = pick;
-    }
-    if (t.some((v, i) => v !== SOLVED[i])) return t;
-  }
-}
-
-const countCorrect = (t: number[]) => t.filter((v, i) => v !== 0 && v === SOLVED[i]).length;
 
 export function GeserGame({ userId }: { userId?: string }) {
   const { best, submit } = useBest(userId, "geser");
@@ -103,7 +76,7 @@ export function GeserGame({ userId }: { userId?: string }) {
     setMoves(m);
     if (next.every((v, k) => v === SOLVED[k])) {
       const secs = Math.floor((endRef.current - nowMs()) / 1000);
-      finish(400 + secs * 4 + Math.max(0, 200 - m * 2), true);
+      finish(geserSolveScore(secs, m), true);
     }
   };
 

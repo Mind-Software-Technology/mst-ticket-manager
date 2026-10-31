@@ -32,6 +32,9 @@ import {
   buildBedaSequence,
   buildBuahSchedule,
   buildKetikWords,
+  buildTebakSecrets,
+  buildLampuBoards,
+  buildGeserBoard,
   buildBesarSequence,
   buildDrawWords,
   buildDua4Puzzles,
@@ -59,6 +62,9 @@ import { Dua4Race } from "./Dua4Race";
 import { SlitherRace } from "./SlitherRace";
 import { KetikRace } from "./KetikRace";
 import { BuahRace } from "./BuahRace";
+import { TebakRace } from "./TebakRace";
+import { LampuRace } from "./LampuRace";
+import { GeserRace } from "./GeserRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -241,6 +247,12 @@ function Room({
           return { ...base, typing: buildKetikWords() };
         case "buah":
           return { ...base, buah: buildBuahSchedule() };
+        case "tebak":
+          return { ...base, tebak: buildTebakSecrets() };
+        case "lampu":
+          return { ...base, lampu: buildLampuBoards() };
+        case "geser":
+          return { ...base, geser: buildGeserBoard() };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
@@ -295,6 +307,12 @@ function Room({
         return <KetikRace key={key} {...props} />;
       case "buah":
         return <BuahRace key={key} {...props} />;
+      case "tebak":
+        return <TebakRace key={key} {...props} />;
+      case "lampu":
+        return <LampuRace key={key} {...props} />;
+      case "geser":
+        return <GeserRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

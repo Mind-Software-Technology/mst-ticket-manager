@@ -642,3 +642,95 @@ export function buildBuahSchedule(): BuahItem[] {
 
 /** Lama jatuh (ms); makin lama permainan makin cepat. */
 export const buahFall = (at: number) => Math.max(1300, 2600 - at * 0.03);
+
+// ─── Tebak Angka ─────────────────────────────────────
+
+export const TEBAK_ROUNDS = 3;
+export const TEBAK_MAX_GUESSES = 7;
+/** Batas waktu total di mode bareng (solo tanpa batas waktu). */
+export const TEBAK_SECONDS = 120;
+
+/** Angka rahasia tiap ronde (1-100); sama untuk semua pemain di mode bareng. */
+export function buildTebakSecrets(): number[] {
+  return Array.from({ length: TEBAK_ROUNDS }, () => rand(1, 100));
+}
+
+/** Benar = 100 + 50 per sisa tebakan. */
+export const tebakScore = (guessesUsed: number) => 100 + (TEBAK_MAX_GUESSES - guessesUsed) * 50;
+
+// ─── Lampu Padam ─────────────────────────────────────
+
+export const LAMPU_SIZE = 4;
+export const LAMPU_BOARDS = 3;
+export const LAMPU_SECONDS = 120;
+
+/** Balik lampu i beserta tetangga atas, bawah, kiri, kanan. */
+export function lampuPress(board: boolean[], i: number): boolean[] {
+  const next = [...board];
+  const r = Math.floor(i / LAMPU_SIZE);
+  const c = i % LAMPU_SIZE;
+  for (const [dr, dc] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const rr = r + dr;
+    const cc = c + dc;
+    if (rr >= 0 && rr < LAMPU_SIZE && cc >= 0 && cc < LAMPU_SIZE) next[rr * LAMPU_SIZE + cc] = !next[rr * LAMPU_SIZE + cc];
+  }
+  return next;
+}
+
+/** Papan acak yang pasti bisa diselesaikan: mulai dari padam, lalu tekan acak. */
+export function buildLampuBoard(): boolean[] {
+  for (;;) {
+    let board: boolean[] = Array(LAMPU_SIZE * LAMPU_SIZE).fill(false);
+    const cells = shuffle(Array.from({ length: LAMPU_SIZE * LAMPU_SIZE }, (_, i) => i));
+    for (const i of cells.slice(0, rand(5, 8))) board = lampuPress(board, i);
+    if (board.some(Boolean)) return board;
+  }
+}
+
+/** Papan untuk mode bareng, dikirim sebagai 0/1. */
+export const buildLampuBoards = (): number[][] =>
+  Array.from({ length: LAMPU_BOARDS }, () => buildLampuBoard().map(Number));
+
+/** Papan padam = 150 + bonus sedikit langkah (maks +60). */
+export const lampuBoardScore = (moves: number) => 150 + Math.max(0, 60 - moves * 3);
+
+// ─── Puzzle Geser ────────────────────────────────────
+
+export const GESER_N = 3;
+export const GESER_SECONDS = 120;
+export const GESER_SOLVED = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+
+export function geserNeighbours(blank: number): number[] {
+  const r = Math.floor(blank / GESER_N);
+  const c = blank % GESER_N;
+  const out: number[] = [];
+  if (r > 0) out.push(blank - GESER_N);
+  if (r < GESER_N - 1) out.push(blank + GESER_N);
+  if (c > 0) out.push(blank - 1);
+  if (c < GESER_N - 1) out.push(blank + 1);
+  return out;
+}
+
+/** Acak lewat gerakan legal dari kondisi selesai, jadi pasti bisa dipecahkan. */
+export function buildGeserBoard(): number[] {
+  for (;;) {
+    const t = [...GESER_SOLVED];
+    let blank = 8;
+    let prev = -1;
+    for (let k = 0; k < 90; k++) {
+      const options = geserNeighbours(blank).filter((p) => p !== prev);
+      const pick = options[Math.floor(Math.random() * options.length)];
+      t[blank] = t[pick];
+      t[pick] = 0;
+      prev = blank;
+      blank = pick;
+    }
+    if (t.some((v, i) => v !== GESER_SOLVED[i])) return t;
+  }
+}
+
+export const geserCorrect = (t: number[]) => t.filter((v, i) => v !== 0 && v === GESER_SOLVED[i]).length;
+
+/** Selesai = 400 + 4 per detik tersisa + bonus sedikit langkah (maks +200). */
+export const geserSolveScore = (secsLeft: number, moves: number) =>
+  400 + Math.max(0, secsLeft) * 4 + Math.max(0, 200 - moves * 2);
