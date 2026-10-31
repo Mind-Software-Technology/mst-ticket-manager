@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import PwaInstall from "@/components/PwaInstall";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -10,6 +11,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "MST Task Manager",
   description: "Sistem Manajemen Pemantauan Tugas MST",
+  appleWebApp: { capable: true, title: "MST Tasks", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
@@ -24,6 +31,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 font-sans">
         {children}
+        <PwaInstall />
       </body>
     </html>
   );
