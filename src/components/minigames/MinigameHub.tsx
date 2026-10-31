@@ -31,6 +31,9 @@ import { SandiGame } from "./SandiGame";
 import { MinesGame } from "./MinesGame";
 import { KetikGame } from "./KetikGame";
 import { BuahGame } from "./BuahGame";
+import { TebakGame } from "./TebakGame";
+import { LampuGame } from "./LampuGame";
+import { GeserGame } from "./GeserGame";
 
 const GROUP_LABEL = { tiket: "🎫 Seputar Tiket", umum: "🎉 Seru-seruan Umum" } as const;
 
@@ -122,6 +125,9 @@ export function MinigameHub({ userId, userName }: { userId?: string; userName?: 
             {game === "ranjau" && <MinesGame key="ranjau" userId={userId} />}
             {game === "ketik" && <KetikGame key="ketik" userId={userId} />}
             {game === "buah" && <BuahGame key="buah" userId={userId} />}
+            {game === "tebak" && <TebakGame key="tebak" userId={userId} />}
+            {game === "lampu" && <LampuGame key="lampu" userId={userId} />}
+            {game === "geser" && <GeserGame key="geser" userId={userId} />}
           </>
           )
         )}

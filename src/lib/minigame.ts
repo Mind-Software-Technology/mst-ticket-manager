@@ -32,7 +32,10 @@ export type GameKey =
   | "sandi"
   | "ranjau"
   | "ketik"
-  | "buah";
+  | "buah"
+  | "tebak"
+  | "lampu"
+  | "geser";
 
 export interface GameTicket {
   id: string;
@@ -337,6 +340,42 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  tebak: {
+    group: "umum",
+    label: "Tebak Angka",
+    emoji: "🔮",
+    tagline: "Tebak angka rahasia 1-100 dengan petunjuk terlalu besar atau kecil.",
+    rules: [
+      "3 ronde, tiap ronde angka rahasia 1-100 dan maks 7 tebakan.",
+      "Petunjuk: terlalu besar atau terlalu kecil. Trik: tebak bagian tengahnya!",
+      "Benar = 100 + 50 per sisa tebakan. Gagal = 0 poin ronde itu.",
+    ],
+    needs: "",
+  },
+  lampu: {
+    group: "umum",
+    label: "Lampu Padam",
+    emoji: "💡",
+    tagline: "Matikan semua lampu! Tiap tap membalik lampu itu dan 4 tetangganya.",
+    rules: [
+      "3 papan 4x4, total 120 detik.",
+      "Tap lampu = balik status lampu itu plus atas, bawah, kiri, kanan.",
+      "Papan padam = 150 + bonus sedikit langkah (maks +60). Semua selesai = bonus sisa waktu.",
+    ],
+    needs: "",
+  },
+  geser: {
+    group: "umum",
+    label: "Puzzle Geser",
+    emoji: "🧩",
+    tagline: "Geser kotak sampai angka 1-8 berurutan. Klasik tapi bikin nagih!",
+    rules: [
+      "Papan 3x3 teracak, 120 detik.",
+      "Tap kotak di sebelah ruang kosong untuk menggesernya.",
+      "Selesai = 400 + bonus waktu + bonus sedikit langkah. Belum selesai = 20 poin per kotak yang sudah pas.",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -364,6 +403,9 @@ export const GAME_KEYS: GameKey[] = [
   "ranjau",
   "ketik",
   "buah",
+  "tebak",
+  "lampu",
+  "geser",
 ];
 
 export function shuffle<T>(input: readonly T[]): T[] {
@@ -701,6 +743,24 @@ export function resultMessage(game: GameKey, score: number): string {
       [400, "Tangkapanmu jitu, bom pun terhindar. 🍎"],
       [200, "Lumayan, keranjangnya masih bolong. 😅"],
       [0, "Buahnya jatuh semua… coba lagi! 🍌"],
+    ],
+    tebak: [
+      [900, "Peramal sejati! Binary search di kepalamu. 🔮"],
+      [600, "Tebakanmu terarah, mantap. 🎯"],
+      [300, "Lumayan, coba selalu tebak bagian tengah. ➗"],
+      [0, "Angkanya licin sekali. Coba lagi! 🌀"],
+    ],
+    lampu: [
+      [700, "Master lampu! Gelap gulita dalam sekejap. 🌑"],
+      [450, "Logikamu terang benderang. 💡"],
+      [200, "Lumayan, tinggal cari polanya. 🔦"],
+      [0, "Lampunya masih menyala semua… coba lagi! ✨"],
+    ],
+    geser: [
+      [900, "Jago puzzle! Berurutan dengan cepat. 🧠"],
+      [650, "Geseranmu rapi, mantap. 🧩"],
+      [350, "Lumayan, tinggal diasah lagi. ✏️"],
+      [0, "Kotaknya bandel ya. Coba lagi! 🌀"],
     ],
   };
   return (tiers[game].find(([min]) => score >= min) ?? tiers[game][3])[1];
