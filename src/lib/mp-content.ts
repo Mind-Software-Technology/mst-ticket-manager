@@ -1081,3 +1081,43 @@ export function buildFaktaQuestions(count = 10): ContentQuestion[] {
 // ─── Adu Ketuk ───────────────────────────────────────
 
 export const KETUK_SECONDS = 10;
+
+// ─── Grand Prix Ketik ────────────────────────────────
+
+export const GP_SECONDS = 90;
+export const GP_POINTS_PER_CHAR = 5;
+
+const GP_SENTENCES = [
+  "Kerja keras hari ini adalah investasi untuk hasil yang lebih baik besok.",
+  "Tiket yang jelas dan rapi membuat seluruh tim bekerja lebih cepat.",
+  "Jangan tunda pekerjaan hari ini karena besok sudah ada tugas yang baru.",
+  "Komunikasi yang baik adalah kunci utama keberhasilan sebuah proyek.",
+  "Setiap bug yang ditemukan lebih awal akan menghemat banyak waktu nanti.",
+  "Kopi pagi dan daftar tugas yang jelas adalah awal hari yang sempurna.",
+  "Rapat singkat yang fokus jauh lebih berguna daripada rapat panjang.",
+  "Simpan pekerjaanmu secara berkala supaya tidak ada yang hilang tiba-tiba.",
+  "Tim yang solid selalu saling membantu ketika tenggat waktu semakin dekat.",
+  "Belajar hal baru setiap hari membuat kita semakin siap menghadapi tantangan.",
+  "Kode yang bersih mudah dibaca, mudah diperbaiki, dan mudah dikembangkan.",
+  "Prioritaskan tiket yang paling mendesak, lalu kerjakan satu per satu.",
+  "Keyboard yang cepat dan jari yang lincah membuat pekerjaan terasa ringan.",
+  "Laporan harian membantu kita melihat perkembangan pekerjaan dengan jelas.",
+  "Ide terbaik sering muncul ketika kita berdiskusi santai bersama rekan kerja.",
+  "Hujan deras di luar jendela tidak menghalangi tim untuk menyelesaikan target.",
+];
+
+/** Teks balapan: 2 kalimat acak, sama untuk semua pemain (dikirim host). */
+export function buildGpText(): string {
+  return shuffle(GP_SENTENCES).slice(0, 2).join(" ");
+}
+
+/** Panjang awalan yang benar-benar cocok antara ketikan dan teks. */
+export function gpCorrectPrefix(typed: string, text: string): number {
+  let i = 0;
+  while (i < typed.length && i < text.length && typed[i] === text[i]) i++;
+  return i;
+}
+
+/** 5 poin per huruf benar; sampai finish +300 plus 10 per detik tersisa. */
+export const gpScore = (correctChars: number, finished: boolean, secsLeft: number) =>
+  correctChars * GP_POINTS_PER_CHAR + (finished ? 300 + Math.max(0, Math.floor(secsLeft)) * 10 : 0);

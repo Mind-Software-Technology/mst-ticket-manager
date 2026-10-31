@@ -43,6 +43,7 @@ import {
   buildPolaQuestions,
   buildSingkatanQuestions,
   buildFaktaQuestions,
+  buildGpText,
   buildBesarSequence,
   buildDrawChoices,
   buildDua4Puzzles,
@@ -76,6 +77,7 @@ import { GeserRace } from "./GeserRace";
 import { PetunjukRace } from "./PetunjukRace";
 import { BidikRace } from "./BidikRace";
 import { KetukRace } from "./KetukRace";
+import { GrandPrixRace } from "./GrandPrixRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -282,6 +284,8 @@ function Room({
           return { ...base, questions: buildFaktaQuestions() };
         case "ketuk":
           return { ...base };
+        case "gp":
+          return { ...base, gp: buildGpText() };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
@@ -348,6 +352,8 @@ function Room({
         return <BidikRace key={key} {...props} />;
       case "ketuk":
         return <KetukRace key={key} {...props} />;
+      case "gp":
+        return <GrandPrixRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

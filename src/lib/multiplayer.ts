@@ -49,7 +49,8 @@ export type MpMode =
   | "pola"
   | "singkatan"
   | "fakta"
-  | "ketuk";
+  | "ketuk"
+  | "gp";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -205,6 +206,18 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
       "Hitung mundur 3 detik, lalu ketuk tombol besar secepat mungkin selama 10 detik.",
       "Tiap ketukan +1 poin (keyboard: Spasi atau Enter juga bisa).",
       "Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  gp: {
+    group: "umum",
+    label: "Grand Prix Ketik",
+    emoji: "🏁",
+    tagline: "Balapan mobil dengan keyboard! Ketik dengan benar untuk memajukan mobilmu sampai finish.",
+    rules: [
+      "Semua pemain mengetik kalimat yang sama, maksimal 90 detik. Mobilmu maju tiap huruf yang benar.",
+      "Salah ketik? Mobil berhenti sampai kamu memperbaikinya (hapus lalu ketik ulang). Tempel teks dimatikan.",
+      "5 poin per huruf benar. Sampai finish +300 plus 10 per detik tersisa, jadi yang tercepat menang.",
     ],
     minPlayers: 2,
   },
@@ -525,6 +538,7 @@ export const MP_MODE_KEYS: MpMode[] = [
   "singkatan",
   "fakta",
   "ketuk",
+  "gp",
 ];
 
 export const ROUND_MS = 15_000;
@@ -782,6 +796,8 @@ export interface StartPayload {
   petunjuk?: number[];
   /** Bidik Cepat: jadwal target [ms, x%, y%, lama ms, jenis]. */
   bidik?: Array<readonly [number, number, number, number, number]>;
+  /** Grand Prix Ketik: teks balapan. */
+  gp?: string;
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }
