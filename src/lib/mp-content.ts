@@ -1084,7 +1084,9 @@ export const KETUK_SECONDS = 10;
 
 // ─── Grand Prix Ketik ────────────────────────────────
 
-export const GP_SECONDS = 90;
+export const GP_SECONDS = 150;
+/** Jumlah kalimat per balapan (± 70 huruf per kalimat). */
+export const GP_SENTENCE_COUNT = 5;
 export const GP_POINTS_PER_CHAR = 5;
 
 const GP_SENTENCES = [
@@ -1106,9 +1108,9 @@ const GP_SENTENCES = [
   "Hujan deras di luar jendela tidak menghalangi tim untuk menyelesaikan target.",
 ];
 
-/** Teks balapan: 2 kalimat acak, sama untuk semua pemain (dikirim host). */
+/** Teks balapan: beberapa kalimat acak, sama untuk semua pemain (dikirim host). */
 export function buildGpText(): string {
-  return shuffle(GP_SENTENCES).slice(0, 2).join(" ");
+  return shuffle(GP_SENTENCES).slice(0, GP_SENTENCE_COUNT).join(" ");
 }
 
 /** Panjang awalan yang benar-benar cocok antara ketikan dan teks. */
@@ -1166,3 +1168,32 @@ export function buildPilihQuestions(mode: "unik" | "mayoritas"): ContentQuestion
       answer: -1,
     }));
 }
+
+// ─── Rebut Angka, Tepat Waktu, Bom Estafet ───────────
+
+export const REBUT_COUNT = 30;
+export const REBUT_SECONDS = 40;
+
+/** Susunan angka 1..30 di papan bersama; sama untuk semua pemain. */
+export function buildRebutGrid(): number[] {
+  return shuffle(Array.from({ length: REBUT_COUNT }, (_, i) => i + 1));
+}
+
+export const TEPAT_ROUNDS = 5;
+/** Setelah target lewat sekian ms tanpa menekan STOP, ronde dianggap gagal. */
+export const TEPAT_GRACE_MS = 2500;
+/** Penghitung waktu hanya terlihat sampai sekian ms, setelah itu pemain harus menghitung sendiri. */
+export const TEPAT_VISIBLE_MS = 1000;
+
+/** Target detik tiap ronde (3-8 detik, tidak berulang). */
+export function buildTepatTargets(): number[] {
+  return shuffle([3, 4, 5, 6, 7, 8]).slice(0, TEPAT_ROUNDS);
+}
+
+/** 1000 kalau pas; berkurang linear sampai 0 di selisih 2 detik. */
+export const tepatPoints = (errorMs: number) => Math.max(0, Math.round(1000 * (1 - Math.abs(errorMs) / 2000)));
+
+export const BOM_MIN_MS = 8000;
+export const BOM_MAX_MS = 18000;
+export const BOM_SURVIVE_POINTS = 100;
+export const BOM_WINNER_BONUS = 200;

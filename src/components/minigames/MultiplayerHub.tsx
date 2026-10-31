@@ -45,6 +45,8 @@ import {
   buildFaktaQuestions,
   buildGpText,
   buildPilihQuestions,
+  buildRebutGrid,
+  buildTepatTargets,
   buildBesarSequence,
   buildDrawChoices,
   buildDua4Puzzles,
@@ -81,6 +83,9 @@ import { KetukRace } from "./KetukRace";
 import { GrandPrixRace } from "./GrandPrixRace";
 import { PilihBareng } from "./PilihBareng";
 import { TarikRace } from "./TarikRace";
+import { RebutRace } from "./RebutRace";
+import { TepatRace } from "./TepatRace";
+import { BomEstafet } from "./BomEstafet";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -295,6 +300,12 @@ function Room({
           return { ...base, questions: buildPilihQuestions("mayoritas") };
         case "tarik":
           return { ...base };
+        case "rebut":
+          return { ...base, rebut: buildRebutGrid() };
+        case "tepat":
+          return { ...base, tepat: buildTepatTargets() };
+        case "bom":
+          return { ...base };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
@@ -368,6 +379,12 @@ function Room({
         return <PilihBareng key={key} {...props} />;
       case "tarik":
         return <TarikRace key={key} {...props} />;
+      case "rebut":
+        return <RebutRace key={key} {...props} />;
+      case "tepat":
+        return <TepatRace key={key} {...props} />;
+      case "bom":
+        return <BomEstafet key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

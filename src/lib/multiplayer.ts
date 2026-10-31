@@ -53,7 +53,10 @@ export type MpMode =
   | "gp"
   | "unik"
   | "mayoritas"
-  | "tarik";
+  | "tarik"
+  | "rebut"
+  | "tepat"
+  | "bom";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -218,7 +221,7 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     emoji: "🏁",
     tagline: "Balapan mobil dengan keyboard! Ketik dengan benar untuk memajukan mobilmu sampai finish.",
     rules: [
-      "Semua pemain mengetik kalimat yang sama, maksimal 90 detik. Mobilmu maju tiap huruf yang benar.",
+      "Semua pemain mengetik teks panjang yang sama (5 kalimat), maksimal 150 detik. Mobilmu maju tiap huruf yang benar.",
       "Salah ketik? Mobil berhenti sampai kamu memperbaikinya (hapus lalu ketik ulang). Tempel teks dimatikan.",
       "5 poin per huruf benar. Sampai finish +300 plus 10 per detik tersisa, jadi yang tercepat menang.",
     ],
@@ -259,6 +262,42 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
       "Tim dengan rata-rata ketukan per pemain lebih tinggi menang. Skor pribadi = jumlah ketukan.",
     ],
     minPlayers: 2,
+  },
+  rebut: {
+    group: "umum",
+    label: "Rebut Angka",
+    emoji: "🏃",
+    tagline: "Satu papan angka untuk semua. Siapa paling cepat menyentuh angka berikutnya, dia yang dapat poin!",
+    rules: [
+      "Papan 1-30 yang sama untuk semua pemain, 40 detik. Semua mencari angka yang SAMA secara berurutan: 1, 2, 3, …",
+      "Tap angka berikutnya secepat mungkin. Yang tercepat mengklaim angka itu (+10), yang lambat gigit jari.",
+      "Angka yang sudah direbut ditandai avatar perebutnya. Host menjadi wasit kalau ada yang tap bersamaan.",
+    ],
+    minPlayers: 2,
+  },
+  tepat: {
+    group: "umum",
+    label: "Tepat Waktu",
+    emoji: "⏱️",
+    tagline: "Tekan STOP tepat di detik yang diminta. Penghitung waktu menghilang, andalkan insting!",
+    rules: [
+      "5 ronde, target waktu berbeda-beda (3-8 detik) dan sama untuk semua pemain.",
+      "Penghitung waktu hanya terlihat 1 detik pertama, lalu menghilang. Tekan STOP saat kamu rasa target tercapai.",
+      "Poin ronde = 1000 kalau pas, berkurang makin jauh selisihnya (0 di selisih 2 detik).",
+    ],
+    minPlayers: 2,
+  },
+  bom: {
+    group: "umum",
+    label: "Bom Estafet",
+    emoji: "💣",
+    tagline: "Lempar bom ke temanmu sebelum meledak! Pemegang bom saat meledak gugur. Penyintas terakhir menang.",
+    rules: [
+      "Satu bom beredar. Pemegang bom harus melemparnya ke pemain lain yang masih hidup.",
+      "Bom meledak di waktu acak (8-18 detik) tanpa tanda. Yang memegangnya saat meledak gugur.",
+      "Tiap ronde yang selamat +100. Penyintas terakhir +200 bonus. Butuh minimal 3 pemain.",
+    ],
+    minPlayers: 3,
   },
   ketik: {
     group: "umum",
@@ -581,6 +620,9 @@ export const MP_MODE_KEYS: MpMode[] = [
   "unik",
   "mayoritas",
   "tarik",
+  "rebut",
+  "tepat",
+  "bom",
 ];
 
 export const ROUND_MS = 15_000;
@@ -867,6 +909,10 @@ export interface StartPayload {
   bidik?: Array<readonly [number, number, number, number, number]>;
   /** Grand Prix Ketik: teks balapan. */
   gp?: string;
+  /** Rebut Angka: susunan angka 1..30 di papan. */
+  rebut?: number[];
+  /** Tepat Waktu: target detik tiap ronde. */
+  tepat?: number[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }
@@ -883,6 +929,12 @@ export type MpMessage =
   /** Tebak Gambar: potongan goresan (koordinat 0-1000, x lalu y berselang-seling). */
   | { t: "stroke"; i: number; c: number; w: number; s: boolean; p: number[] }
   | { t: "clear"; i: number }
+  /** Rebut Angka: pemain id mengklaim angka n (host menjadi wasit, balasannya `won`). */
+  | { t: "claim"; n: number; id: string }
+  | { t: "won"; n: number; id: string }
+  /** Bom Estafet: lemparan bom (from kosong = bom dibagikan host di awal ronde) dan ledakan. */
+  | { t: "pass"; from: string; to: string }
+  | { t: "boom"; i: number; id: string }
   /** Tebak Gambar: tukang gambar memilih kata ke-k dari pilihan ronde i. */
   | { t: "pick"; i: number; k: number }
   | { t: "guess"; i: number; id: string; text: string }
