@@ -46,6 +46,9 @@ import {
   buildGpText,
   buildPilihQuestions,
   buildRebutGrid,
+  buildDaduRolls,
+  buildPenyusupQuestions,
+  buildCacahQuestions,
   buildTepatTargets,
   buildBesarSequence,
   buildDrawChoices,
@@ -86,6 +89,8 @@ import { TarikRace } from "./TarikRace";
 import { RebutRace } from "./RebutRace";
 import { TepatRace } from "./TepatRace";
 import { BomEstafet } from "./BomEstafet";
+import { DaduRace } from "./DaduRace";
+import { CacahRace } from "./CacahRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
 
@@ -306,6 +311,12 @@ function Room({
           return { ...base, tepat: buildTepatTargets() };
         case "bom":
           return { ...base };
+        case "dadu":
+          return { ...base, dadu: buildDaduRolls() };
+        case "penyusup":
+          return { ...base, questions: buildPenyusupQuestions() };
+        case "cacah":
+          return { ...base, cacah: buildCacahQuestions() };
         default:
           return { ...base, questions: buildMpQuestions(tickets, names) };
       }
@@ -385,6 +396,10 @@ function Room({
         return <TepatRace key={key} {...props} />;
       case "bom":
         return <BomEstafet key={key} {...props} />;
+      case "dadu":
+        return <DaduRace key={key} {...props} />;
+      case "cacah":
+        return <CacahRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

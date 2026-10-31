@@ -77,7 +77,7 @@ const asQuestion = (kind: "trivia" | "emoji", [prompt, answer, wrong]: Item, hin
 };
 
 export interface ContentQuestion {
-  kind: "trivia" | "emoji" | "math" | "scramble" | "antonim" | "peribahasa" | "ibukota" | "pola" | "singkatan" | "fakta" | "unik" | "mayoritas";
+  kind: "trivia" | "emoji" | "math" | "scramble" | "antonim" | "peribahasa" | "ibukota" | "pola" | "singkatan" | "fakta" | "unik" | "mayoritas" | "penyusup";
   prompt: string;
   hint: string;
   options: string[];
@@ -1197,3 +1197,79 @@ export const BOM_MIN_MS = 8000;
 export const BOM_MAX_MS = 18000;
 export const BOM_SURVIVE_POINTS = 100;
 export const BOM_WINNER_BONUS = 200;
+
+// ─── Dadu Berani, Penyusup, Hitung Emoji ─────────────
+
+export const DADU_ROUNDS = 5;
+export const DADU_ROUND_SECONDS = 15;
+export const DADU_ROLLS_PER_ROUND = 25;
+
+/** Urutan lemparan dadu tiap ronde; sama untuk semua pemain, jadi murni adu nyali. */
+export function buildDaduRolls(): number[][] {
+  return Array.from({ length: DADU_ROUNDS }, () => Array.from({ length: DADU_ROLLS_PER_ROUND }, () => rand(1, 6)));
+}
+
+/** [kelompok, penyusup] — tiga anggota sekelompok lalu satu penyusup. */
+const PENYUSUP: ReadonlyArray<readonly [readonly [string, string, string], string]> = [
+  [["Apel", "Jeruk", "Mangga"], "Wortel"],
+  [["Kucing", "Sapi", "Kambing"], "Hiu"],
+  [["Mobil", "Kereta", "Pesawat"], "Kursi"],
+  [["Pensil", "Spidol", "Penghapus"], "Garpu"],
+  [["Mars", "Venus", "Saturnus"], "Bulan"],
+  [["Python", "Java", "Rust"], "Photoshop"],
+  [["Merah", "Biru", "Hijau"], "Segitiga"],
+  [["Wajan", "Panci", "Spatula"], "Palu"],
+  [["Tangan", "Kaki", "Kepala"], "Meja"],
+  [["Kopi", "Teh", "Susu"], "Roti"],
+  [["Medan", "Bandung", "Makassar"], "Bangkok"],
+  [["Windows", "Linux", "Android"], "Chrome"],
+  [["Chrome", "Firefox", "Safari"], "Windows"],
+  [["Senin", "Rabu", "Jumat"], "Januari"],
+  [["Maret", "Juni", "Agustus"], "Selasa"],
+  [["Gitar", "Piano", "Drum"], "Palu"],
+  [["Futsal", "Renang", "Badminton"], "Menjahit"],
+  [["Paus", "Kelelawar", "Lumba-lumba"], "Penguin"],
+  [["Besi", "Emas", "Perak"], "Oksigen"],
+  [["Mouse", "Keyboard", "Monitor"], "Excel"],
+];
+
+export function buildPenyusupQuestions(count = 10): ContentQuestion[] {
+  return shuffle(PENYUSUP)
+    .slice(0, count)
+    .map(([group, intruder]) => {
+      const options = shuffle([...group, intruder]);
+      return {
+        kind: "penyusup" as const,
+        prompt: "Mana yang TIDAK sekelompok dengan yang lain?",
+        hint: "Cari penyusupnya",
+        options,
+        answer: options.indexOf(intruder),
+      };
+    });
+}
+
+export const CACAH_SECONDS = 60;
+export const CACAH_QUESTIONS = 10;
+const CACAH_EMOJI = ["🍎", "🍌", "🍇", "🍊", "🍓", "🥝", "🍉", "🍒"];
+
+/** [isi papan, emoji yang dihitung, pilihan angka, indeks jawaban benar]. */
+export type CacahQuestion = readonly [string[], string, number[], number];
+
+export function buildCacahQuestions(): CacahQuestion[] {
+  return Array.from({ length: CACAH_QUESTIONS }, (_, q) => {
+    const [target, other1, other2] = shuffle(CACAH_EMOJI).slice(0, 3);
+    const total = 12 + Math.min(q, 6) * 2;
+    const answer = rand(3, Math.min(9, total - 4));
+    const cells = [
+      ...Array<string>(answer).fill(target),
+      ...Array.from({ length: total - answer }, () => (Math.random() < 0.5 ? other1 : other2)),
+    ];
+    const wrong = new Set<number>();
+    while (wrong.size < 3) {
+      const v = answer + rand(1, 3) * (Math.random() < 0.5 ? -1 : 1);
+      if (v > 0 && v !== answer) wrong.add(v);
+    }
+    const options = shuffle([answer, ...wrong]);
+    return [shuffle(cells), target, options, options.indexOf(answer)] as const;
+  });
+}

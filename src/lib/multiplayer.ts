@@ -56,7 +56,10 @@ export type MpMode =
   | "tarik"
   | "rebut"
   | "tepat"
-  | "bom";
+  | "bom"
+  | "dadu"
+  | "penyusup"
+  | "cacah";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -298,6 +301,42 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
       "Tiap ronde yang selamat +100. Penyintas terakhir +200 bonus. Butuh minimal 3 pemain.",
     ],
     minPlayers: 3,
+  },
+  dadu: {
+    group: "umum",
+    label: "Dadu Berani",
+    emoji: "🎲",
+    tagline: "Lempar dadu terus untuk menumpuk poin, tapi angka 1 menghanguskan semuanya. Berani sampai mana?",
+    rules: [
+      "5 ronde, tiap ronde maksimal 15 detik. Urutan dadu sama untuk semua pemain.",
+      "Tekan LEMPAR untuk menambah poin giliran. Kalau keluar angka 1, poin giliran hangus dan ronde berakhir.",
+      "Tekan SIMPAN kapan saja untuk mengamankan poin giliran ke skor totalmu. Waktu habis = otomatis disimpan.",
+    ],
+    minPlayers: 2,
+  },
+  penyusup: {
+    group: "umum",
+    label: "Penyusup",
+    emoji: "🕵️",
+    tagline: "Empat kata, tiga sekelompok dan satu penyusup. Siapa paling cepat menemukannya?",
+    rules: [
+      "10 soal, 15 detik per soal. Soal sama untuk semua pemain.",
+      "Pilih kata yang TIDAK sekelompok dengan tiga lainnya.",
+      "Benar = 100 + bonus kecepatan (maks +100).",
+    ],
+    minPlayers: 2,
+  },
+  cacah: {
+    group: "umum",
+    label: "Hitung Emoji",
+    emoji: "🍓",
+    tagline: "Hitung berapa banyak satu emoji di antara tumpukan emoji lain. Mata jeli, hitungan cepat!",
+    rules: [
+      "10 papan emoji (makin lama makin banyak), 60 detik total. Papan sama untuk semua pemain.",
+      "Hitung jumlah emoji yang diminta lalu pilih angkanya dari 4 pilihan.",
+      "Benar +100, salah -20. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
   },
   ketik: {
     group: "umum",
@@ -623,6 +662,9 @@ export const MP_MODE_KEYS: MpMode[] = [
   "rebut",
   "tepat",
   "bom",
+  "dadu",
+  "penyusup",
+  "cacah",
 ];
 
 export const ROUND_MS = 15_000;
@@ -647,7 +689,8 @@ export type QuestionKind =
   | "singkatan"
   | "fakta"
   | "unik"
-  | "mayoritas";
+  | "mayoritas"
+  | "penyusup";
 
 export interface MpQuestion {
   kind: QuestionKind;
@@ -676,6 +719,7 @@ const KIND_TITLE: Record<QuestionKind, string> = {
   fakta: "🧐 Fakta atau mitos?",
   unik: "🎲 Pilih angka rahasiamu",
   mayoritas: "🗳️ Tebak selera mayoritas",
+  penyusup: "🕵️ Cari penyusupnya",
 };
 
 export const kindTitle = (k: QuestionKind) => KIND_TITLE[k];
@@ -913,6 +957,10 @@ export interface StartPayload {
   rebut?: number[];
   /** Tepat Waktu: target detik tiap ronde. */
   tepat?: number[];
+  /** Dadu Berani: urutan lemparan dadu tiap ronde. */
+  dadu?: number[][];
+  /** Hitung Emoji: [isi papan, emoji target, pilihan angka, indeks benar]. */
+  cacah?: Array<readonly [string[], string, number[], number]>;
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }
