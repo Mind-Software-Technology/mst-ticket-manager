@@ -9,19 +9,27 @@ import {
   ANGKA_SECONDS,
   ARAH_SECONDS,
   BANYAK_SECONDS,
+  CEK_SECONDS,
+  KALI_SECONDS,
+  KEMBAR_SECONDS,
+  URUT_SECONDS,
   INGAT_SECONDS,
   JUMLAH_SECONDS,
   buildAngkaRounds,
   buildArahSequence,
   buildBanyakSequence,
+  buildCekSequence,
+  buildKaliSequence,
+  buildKembarSequence,
+  buildUrutSequence,
   buildIngatPool,
   buildJumlahSequence,
 } from "@/lib/mp-content";
 import type { MpMessage, MpMode, MpPlayer, StartPayload } from "@/lib/multiplayer";
 import { RaceShell, SoloShell } from "./GameShells";
-import { AngkaView, ArahView, BanyakView, IngatView, JumlahView } from "./QuickViews";
+import { AngkaView, ArahView, BanyakView, CekView, IngatView, JumlahView, KaliView, KembarView, UrutView } from "./QuickViews";
 
-export type QuickKey = "angka" | "jumlah" | "ingat" | "banyak" | "arah";
+export type QuickKey = "angka" | "jumlah" | "ingat" | "banyak" | "arah" | "kali" | "cek" | "kembar" | "urut";
 
 export function SoloQuick({ game, userId }: { game: QuickKey; userId?: string }) {
   switch (game) {
@@ -47,6 +55,30 @@ export function SoloQuick({ game, userId }: { game: QuickKey; userId?: string })
       return (
         <SoloShell game="banyak" userId={userId} seconds={BANYAK_SECONDS} build={() => buildBanyakSequence()}>
           {(data, answer) => <BanyakView data={data} onAnswer={answer} />}
+        </SoloShell>
+      );
+    case "kali":
+      return (
+        <SoloShell game="kali" userId={userId} seconds={KALI_SECONDS} build={() => buildKaliSequence()}>
+          {(data, answer) => <KaliView data={data} onAnswer={answer} />}
+        </SoloShell>
+      );
+    case "cek":
+      return (
+        <SoloShell game="cek" userId={userId} seconds={CEK_SECONDS} build={() => buildCekSequence()}>
+          {(data, answer) => <CekView data={data} onAnswer={answer} />}
+        </SoloShell>
+      );
+    case "kembar":
+      return (
+        <SoloShell game="kembar" userId={userId} seconds={KEMBAR_SECONDS} build={() => buildKembarSequence()}>
+          {(data, answer) => <KembarView data={data} onAnswer={answer} />}
+        </SoloShell>
+      );
+    case "urut":
+      return (
+        <SoloShell game="urut" userId={userId} seconds={URUT_SECONDS} build={() => buildUrutSequence()}>
+          {(data, answer) => <UrutView data={data} onAnswer={answer} />}
         </SoloShell>
       );
     case "arah":
@@ -108,6 +140,30 @@ export function RaceQuick({
       return (
         <RaceShell {...shell} mode="banyak" seconds={BANYAK_SECONDS} blurb="Mana yang emojinya lebih banyak?">
           {(answer) => <BanyakView data={config.banyak ?? []} onAnswer={answer} />}
+        </RaceShell>
+      );
+    case "kali":
+      return (
+        <RaceShell {...shell} mode="kali" seconds={KALI_SECONDS} blurb="Tap semua kelipatan yang diminta!">
+          {(answer) => <KaliView data={config.kali ?? []} onAnswer={answer} />}
+        </RaceShell>
+      );
+    case "cek":
+      return (
+        <RaceShell {...shell} mode="cek" seconds={CEK_SECONDS} blurb="Persamaan ini benar atau salah?">
+          {(answer) => <CekView data={config.cek ?? []} onAnswer={answer} />}
+        </RaceShell>
+      );
+    case "kembar":
+      return (
+        <RaceShell {...shell} mode="kembar" seconds={KEMBAR_SECONDS} blurb="Cari dua emoji yang kembar!">
+          {(answer) => <KembarView data={config.kembar ?? []} onAnswer={answer} />}
+        </RaceShell>
+      );
+    case "urut":
+      return (
+        <RaceShell {...shell} mode="urut" seconds={URUT_SECONDS} blurb="Urutkan angka secepat kilat!">
+          {(answer) => <UrutView data={config.urut ?? []} onAnswer={answer} />}
         </RaceShell>
       );
     default:

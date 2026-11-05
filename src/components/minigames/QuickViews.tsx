@@ -17,7 +17,10 @@ import {
   type AngkaRound,
   type ArahItem,
   type BanyakItem,
+  type CekItem,
   type JumlahItem,
+  type KaliItem,
+  type UrutItem,
 } from "@/lib/mp-content";
 import type { Answer } from "./GameShells";
 import { useSideKeys, type Side } from "./BesarGame";
@@ -404,6 +407,217 @@ export function ArahView({ data, onAnswer }: { data: ArahItem[]; onAnswer: Answe
         {btn(3, "col-start-1 row-start-2")}
         {btn(1, "col-start-3 row-start-2")}
         {btn(2, "col-start-2 row-start-3")}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tap Kelipatan ───────────────────────────────────
+
+export function KaliView({ data, onAnswer }: { data: KaliItem[]; onAnswer: Answer }) {
+  const [index, setIndex] = useState(0);
+  const [found, setFound] = useState<number[]>([]);
+  const [bad, setBad] = useState<number | null>(null);
+  const item = data[index];
+  if (!item) return null;
+  const [k, cells] = item;
+  const total = cells.filter((v) => v % k === 0).length;
+
+  const tap = (v: number) => {
+    if (found.includes(v)) return;
+    if (v % k !== 0) {
+      onAnswer(-5, false);
+      setBad(v);
+      setTimeout(() => setBad(null), 250);
+      return;
+    }
+    const next = [...found, v];
+    if (next.length >= total) {
+      onAnswer(15, true);
+      setFound([]);
+      setIndex(index + 1);
+    } else {
+      onAnswer(5, true);
+      setFound(next);
+    }
+  };
+
+  return (
+    <div>
+      <p className="mb-3 text-center text-sm font-bold text-slate-500">
+        Tap SEMUA kelipatan <span className="text-3xl font-black text-indigo-600">{k}</span>
+        <span className="ml-2 text-xs text-slate-400">({found.length}/{total})</span>
+      </p>
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+        {cells.map((v) => (
+          <button
+            key={`${index}-${v}`}
+            type="button"
+            disabled={found.includes(v)}
+            onPointerDown={() => tap(v)}
+            className={`aspect-square rounded-xl text-xl font-black shadow-md transition active:scale-95 ${
+              found.includes(v)
+                ? "bg-emerald-100 text-emerald-300"
+                : bad === v
+                  ? "bg-red-500 text-white"
+                  : "bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white"
+            }`}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Cek Hitungan ────────────────────────────────────
+
+export function CekView({ data, onAnswer }: { data: CekItem[]; onAnswer: Answer }) {
+  const [index, setIndex] = useState(0);
+  const [wrong, setWrong] = useState(false);
+  const item = data[index];
+
+  // L = Benar, R = Salah (F / J atau panah).
+  const pick = (side: Side) => {
+    if (!item) return;
+    const said = side === "L";
+    if (said === (item[1] === 1)) onAnswer(10, true);
+    else {
+      onAnswer(-5, false);
+      setWrong(true);
+      setTimeout(() => setWrong(false), 200);
+    }
+    setIndex(index + 1);
+  };
+  useSideKeys(true, pick);
+
+  if (!item) return null;
+  return (
+    <div className="text-center">
+      <p className="mb-2 text-xs font-bold text-slate-400">Persamaan ini BENAR atau SALAH?</p>
+      <div className={`mb-4 rounded-2xl border-2 bg-white py-8 text-4xl font-black text-slate-900 ${wrong ? "border-red-400" : "border-slate-200"}`}>
+        {item[0]}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <button type="button" onPointerDown={() => pick("L")} className="h-20 rounded-2xl bg-emerald-500 text-xl font-black text-white shadow active:scale-95">
+          ✅ BENAR<span className="block text-[11px] font-semibold opacity-70">F / ←</span>
+        </button>
+        <button type="button" onPointerDown={() => pick("R")} className="h-20 rounded-2xl bg-red-500 text-xl font-black text-white shadow active:scale-95">
+          ❌ SALAH<span className="block text-[11px] font-semibold opacity-70">J / →</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Cari Kembar ─────────────────────────────────────
+
+export function KembarView({ data, onAnswer }: { data: string[][]; onAnswer: Answer }) {
+  const [index, setIndex] = useState(0);
+  const [sel, setSel] = useState<number | null>(null);
+  const [bad, setBad] = useState<number | null>(null);
+  const cells = data[index];
+  if (!cells) return null;
+
+  const tap = (i: number) => {
+    if (sel === null) {
+      setSel(i);
+      return;
+    }
+    if (sel === i) {
+      setSel(null);
+      return;
+    }
+    if (cells[sel] === cells[i]) {
+      onAnswer(20, true);
+      setSel(null);
+      setIndex(index + 1);
+    } else {
+      onAnswer(-5, false);
+      setBad(i);
+      setTimeout(() => setBad(null), 250);
+      setSel(null);
+    }
+  };
+
+  const cols = cells.length <= 12 ? 4 : cells.length <= 20 ? 5 : 6;
+  return (
+    <div>
+      <p className="mb-2 text-center text-xs font-bold text-slate-400">Temukan dua emoji yang KEMBAR</p>
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        {cells.map((e, i) => (
+          <button
+            key={`${index}-${i}`}
+            type="button"
+            onPointerDown={() => tap(i)}
+            className={`aspect-square rounded-xl border-2 text-2xl transition active:scale-95 ${
+              bad === i ? "border-red-400 bg-red-50" : sel === i ? "border-amber-400 bg-amber-50" : "border-slate-200 bg-white"
+            }`}
+          >
+            {e}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Urut Angka ──────────────────────────────────────
+
+export function UrutView({ data, onAnswer }: { data: UrutItem[]; onAnswer: Answer }) {
+  const [index, setIndex] = useState(0);
+  const [done, setDone] = useState<number[]>([]);
+  const [bad, setBad] = useState<number | null>(null);
+  const item = data[index];
+  if (!item) return null;
+  const [nums, desc] = item;
+  const order = [...nums].sort((a, b) => (desc ? b - a : a - b));
+
+  const tap = (v: number) => {
+    if (done.includes(v)) return;
+    if (v !== order[done.length]) {
+      onAnswer(-5, false);
+      setBad(v);
+      setTimeout(() => setBad(null), 250);
+      setDone([]);
+      return;
+    }
+    const next = [...done, v];
+    if (next.length >= order.length) {
+      onAnswer(15, true);
+      setDone([]);
+      setIndex(index + 1);
+    } else {
+      onAnswer(5, true);
+      setDone(next);
+    }
+  };
+
+  return (
+    <div>
+      <p className="mb-3 text-center text-sm font-bold text-slate-500">
+        Tap dari{" "}
+        <span className="text-xl font-black text-indigo-600">{desc ? "TERBESAR ke terkecil" : "TERKECIL ke terbesar"}</span>
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        {nums.map((v) => (
+          <button
+            key={`${index}-${v}`}
+            type="button"
+            disabled={done.includes(v)}
+            onPointerDown={() => tap(v)}
+            className={`h-16 rounded-xl text-2xl font-black shadow-md transition active:scale-95 ${
+              done.includes(v)
+                ? "bg-emerald-100 text-emerald-300"
+                : bad === v
+                  ? "bg-red-500 text-white"
+                  : "bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white"
+            }`}
+          >
+            {v}
+          </button>
+        ))}
       </div>
     </div>
   );

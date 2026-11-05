@@ -58,6 +58,10 @@ import {
   buildAngkaRounds,
   buildArahSequence,
   buildBanyakSequence,
+  buildCekSequence,
+  buildKaliSequence,
+  buildKembarSequence,
+  buildUrutSequence,
   buildIngatPool,
   buildJumlahSequence,
   buildSimonPattern,
@@ -266,6 +270,14 @@ function Room({
           return { ...base, banyak: buildBanyakSequence() };
         case "arah":
           return { ...base, arah: buildArahSequence() };
+        case "kali":
+          return { ...base, kali: buildKaliSequence() };
+        case "cek":
+          return { ...base, cek: buildCekSequence() };
+        case "kembar":
+          return { ...base, kembar: buildKembarSequence() };
+        case "urut":
+          return { ...base, urut: buildUrutSequence() };
         case "beda":
           return { ...base, beda: buildBedaSequence() };
         case "besar":
@@ -368,6 +380,10 @@ function Room({
       case "ingat":
       case "banyak":
       case "arah":
+      case "kali":
+      case "cek":
+      case "kembar":
+      case "urut":
         return <RaceQuick key={key} {...props} />;
       case "beda":
         return <BedaRace key={key} {...props} />;

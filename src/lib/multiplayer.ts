@@ -7,7 +7,7 @@
 // semua klien menghitung skor dari data yang sama supaya hasilnya seragam.
 // =====================================================
 
-import type { AngkaRound, ArahItem, BanyakItem, JumlahItem } from "@/lib/mp-content";
+import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem } from "@/lib/mp-content";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -64,7 +64,11 @@ export type MpMode =
   | "jumlah"
   | "ingat"
   | "banyak"
-  | "arah";
+  | "arah"
+  | "kali"
+  | "cek"
+  | "kembar"
+  | "urut";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -525,6 +529,58 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     ],
     minPlayers: 2,
   },
+  kali: {
+    group: "umum",
+    label: "Tap Kelipatan",
+    emoji: "✴️",
+    tagline: "Tap semua angka yang merupakan kelipatan dari angka yang diminta. Jangan kena pengecoh!",
+    rules: [
+      "45 detik, tiap ronde ada satu angka k dan papan penuh angka acak.",
+      "Tap SEMUA kelipatan k di papan. Tiap benar +5, ronde beres +10.",
+      "Salah tap -5. Angka k makin besar dan papan makin ramai.",
+      "Soal sama untuk semua pemain. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  cek: {
+    group: "umum",
+    label: "Cek Hitungan",
+    emoji: "✅",
+    tagline: "Persamaan di layar itu benar atau salah? Putuskan dalam sekejap!",
+    rules: [
+      "30 detik, satu persamaan muncul bergantian (tambah, kurang, kali).",
+      "Tap BENAR atau SALAH (keyboard: F untuk benar, J untuk salah, atau ← →).",
+      "Benar +10, salah -5. Jawaban yang salah sering selisih tipis!",
+      "Soal sama untuk semua pemain. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  kembar: {
+    group: "umum",
+    label: "Cari Kembar",
+    emoji: "👯",
+    tagline: "Semua emoji berbeda kecuali satu pasang kembar. Temukan dua-duanya!",
+    rules: [
+      "40 detik, papan emoji makin besar tiap ronde.",
+      "Tap dua emoji yang sama. Benar +20, salah -5.",
+      "Cuma ada satu pasang kembar di tiap papan.",
+      "Soal sama untuk semua pemain. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  urut: {
+    group: "umum",
+    label: "Urut Angka",
+    emoji: "📶",
+    tagline: "Tap angka dari yang terkecil ke terbesar. Kadang diminta sebaliknya!",
+    rules: [
+      "40 detik, tiap ronde ada 4-9 angka acak.",
+      "Tap sesuai urutan yang diminta (kecil→besar atau besar→kecil). Tiap benar +5, ronde beres +10.",
+      "Salah tap -5 dan urutan ronde itu diulang dari awal.",
+      "Soal sama untuk semua pemain. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
   lari: {
     group: "umum",
     label: "Lomba Lari",
@@ -722,6 +778,10 @@ export const MP_MODE_KEYS: MpMode[] = [
   "ingat",
   "banyak",
   "arah",
+  "kali",
+  "cek",
+  "kembar",
+  "urut",
 ];
 
 export const ROUND_MS = 15_000;
@@ -988,6 +1048,14 @@ export interface StartPayload {
   banyak?: BanyakItem[];
   /** Arah Terbalik: [arah, balik?]. */
   arah?: ArahItem[];
+  /** Tap Kelipatan: [k, papan]. */
+  kali?: KaliItem[];
+  /** Cek Hitungan: [persamaan, 1 = benar]. */
+  cek?: CekItem[];
+  /** Cari Kembar: papan emoji. */
+  kembar?: string[][];
+  /** Urut Angka: [angka, 1 = besar ke kecil]. */
+  urut?: UrutItem[];
   /** Soal Cari Beda: [pasangan, sisi biasa, posisi si beda]. */
   beda?: Array<readonly [number, number, number]>;
   /** Soal Lebih Besar: [teks kiri, nilai kiri, teks kanan, nilai kanan]. */

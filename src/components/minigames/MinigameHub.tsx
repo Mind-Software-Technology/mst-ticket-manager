@@ -129,7 +129,7 @@ export function MinigameHub({ userId, userName }: { userId?: string; userName?: 
             {game === "tebak" && <TebakGame key="tebak" userId={userId} />}
             {game === "lampu" && <LampuGame key="lampu" userId={userId} />}
             {game === "geser" && <GeserGame key="geser" userId={userId} />}
-            {(game === "jumlah" || game === "ingat" || game === "banyak" || game === "arah") && (
+            {(game === "jumlah" || game === "ingat" || game === "banyak" || game === "arah" || game === "kali" || game === "cek" || game === "kembar" || game === "urut") && (
               <SoloQuick key={game} game={game} userId={userId} />
             )}
           </>

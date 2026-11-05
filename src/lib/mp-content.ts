@@ -355,6 +355,104 @@ export function buildArahSequence(count = 120): ArahItem[] {
   });
 }
 
+// ─── Tap Kelipatan ───────────────────────────────────
+
+export const KALI_SECONDS = 45;
+
+/** [k, isi papan]. Tap semua angka yang kelipatan k (3-5 buah). */
+export type KaliItem = readonly [number, number[]];
+
+export function buildKaliSequence(count = 60): KaliItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const k = [2, 3, 5, 3, 4, 6, 7, 8, 9][Math.min(i, 8)] ?? rand(2, 9);
+    const kk = i < 9 ? k : rand(3, 9);
+    const n = Math.min(20, 12 + Math.floor(i / 3));
+    const hi = Math.min(99, 30 + i * 4);
+    const hits = rand(3, 5);
+    const cells = new Set<number>();
+    for (let g = 0; cells.size < hits && g < 2000; g++) {
+      const v = rand(2, hi);
+      if (v % kk === 0) cells.add(v);
+    }
+    for (let g = 0; cells.size < n && g < 4000; g++) {
+      const v = rand(2, hi);
+      if (v % kk !== 0) cells.add(v);
+    }
+    return [kk, shuffle([...cells])] as const;
+  });
+}
+
+// ─── Cek Hitungan ────────────────────────────────────
+
+export const CEK_SECONDS = 30;
+
+/** [persamaan, 1 = benar]. */
+export type CekItem = readonly [string, number];
+
+export function buildCekSequence(count = 80): CekItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    let text: string;
+    let res: number;
+    const kind = i < 6 ? 0 : rand(0, 2);
+    if (kind === 0) {
+      const a = rand(10, 20 + i * 3);
+      const b = rand(5, 20 + i * 3);
+      text = `${a} + ${b}`;
+      res = a + b;
+    } else if (kind === 1) {
+      const a = rand(30, 90 + i);
+      const b = rand(5, 29);
+      text = `${a} − ${b}`;
+      res = a - b;
+    } else {
+      const a = rand(3, 12);
+      const b = rand(3, 12);
+      text = `${a} × ${b}`;
+      res = a * b;
+    }
+    const ok = Math.random() < 0.5;
+    const off = Math.random() < 0.5 ? 1 : rand(1, i < 10 ? 10 : 3);
+    const shown = ok ? res : res + (Math.random() < 0.5 ? -off : off);
+    return [`${text} = ${shown}`, shown === res ? 1 : 0] as const;
+  });
+}
+
+// ─── Cari Kembar ─────────────────────────────────────
+
+export const KEMBAR_SECONDS = 40;
+const KEMBAR_POOL = [
+  "🍎", "🍌", "🍇", "🍉", "🍓", "🍒", "🍑", "🥝", "🍍", "🥥", "🥕", "🌽", "🍄", "🌸", "🌻", "🌵", "🌲", "🍀",
+  "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐔", "🐧", "🐦",
+  "🐢", "🐙", "🦋", "🐞", "🐝", "🐳",
+];
+
+/** Papan emoji berbeda-beda, kecuali tepat dua yang kembar. */
+export function buildKembarSequence(count = 40): string[][] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = Math.min(30, 12 + Math.floor(i / 2) * 2);
+    const pick = shuffle(KEMBAR_POOL).slice(0, n - 1);
+    return shuffle([...pick, pick[rand(0, pick.length - 1)]]);
+  });
+}
+
+// ─── Urut Angka ──────────────────────────────────────
+
+export const URUT_SECONDS = 40;
+
+/** [angka acak, 1 = urutkan dari terbesar]. */
+export type UrutItem = readonly [number[], number];
+
+export function buildUrutSequence(count = 40): UrutItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = Math.min(9, 4 + Math.floor(i / 3));
+    const hi = i < 4 ? 99 : 999;
+    const set = new Set<number>();
+    while (set.size < n) set.add(rand(1, hi));
+    return [shuffle([...set]), i >= 3 && Math.random() < 0.4 ? 1 : 0] as const;
+  });
+}
+
+
 // ─── Cari Beda ───────────────────────────────────────
 
 export const BEDA_SECONDS = 30;

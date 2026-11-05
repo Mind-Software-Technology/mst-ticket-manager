@@ -39,7 +39,11 @@ export type GameKey =
   | "jumlah"
   | "ingat"
   | "banyak"
-  | "arah";
+  | "arah"
+  | "kali"
+  | "cek"
+  | "kembar"
+  | "urut";
 
 export interface GameTicket {
   id: string;
@@ -284,6 +288,54 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  kali: {
+    group: "umum",
+    label: "Tap Kelipatan",
+    emoji: "✴️",
+    tagline: "Tap semua angka yang merupakan kelipatan dari angka yang diminta. Jangan kena pengecoh!",
+    rules: [
+      "45 detik, tiap ronde ada satu angka k dan papan penuh angka acak.",
+      "Tap SEMUA kelipatan k di papan. Tiap benar +5, ronde beres +10.",
+      "Salah tap -5. Angka k makin besar dan papan makin ramai.",
+    ],
+    needs: "",
+  },
+  cek: {
+    group: "umum",
+    label: "Cek Hitungan",
+    emoji: "✅",
+    tagline: "Persamaan di layar itu benar atau salah? Putuskan dalam sekejap!",
+    rules: [
+      "30 detik, satu persamaan muncul bergantian (tambah, kurang, kali).",
+      "Tap BENAR atau SALAH (keyboard: F untuk benar, J untuk salah, atau ← →).",
+      "Benar +10, salah -5. Jawaban yang salah sering selisih tipis!",
+    ],
+    needs: "",
+  },
+  kembar: {
+    group: "umum",
+    label: "Cari Kembar",
+    emoji: "👯",
+    tagline: "Semua emoji berbeda kecuali satu pasang kembar. Temukan dua-duanya!",
+    rules: [
+      "40 detik, papan emoji makin besar tiap ronde.",
+      "Tap dua emoji yang sama. Benar +20, salah -5.",
+      "Cuma ada satu pasang kembar di tiap papan.",
+    ],
+    needs: "",
+  },
+  urut: {
+    group: "umum",
+    label: "Urut Angka",
+    emoji: "📶",
+    tagline: "Tap angka dari yang terkecil ke terbesar. Kadang diminta sebaliknya!",
+    rules: [
+      "40 detik, tiap ronde ada 4-9 angka acak.",
+      "Tap sesuai urutan yang diminta (kecil→besar atau besar→kecil). Tiap benar +5, ronde beres +10.",
+      "Salah tap -5 dan urutan ronde itu diulang dari awal.",
+    ],
+    needs: "",
+  },
   beda: {
     group: "umum",
     label: "Cari Beda",
@@ -462,6 +514,10 @@ export const GAME_KEYS: GameKey[] = [
   "ingat",
   "banyak",
   "arah",
+  "kali",
+  "cek",
+  "kembar",
+  "urut",
 ];
 
 export function shuffle<T>(input: readonly T[]): T[] {
@@ -769,6 +825,30 @@ export function resultMessage(game: GameKey, score: number): string {
       [150, "Refleks dan fokusmu mantap. 🎯"],
       [70, "Lumayan, aturan balik masih menipu. 🔄"],
       [0, "Kiri atau kanan ya… coba lagi! 🌀"],
+    ],
+    kali: [
+      [300, "Mata tajam! Kelipatan apa pun ketahuan. ✴️"],
+      [200, "Hitunganmu cepat dan teliti, mantap. 🔢"],
+      [100, "Lumayan, tabel perkalian perlu dipoles. ✏️"],
+      [0, "Kelipatannya ngumpet semua… coba lagi! 🙈"],
+    ],
+    cek: [
+      [250, "Auditor andal! Hitungan salah tak lolos. ✅"],
+      [150, "Cepat dan teliti, mantap. 🧮"],
+      [70, "Lumayan, selisih tipis masih menipu. 🤏"],
+      [0, "Benar atau salah… sama-sama meragukan! 🌀"],
+    ],
+    kembar: [
+      [300, "Detektif kembar! Pasangan apa pun ketemu. 👯"],
+      [200, "Mata jeli, mantap. 👀"],
+      [100, "Lumayan, emojinya banyak banget ya. 😵"],
+      [0, "Kembarannya pandai bersembunyi! 🕵️"],
+    ],
+    urut: [
+      [350, "Raja urutan! Angka acak pun rapi seketika. 📶"],
+      [220, "Cepat dan teliti, mantap. 🔢"],
+      [100, "Lumayan, tinggal diasah lagi. ✏️"],
+      [0, "Urutannya kusut… coba lagi! 🧵"],
     ],
     beda: [
       [250, "Mata detektif! Tak ada yang lolos darimu. 🕵️"],
