@@ -7,7 +7,7 @@
 // semua klien menghitung skor dari data yang sama supaya hasilnya seragam.
 // =====================================================
 
-import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem } from "@/lib/mp-content";
+import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem } from "@/lib/mp-content";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -68,7 +68,11 @@ export type MpMode =
   | "kali"
   | "cek"
   | "kembar"
-  | "urut";
+  | "urut"
+  | "huruf"
+  | "lanjut"
+  | "selisih"
+  | "hilang";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -581,6 +585,58 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     ],
     minPlayers: 2,
   },
+  huruf: {
+    group: "umum",
+    label: "Huruf Hilang",
+    emoji: "🔡",
+    tagline: "Satu huruf pada kata hilang. Huruf apa yang cocok melengkapinya?",
+    rules: [
+      "40 detik, kata istilah kerja & IT dengan satu huruf hilang.",
+      "Pilih huruf yang tepat dari 4 pilihan (keyboard: tombol 1-4).",
+      "Benar +10, salah -5.",
+      "Soal sama untuk semua pemain. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  lanjut: {
+    group: "umum",
+    label: "Lanjut Pola",
+    emoji: "🔴",
+    tagline: "Deretan bulatan berwarna punya pola berulang. Warna apa berikutnya?",
+    rules: [
+      "40 detik, polanya makin panjang dan rumit.",
+      "Pilih bulatan yang melanjutkan pola dari 4 pilihan (keyboard: tombol 1-4).",
+      "Benar +10, salah -5.",
+      "Soal sama untuk semua pemain. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  selisih: {
+    group: "umum",
+    label: "Selisih Angka",
+    emoji: "➖",
+    tagline: "Berapa selisih dua angka ini? Hitung di kepala, jangan tertipu pilihan mirip!",
+    rules: [
+      "30 detik, dua angka makin besar tiap soal.",
+      "Pilih selisihnya dari 4 pilihan yang angkanya mirip (keyboard: tombol 1-4).",
+      "Benar +10, salah -5.",
+      "Soal sama untuk semua pemain. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
+  hilang: {
+    group: "umum",
+    label: "Siapa Hilang",
+    emoji: "🫥",
+    tagline: "Hafalkan emoji yang tampil, lalu tebak satu yang menghilang!",
+    rules: [
+      "40 detik, emoji tampil sebentar lalu satu di antaranya hilang.",
+      "Tap emoji yang hilang dari daftar pilihan.",
+      "Benar +15, salah -5. Makin lama emojinya makin banyak.",
+      "Soal sama untuk semua pemain. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
   lari: {
     group: "umum",
     label: "Lomba Lari",
@@ -782,6 +838,10 @@ export const MP_MODE_KEYS: MpMode[] = [
   "cek",
   "kembar",
   "urut",
+  "huruf",
+  "lanjut",
+  "selisih",
+  "hilang",
 ];
 
 export const ROUND_MS = 15_000;
@@ -1056,6 +1116,12 @@ export interface StartPayload {
   kembar?: string[][];
   /** Urut Angka: [angka, 1 = besar ke kecil]. */
   urut?: UrutItem[];
+  /** Huruf Hilang / Lanjut Pola / Selisih Angka: [soal, pilihan, indeks benar]. */
+  huruf?: ChoiceItem[];
+  lanjut?: ChoiceItem[];
+  selisih?: ChoiceItem[];
+  /** Siapa Hilang: [emoji, indeks yang hilang]. */
+  hilang?: HilangItem[];
   /** Soal Cari Beda: [pasangan, sisi biasa, posisi si beda]. */
   beda?: Array<readonly [number, number, number]>;
   /** Soal Lebih Besar: [teks kiri, nilai kiri, teks kanan, nilai kanan]. */

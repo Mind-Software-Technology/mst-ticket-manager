@@ -62,6 +62,10 @@ import {
   buildKaliSequence,
   buildKembarSequence,
   buildUrutSequence,
+  buildHurufSequence,
+  buildLanjutSequence,
+  buildSelisihSequence,
+  buildHilangSequence,
   buildIngatPool,
   buildJumlahSequence,
   buildSimonPattern,
@@ -278,6 +282,14 @@ function Room({
           return { ...base, kembar: buildKembarSequence() };
         case "urut":
           return { ...base, urut: buildUrutSequence() };
+        case "huruf":
+          return { ...base, huruf: buildHurufSequence() };
+        case "lanjut":
+          return { ...base, lanjut: buildLanjutSequence() };
+        case "selisih":
+          return { ...base, selisih: buildSelisihSequence() };
+        case "hilang":
+          return { ...base, hilang: buildHilangSequence() };
         case "beda":
           return { ...base, beda: buildBedaSequence() };
         case "besar":
@@ -384,6 +396,10 @@ function Room({
       case "cek":
       case "kembar":
       case "urut":
+      case "huruf":
+      case "lanjut":
+      case "selisih":
+      case "hilang":
         return <RaceQuick key={key} {...props} />;
       case "beda":
         return <BedaRace key={key} {...props} />;

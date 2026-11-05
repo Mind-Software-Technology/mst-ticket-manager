@@ -18,6 +18,8 @@ import {
   type ArahItem,
   type BanyakItem,
   type CekItem,
+  type ChoiceItem,
+  type HilangItem,
   type JumlahItem,
   type KaliItem,
   type UrutItem,
@@ -619,6 +621,133 @@ export function UrutView({ data, onAnswer }: { data: UrutItem[]; onAnswer: Answe
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Pilihan ganda cepat ─────────────────────────────
+
+const CHOICE_HEAD = {
+  huruf: "Huruf apa yang hilang?",
+  lanjut: "Apa yang berikutnya?",
+  selisih: "Berapa selisihnya?",
+} as const;
+
+export function ChoiceView({
+  data,
+  onAnswer,
+  kind,
+}: {
+  data: ChoiceItem[];
+  onAnswer: Answer;
+  kind: keyof typeof CHOICE_HEAD;
+}) {
+  const [index, setIndex] = useState(0);
+  const [bad, setBad] = useState<number | null>(null);
+  const item = data[index];
+
+  const pick = (i: number) => {
+    if (!item || i >= item[1].length) return;
+    if (i === item[2]) onAnswer(10, true);
+    else {
+      onAnswer(-5, false);
+      setBad(i);
+      setTimeout(() => setBad(null), 250);
+    }
+    setIndex(index + 1);
+  };
+
+  useKeys(true, (e) => {
+    if (e.repeat || !/^[1-4]$/.test(e.key)) return;
+    pick(Number(e.key) - 1);
+  });
+
+  if (!item) return null;
+  return (
+    <div className="text-center">
+      <p className="mb-2 text-xs font-bold text-slate-400">{CHOICE_HEAD[kind]}</p>
+      <div className="mb-4 rounded-2xl border-2 border-slate-200 bg-white px-3 py-7 text-3xl font-black tracking-widest text-slate-900">
+        {item[0]}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {item[1].map((o, i) => (
+          <button
+            key={`${index}-${i}`}
+            type="button"
+            onPointerDown={() => pick(i)}
+            className={`h-16 rounded-2xl border-2 text-2xl font-black shadow-sm transition active:scale-95 ${
+              bad === i ? "border-red-400 bg-red-50 text-red-600" : "border-slate-200 bg-white text-slate-800 hover:border-indigo-300"
+            }`}
+          >
+            {o}
+            <span className="block text-[10px] font-semibold text-slate-400">{i + 1}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Siapa Hilang ────────────────────────────────────
+
+export function HilangView({ data, onAnswer }: { data: HilangItem[]; onAnswer: Answer }) {
+  const [index, setIndex] = useState(0);
+  const [phase, setPhase] = useState<"show" | "ask">("show");
+  const [bad, setBad] = useState<string | null>(null);
+  const item = data[index];
+  const count = item ? item[0].length : 0;
+
+  useEffect(() => {
+    if (phase !== "show") return;
+    const id = setTimeout(() => setPhase("ask"), 1500 + count * 250);
+    return () => clearTimeout(id);
+  }, [phase, index, count]);
+
+  if (!item) return null;
+  const [emojis, missing] = item;
+  const options = [...emojis].sort();
+
+  const pick = (e: string) => {
+    if (phase !== "ask") return;
+    if (e === emojis[missing]) {
+      onAnswer(15, true);
+      setPhase("show");
+      setIndex(index + 1);
+    } else {
+      onAnswer(-5, false);
+      setBad(e);
+      setTimeout(() => setBad(null), 250);
+    }
+  };
+
+  return (
+    <div className="text-center">
+      <p className="mb-2 text-xs font-bold text-slate-400">
+        {phase === "show" ? "Hafalkan emoji ini…" : "Mana yang HILANG?"}
+      </p>
+      <div className="mb-4 flex min-h-[7rem] flex-wrap items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white p-3">
+        {emojis.map((e, i) => (
+          <span key={`${index}-${i}`} className="w-12 text-4xl">
+            {phase === "ask" && i === missing ? "❔" : e}
+          </span>
+        ))}
+      </div>
+      {phase === "ask" && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {options.map((e) => (
+            <button
+              key={e}
+              type="button"
+              onPointerDown={() => pick(e)}
+              className={`h-14 w-14 rounded-xl border-2 text-3xl transition active:scale-95 ${
+                bad === e ? "border-red-400 bg-red-50" : "border-slate-200 bg-white hover:border-indigo-300"
+              }`}
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -420,7 +420,7 @@ export function buildCekSequence(count = 80): CekItem[] {
 // ─── Cari Kembar ─────────────────────────────────────
 
 export const KEMBAR_SECONDS = 40;
-const KEMBAR_POOL = [
+export const KEMBAR_POOL = [
   "🍎", "🍌", "🍇", "🍉", "🍓", "🍒", "🍑", "🥝", "🍍", "🥥", "🥕", "🌽", "🍄", "🌸", "🌻", "🌵", "🌲", "🍀",
   "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐔", "🐧", "🐦",
   "🐢", "🐙", "🦋", "🐞", "🐝", "🐳",
@@ -452,6 +452,87 @@ export function buildUrutSequence(count = 40): UrutItem[] {
   });
 }
 
+
+// ─── Pilihan ganda cepat: Huruf Hilang, Lanjut Pola, Selisih Angka ───
+
+/** [soal, pilihan, indeks jawaban benar]. */
+export type ChoiceItem = readonly [string, string[], number];
+
+const choice = (prompt: string, answer: string, wrong: string[]): ChoiceItem => {
+  const options = shuffle([answer, ...wrong]);
+  return [prompt, options, options.indexOf(answer)] as const;
+};
+
+export const HURUF_SECONDS = 40;
+const HURUF_WORDS = [
+  "KOMPUTER", "KEYBOARD", "TIKET", "SPRINT", "DEADLINE", "LAPORAN", "PROYEK", "SERVER", "DATABASE", "JARINGAN",
+  "PENGGUNA", "APLIKASI", "PRIORITAS", "KATEGORI", "DOKUMEN", "TESTING", "KLIEN", "PRODUK", "JADWAL", "TARGET",
+  "KUALITAS", "LAYANAN", "PELANGGAN", "KEAMANAN", "PERANGKAT", "PEMROGRAMAN", "KOLABORASI", "PRESENTASI", "INVOICE",
+  "MONITOR", "PRINTER", "BROWSER", "PASSWORD", "NOTIFIKASI", "LAMPIRAN", "KOMENTAR", "REVISI", "ANGGARAN", "KONTRAK", "RAPAT",
+];
+const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+export function buildHurufSequence(count = 60): ChoiceItem[] {
+  return Array.from({ length: count }, () => {
+    const word = HURUF_WORDS[rand(0, HURUF_WORDS.length - 1)];
+    const pos = rand(1, word.length - 1);
+    const letter = word[pos];
+    const wrong = shuffle(ABC.filter((c) => c !== letter)).slice(0, 3);
+    const shown = word
+      .split("")
+      .map((c, i) => (i === pos ? "_" : c))
+      .join(" ");
+    return choice(shown, letter, wrong);
+  });
+}
+
+export const LANJUT_SECONDS = 40;
+const LANJUT_SHAPES = ["🔴", "🔵", "🟢", "🟡", "🟣", "🟠"];
+
+export function buildLanjutSequence(count = 60): ChoiceItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const period = i < 5 ? 2 : i < 12 ? 3 : 4;
+    let unit: string[] = [];
+    while (new Set(unit).size < 2) unit = Array.from({ length: period }, () => LANJUT_SHAPES[rand(0, LANJUT_SHAPES.length - 1)]);
+    const len = period * 2 + rand(0, period - 1);
+    const seq = Array.from({ length: len }, (_, k) => unit[k % period]);
+    const answer = unit[len % period];
+    const wrong = shuffle(LANJUT_SHAPES.filter((s) => s !== answer)).slice(0, 3);
+    return choice(`${seq.join(" ")} ❓`, answer, wrong);
+  });
+}
+
+export const SELISIH_SECONDS = 30;
+
+export function buildSelisihSequence(count = 80): ChoiceItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const hi = Math.min(999, 60 + i * 12);
+    const b = rand(10, hi);
+    const a = b + rand(3, Math.min(hi, 40 + i * 4));
+    const diff = a - b;
+    const wrong = new Set<number>();
+    while (wrong.size < 3) {
+      const d = diff + rand(-9, 9);
+      if (d !== diff && d > 0) wrong.add(d);
+    }
+    return choice(`Selisih ${a} dan ${b}?`, String(diff), [...wrong].map(String));
+  });
+}
+
+// ─── Siapa Hilang ────────────────────────────────────
+
+export const HILANG_SECONDS = 40;
+
+/** [emoji yang ditampilkan, indeks yang hilang]. */
+export type HilangItem = readonly [string[], number];
+
+export function buildHilangSequence(count = 40): HilangItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = Math.min(9, 4 + Math.floor(i / 3));
+    const emojis = shuffle(KEMBAR_POOL).slice(0, n);
+    return [emojis, rand(0, n - 1)] as const;
+  });
+}
 
 // ─── Cari Beda ───────────────────────────────────────
 

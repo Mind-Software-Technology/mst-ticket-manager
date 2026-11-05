@@ -43,7 +43,11 @@ export type GameKey =
   | "kali"
   | "cek"
   | "kembar"
-  | "urut";
+  | "urut"
+  | "huruf"
+  | "lanjut"
+  | "selisih"
+  | "hilang";
 
 export interface GameTicket {
   id: string;
@@ -336,6 +340,54 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  huruf: {
+    group: "umum",
+    label: "Huruf Hilang",
+    emoji: "🔡",
+    tagline: "Satu huruf pada kata hilang. Huruf apa yang cocok melengkapinya?",
+    rules: [
+      "40 detik, kata istilah kerja & IT dengan satu huruf hilang.",
+      "Pilih huruf yang tepat dari 4 pilihan (keyboard: tombol 1-4).",
+      "Benar +10, salah -5.",
+    ],
+    needs: "",
+  },
+  lanjut: {
+    group: "umum",
+    label: "Lanjut Pola",
+    emoji: "🔴",
+    tagline: "Deretan bulatan berwarna punya pola berulang. Warna apa berikutnya?",
+    rules: [
+      "40 detik, polanya makin panjang dan rumit.",
+      "Pilih bulatan yang melanjutkan pola dari 4 pilihan (keyboard: tombol 1-4).",
+      "Benar +10, salah -5.",
+    ],
+    needs: "",
+  },
+  selisih: {
+    group: "umum",
+    label: "Selisih Angka",
+    emoji: "➖",
+    tagline: "Berapa selisih dua angka ini? Hitung di kepala, jangan tertipu pilihan mirip!",
+    rules: [
+      "30 detik, dua angka makin besar tiap soal.",
+      "Pilih selisihnya dari 4 pilihan yang angkanya mirip (keyboard: tombol 1-4).",
+      "Benar +10, salah -5.",
+    ],
+    needs: "",
+  },
+  hilang: {
+    group: "umum",
+    label: "Siapa Hilang",
+    emoji: "🫥",
+    tagline: "Hafalkan emoji yang tampil, lalu tebak satu yang menghilang!",
+    rules: [
+      "40 detik, emoji tampil sebentar lalu satu di antaranya hilang.",
+      "Tap emoji yang hilang dari daftar pilihan.",
+      "Benar +15, salah -5. Makin lama emojinya makin banyak.",
+    ],
+    needs: "",
+  },
   beda: {
     group: "umum",
     label: "Cari Beda",
@@ -518,6 +570,10 @@ export const GAME_KEYS: GameKey[] = [
   "cek",
   "kembar",
   "urut",
+  "huruf",
+  "lanjut",
+  "selisih",
+  "hilang",
 ];
 
 export function shuffle<T>(input: readonly T[]): T[] {
@@ -849,6 +905,30 @@ export function resultMessage(game: GameKey, score: number): string {
       [220, "Cepat dan teliti, mantap. 🔢"],
       [100, "Lumayan, tinggal diasah lagi. ✏️"],
       [0, "Urutannya kusut… coba lagi! 🧵"],
+    ],
+    huruf: [
+      [150, "Kamus berjalan! Huruf apa pun lengkap. 🔡"],
+      [100, "Mata jeli, kosa katamu mantap. 👀"],
+      [50, "Lumayan, hurufnya masih suka kabur. 🌀"],
+      [0, "Hurufnya sembunyi semua… coba lagi! 🙈"],
+    ],
+    lanjut: [
+      [150, "Pembaca pola ulung! Bulatan apa pun tertebak. 🔴"],
+      [100, "Logikamu rapi, mantap. 🧠"],
+      [50, "Lumayan, polanya mulai rumit ya. 🌀"],
+      [0, "Polanya masih misteri… coba lagi! 🔮"],
+    ],
+    selisih: [
+      [150, "Kalkulator hidup! Selisih apa pun beres. ➖"],
+      [100, "Hitunganmu cepat dan teliti. 🧮"],
+      [50, "Lumayan, pilihan mirip memang menipu. 😵"],
+      [0, "Selisihnya licin… coba lagi! 🌀"],
+    ],
+    hilang: [
+      [120, "Ingatan fotografis! Tak ada yang lolos. 📸"],
+      [80, "Memorimu tajam, mantap. 🧠"],
+      [40, "Lumayan, emojinya mulai banyak ya. 🌀"],
+      [0, "Siapa yang hilang? Entahlah… coba lagi! 🫥"],
     ],
     beda: [
       [250, "Mata detektif! Tak ada yang lolos darimu. 🕵️"],

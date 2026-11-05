@@ -13,6 +13,10 @@ import {
   KALI_SECONDS,
   KEMBAR_SECONDS,
   URUT_SECONDS,
+  HURUF_SECONDS,
+  LANJUT_SECONDS,
+  SELISIH_SECONDS,
+  HILANG_SECONDS,
   INGAT_SECONDS,
   JUMLAH_SECONDS,
   buildAngkaRounds,
@@ -22,14 +26,18 @@ import {
   buildKaliSequence,
   buildKembarSequence,
   buildUrutSequence,
+  buildHurufSequence,
+  buildLanjutSequence,
+  buildSelisihSequence,
+  buildHilangSequence,
   buildIngatPool,
   buildJumlahSequence,
 } from "@/lib/mp-content";
 import type { MpMessage, MpMode, MpPlayer, StartPayload } from "@/lib/multiplayer";
 import { RaceShell, SoloShell } from "./GameShells";
-import { AngkaView, ArahView, BanyakView, CekView, IngatView, JumlahView, KaliView, KembarView, UrutView } from "./QuickViews";
+import { AngkaView, ArahView, BanyakView, CekView, ChoiceView, HilangView, IngatView, JumlahView, KaliView, KembarView, UrutView } from "./QuickViews";
 
-export type QuickKey = "angka" | "jumlah" | "ingat" | "banyak" | "arah" | "kali" | "cek" | "kembar" | "urut";
+export type QuickKey = "angka" | "jumlah" | "ingat" | "banyak" | "arah" | "kali" | "cek" | "kembar" | "urut" | "huruf" | "lanjut" | "selisih" | "hilang";
 
 export function SoloQuick({ game, userId }: { game: QuickKey; userId?: string }) {
   switch (game) {
@@ -79,6 +87,30 @@ export function SoloQuick({ game, userId }: { game: QuickKey; userId?: string })
       return (
         <SoloShell game="urut" userId={userId} seconds={URUT_SECONDS} build={() => buildUrutSequence()}>
           {(data, answer) => <UrutView data={data} onAnswer={answer} />}
+        </SoloShell>
+      );
+    case "huruf":
+      return (
+        <SoloShell game="huruf" userId={userId} seconds={HURUF_SECONDS} build={() => buildHurufSequence()}>
+          {(data, answer) => <ChoiceView kind="huruf" data={data} onAnswer={answer} />}
+        </SoloShell>
+      );
+    case "lanjut":
+      return (
+        <SoloShell game="lanjut" userId={userId} seconds={LANJUT_SECONDS} build={() => buildLanjutSequence()}>
+          {(data, answer) => <ChoiceView kind="lanjut" data={data} onAnswer={answer} />}
+        </SoloShell>
+      );
+    case "selisih":
+      return (
+        <SoloShell game="selisih" userId={userId} seconds={SELISIH_SECONDS} build={() => buildSelisihSequence()}>
+          {(data, answer) => <ChoiceView kind="selisih" data={data} onAnswer={answer} />}
+        </SoloShell>
+      );
+    case "hilang":
+      return (
+        <SoloShell game="hilang" userId={userId} seconds={HILANG_SECONDS} build={() => buildHilangSequence()}>
+          {(data, answer) => <HilangView data={data} onAnswer={answer} />}
         </SoloShell>
       );
     case "arah":
@@ -164,6 +196,30 @@ export function RaceQuick({
       return (
         <RaceShell {...shell} mode="urut" seconds={URUT_SECONDS} blurb="Urutkan angka secepat kilat!">
           {(answer) => <UrutView data={config.urut ?? []} onAnswer={answer} />}
+        </RaceShell>
+      );
+    case "huruf":
+      return (
+        <RaceShell {...shell} mode="huruf" seconds={HURUF_SECONDS} blurb="Lengkapi kata dengan huruf yang hilang!">
+          {(answer) => <ChoiceView kind="huruf" data={config.huruf ?? []} onAnswer={answer} />}
+        </RaceShell>
+      );
+    case "lanjut":
+      return (
+        <RaceShell {...shell} mode="lanjut" seconds={LANJUT_SECONDS} blurb="Lanjutkan pola bulatan berwarna!">
+          {(answer) => <ChoiceView kind="lanjut" data={config.lanjut ?? []} onAnswer={answer} />}
+        </RaceShell>
+      );
+    case "selisih":
+      return (
+        <RaceShell {...shell} mode="selisih" seconds={SELISIH_SECONDS} blurb="Hitung selisih dua angka secepat kilat!">
+          {(answer) => <ChoiceView kind="selisih" data={config.selisih ?? []} onAnswer={answer} />}
+        </RaceShell>
+      );
+    case "hilang":
+      return (
+        <RaceShell {...shell} mode="hilang" seconds={HILANG_SECONDS} blurb="Hafalkan emoji, tebak yang menghilang!">
+          {(answer) => <HilangView data={config.hilang ?? []} onAnswer={answer} />}
         </RaceShell>
       );
     default:
