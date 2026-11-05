@@ -35,7 +35,11 @@ export type GameKey =
   | "buah"
   | "tebak"
   | "lampu"
-  | "geser";
+  | "geser"
+  | "jumlah"
+  | "ingat"
+  | "banyak"
+  | "arah";
 
 export interface GameTicket {
   id: string;
@@ -222,13 +226,61 @@ export const GAMES: Record<GameKey, GameConfig> = {
   },
   angka: {
     group: "umum",
-    label: "Sentuh Angka",
+    label: "Cari Angka",
     emoji: "🔢",
-    tagline: "Tap angka 1 sampai 16 secara berurutan secepat mungkin!",
+    tagline: "Temukan angka yang diminta di antara tumpukan angka. Perintahnya acak dan makin sulit!",
     rules: [
-      "16 angka teracak di papan, batas 45 detik.",
-      "Tap berurutan mulai dari 1. Salah urutan tidak dihitung.",
-      "Tiap angka benar +20, selesai semua dapat bonus sisa waktu (maks +400).",
+      "60 detik, tiap ronde ada satu perintah dan papan angka acak (bukan berurutan).",
+      "Perintah bervariasi: angka tertentu, terbesar, terkecil, kelipatan, sampai jumlah digit. Angka mirip jadi pengecoh!",
+      "Benar +10 sampai +60 (makin tinggi level & makin cepat makin besar). Salah -5 dan papan diacak ulang.",
+    ],
+    needs: "",
+  },
+  jumlah: {
+    group: "umum",
+    label: "Jumlah Pas",
+    emoji: "➕",
+    tagline: "Pilih dua angka yang jika dijumlahkan tepat sama dengan target!",
+    rules: [
+      "45 detik, tiap soal ada target dan beberapa angka di papan.",
+      "Tap dua angka yang jumlahnya pas target. Benar +15, salah -5.",
+      "Makin lama papan makin ramai dan angkanya makin besar.",
+    ],
+    needs: "",
+  },
+  ingat: {
+    group: "umum",
+    label: "Ingat Angka",
+    emoji: "📟",
+    tagline: "Hafalkan deretan angka yang berkedip lalu ketik ulang. Makin benar, makin panjang!",
+    rules: [
+      "75 detik. Angka tampil sebentar lalu hilang, ketik ulang dengan keypad atau keyboard.",
+      "Benar +10 per digit, lalu deret bertambah satu (maks 12).",
+      "Salah = tanpa poin dan deret berkurang satu (minimal 3).",
+    ],
+    needs: "",
+  },
+  banyak: {
+    group: "umum",
+    label: "Banyak Mana",
+    emoji: "⚖️",
+    tagline: "Dua kotak berisi emoji, mana yang isinya lebih banyak? Selisihnya makin tipis!",
+    rules: [
+      "30 detik, tap kotak yang emojinya lebih banyak (keyboard: F kiri, J kanan, atau ← →).",
+      "Benar +10, salah -5.",
+      "Makin lama selisih jumlahnya makin kecil.",
+    ],
+    needs: "",
+  },
+  arah: {
+    group: "umum",
+    label: "Arah Terbalik",
+    emoji: "🧭",
+    tagline: "Ikuti panah, tapi kalau diminta BALIK ARAH, tap arah sebaliknya!",
+    rules: [
+      "30 detik, aturan IKUTI = tap arah panah, aturan BALIK = tap arah berlawanan.",
+      "Pakai tombol arah di layar atau keyboard (panah / WASD).",
+      "Benar +10, salah -5. Makin lama aturan BALIK makin sering muncul.",
     ],
     needs: "",
   },
@@ -406,6 +458,10 @@ export const GAME_KEYS: GameKey[] = [
   "tebak",
   "lampu",
   "geser",
+  "jumlah",
+  "ingat",
+  "banyak",
+  "arah",
 ];
 
 export function shuffle<T>(input: readonly T[]): T[] {
@@ -685,10 +741,34 @@ export function resultMessage(game: GameKey, score: number): string {
       [0, "Tulisannya menipumu mentah-mentah. Coba lagi! 😵"],
     ],
     angka: [
-      [650, "Mata elang! Angka berserakan pun beres. 🦅"],
+      [700, "Mata elang! Angka berserakan pun beres. 🦅"],
       [450, "Cepat dan teliti, mantap. 🔢"],
       [250, "Lumayan, angkanya masih suka ngumpet. 🙈"],
-      [0, "Angka 1 di mana ya… coba lagi! 🔍"],
+      [0, "Angkanya licin-licin ya… coba lagi! 🔍"],
+    ],
+    jumlah: [
+      [300, "Kalkulator manusia! Pasangan angka langsung ketemu. ➕"],
+      [200, "Hitunganmu tajam, mantap. 🧮"],
+      [100, "Lumayan, tinggal diasah lagi. ✏️"],
+      [0, "Angkanya belum mau berpasangan… coba lagi! 💔"],
+    ],
+    ingat: [
+      [400, "Ingatan baja! Deret panjang pun hafal. 📟"],
+      [250, "Memorimu tajam. 🧠"],
+      [120, "Lumayan, angkanya mulai licin ya. 🌀"],
+      [0, "Angkanya keburu kabur… coba lagi! 💨"],
+    ],
+    banyak: [
+      [200, "Mata penghitung ulung! Selisih tipis pun ketahuan. 👁️"],
+      [120, "Insting jumlahmu tajam. ⚖️"],
+      [60, "Lumayan, tinggal diasah lagi. ✏️"],
+      [0, "Semuanya kelihatan sama banyak… coba lagi! 😵"],
+    ],
+    arah: [
+      [250, "Otak anti-bingung! Arah apa pun beres. 🧭"],
+      [150, "Refleks dan fokusmu mantap. 🎯"],
+      [70, "Lumayan, aturan balik masih menipu. 🔄"],
+      [0, "Kiri atau kanan ya… coba lagi! 🌀"],
     ],
     beda: [
       [250, "Mata detektif! Tak ada yang lolos darimu. 🕵️"],

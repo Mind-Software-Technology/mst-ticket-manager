@@ -55,7 +55,11 @@ import {
   buildDua4Puzzles,
   buildMaze,
   buildSandiCodes,
-  buildNumberGrid,
+  buildAngkaRounds,
+  buildArahSequence,
+  buildBanyakSequence,
+  buildIngatPool,
+  buildJumlahSequence,
   buildSimonPattern,
   buildStroopSequence,
   buildTriviaQuestions,
@@ -67,7 +71,7 @@ import { ReflexRace } from "./ReflexRace";
 import { RunRace } from "./RunRace";
 import { SimonRace } from "./SimonRace";
 import { StroopRace } from "./StroopRace";
-import { NumberRace } from "./NumberRace";
+import { RaceQuick } from "./QuickGames";
 import { BedaRace } from "./BedaRace";
 import { BesarRace } from "./BesarRace";
 import { DrawBattle } from "./DrawBattle";
@@ -253,7 +257,15 @@ function Room({
         case "warna":
           return { ...base, stroop: buildStroopSequence() };
         case "angka":
-          return { ...base, grid: buildNumberGrid() };
+          return { ...base, angka: buildAngkaRounds() };
+        case "jumlah":
+          return { ...base, jumlah: buildJumlahSequence() };
+        case "ingat":
+          return { ...base, ingat: buildIngatPool() };
+        case "banyak":
+          return { ...base, banyak: buildBanyakSequence() };
+        case "arah":
+          return { ...base, arah: buildArahSequence() };
         case "beda":
           return { ...base, beda: buildBedaSequence() };
         case "besar":
@@ -352,7 +364,11 @@ function Room({
       case "warna":
         return <StroopRace key={key} {...props} />;
       case "angka":
-        return <NumberRace key={key} {...props} />;
+      case "jumlah":
+      case "ingat":
+      case "banyak":
+      case "arah":
+        return <RaceQuick key={key} {...props} />;
       case "beda":
         return <BedaRace key={key} {...props} />;
       case "besar":

@@ -22,6 +22,7 @@ import { RunGame } from "./RunGame";
 import { SimonGame } from "./SimonGame";
 import { StroopGame } from "./StroopGame";
 import { NumberGame } from "./NumberGame";
+import { SoloQuick } from "./QuickGames";
 import { BedaGame } from "./BedaGame";
 import { BesarGame } from "./BesarGame";
 import { Game2048 } from "./Game2048";
@@ -128,6 +129,9 @@ export function MinigameHub({ userId, userName }: { userId?: string; userName?: 
             {game === "tebak" && <TebakGame key="tebak" userId={userId} />}
             {game === "lampu" && <LampuGame key="lampu" userId={userId} />}
             {game === "geser" && <GeserGame key="geser" userId={userId} />}
+            {(game === "jumlah" || game === "ingat" || game === "banyak" || game === "arah") && (
+              <SoloQuick key={game} game={game} userId={userId} />
+            )}
           </>
           )
         )}

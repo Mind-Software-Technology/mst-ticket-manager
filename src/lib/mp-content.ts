@@ -197,21 +197,162 @@ export function buildStroopSequence(count = 150): StroopItem[] {
   });
 }
 
-// ─── Sentuh Angka ────────────────────────────────────
+// ─── Cari Angka (dulu Sentuh Angka) ──────────────────
 
-export const NUMBER_COUNT = 16;
-export const NUMBER_SECONDS = 45;
+export const ANGKA_SECONDS = 60;
 
-/** Susunan angka 1..16 di papan; sama untuk semua pemain di mode bareng. */
-export function buildNumberGrid(): number[] {
-  return shuffle(Array.from({ length: NUMBER_COUNT }, (_, i) => i + 1));
+/** [teks perintah, isi papan, angka jawaban]. Jawaban selalu tepat satu di papan. */
+export type AngkaRound = readonly [string, number[], number];
+
+const ANGKA_SIZES = [9, 12, 16, 16, 20, 20, 25, 25, 30, 30, 36];
+export const angkaCols = (n: number) => (n <= 9 ? 3 : n <= 16 ? 4 : n <= 25 ? 5 : 6);
+
+const digitSum = (n: number) =>
+  String(n)
+    .split("")
+    .reduce((a, d) => a + Number(d), 0);
+
+/** Angka yang mirip target: digit ditukar atau diganti satu. */
+function angkaLookalikes(target: number): number[] {
+  const s = String(target);
+  const out = new Set<number>();
+  for (let i = 0; i < s.length; i++) {
+    for (let j = i + 1; j < s.length; j++) {
+      const a = s.split("");
+      [a[i], a[j]] = [a[j], a[i]];
+      if (a[0] !== "0") out.add(Number(a.join("")));
+    }
+    const b = s.split("");
+    b[i] = String((Number(s[i]) + rand(1, 9)) % 10);
+    if (b[0] !== "0") out.add(Number(b.join("")));
+  }
+  out.delete(target);
+  return [...out];
 }
 
-/** 20 poin per angka benar; selesai semua = bonus sisa waktu (maks +400). */
-export function numberScore(tapped: number, elapsedMs: number): number {
-  const bonus =
-    tapped >= NUMBER_COUNT ? Math.round(Math.max(0, 1 - elapsedMs / (NUMBER_SECONDS * 1000)) * 400) : 0;
-  return tapped * 20 + bonus;
+/** Ronde ke-i: makin tinggi papan makin besar, angka makin panjang, perintah makin beragam. */
+function buildAngkaRound(i: number): AngkaRound {
+  const n = ANGKA_SIZES[Math.min(i, ANGKA_SIZES.length - 1)];
+  const hi = i < 3 ? 99 : i < 8 ? 399 : 999;
+  const pick = () => rand(10, hi);
+  const types =
+    i < 3
+      ? ["exact"]
+      : i < 6
+        ? ["exact", "max", "min"]
+        : i < 10
+          ? ["exact", "max", "min", "kali"]
+          : ["exact", "max", "min", "kali", "digit"];
+  const type = types[rand(0, types.length - 1)];
+  const fill = (cells: Set<number>, allow: (v: number) => boolean) => {
+    for (let guard = 0; cells.size < n && guard < 5000; guard++) {
+      const v = pick();
+      if (allow(v)) cells.add(v);
+    }
+  };
+
+  if (type === "max" || type === "min") {
+    const cells = new Set<number>();
+    fill(cells, () => true);
+    const arr = [...cells];
+    return type === "max"
+      ? ["Cari angka TERBESAR", shuffle(arr), Math.max(...arr)]
+      : ["Cari angka TERKECIL", shuffle(arr), Math.min(...arr)];
+  }
+  if (type === "kali") {
+    const k = [3, 4, 6, 7, 8, 9][rand(0, 5)];
+    let ans = pick();
+    while (ans % k !== 0) ans = pick();
+    const cells = new Set<number>([ans]);
+    fill(cells, (v) => v % k !== 0);
+    return [`Cari satu-satunya kelipatan ${k}`, shuffle([...cells]), ans];
+  }
+  if (type === "digit") {
+    const ans = pick();
+    const sum = digitSum(ans);
+    const cells = new Set<number>([ans]);
+    fill(cells, (v) => digitSum(v) !== sum);
+    return [`Cari angka yang jumlah digitnya ${sum}`, shuffle([...cells]), ans];
+  }
+  const target = pick();
+  const cells = new Set<number>([target]);
+  if (i >= 4) {
+    for (const v of shuffle(angkaLookalikes(target)).slice(0, Math.min(n - 1, 2 + Math.floor(i / 2)))) cells.add(v);
+  }
+  fill(cells, (v) => v !== target);
+  return [`Cari angka ${target}`, shuffle([...cells]), target];
+}
+
+/** Rangkaian ronde yang sama untuk semua pemain di mode bareng. */
+export function buildAngkaRounds(count = 40): AngkaRound[] {
+  return Array.from({ length: count }, (_, i) => buildAngkaRound(i));
+}
+
+/** Benar: 10 + 2 per level (maks +40) + bonus kecepatan (maks +10, hilang di 5 detik). */
+export function angkaPoints(round: number, ms: number): number {
+  return 10 + Math.min(round, 20) * 2 + Math.max(0, 10 - Math.floor(ms / 500));
+}
+
+// ─── Jumlah Pas ──────────────────────────────────────
+
+export const JUMLAH_SECONDS = 45;
+
+/** [target, angka di papan]. Minimal ada satu pasangan angka yang berjumlah target. */
+export type JumlahItem = readonly [number, number[]];
+
+export function buildJumlahSequence(count = 60): JumlahItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = Math.min(12, 6 + Math.floor(i / 5));
+    const max = Math.min(60, 12 + i * 2);
+    const a = rand(2, max);
+    const b = rand(2, max);
+    const nums = [a, b];
+    while (nums.length < n) nums.push(rand(2, max));
+    return [a + b, shuffle(nums)] as const;
+  });
+}
+
+// ─── Ingat Angka ─────────────────────────────────────
+
+export const INGAT_SECONDS = 75;
+export const INGAT_MAX = 12;
+
+/** Satu deret 12 digit per putaran; pemain memakai sebanyak panjang levelnya. */
+export function buildIngatPool(count = 30): string[] {
+  return Array.from({ length: count }, () => Array.from({ length: INGAT_MAX }, () => rand(0, 9)).join(""));
+}
+
+// ─── Banyak Mana ─────────────────────────────────────
+
+export const BANYAK_SECONDS = 30;
+export const BANYAK_SLOTS = 30;
+export const BANYAK_EMOJI = ["🍎", "⭐", "🐟", "🔵", "🌸", "🐝", "🍪", "🎈"];
+
+/** [jumlah kiri, jumlah kanan, indeks emoji, seed tata letak]. */
+export type BanyakItem = readonly [number, number, number, number];
+
+export function buildBanyakSequence(count = 80): BanyakItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const diff = Math.max(1, 6 - Math.floor(i / 4));
+    const small = rand(8, 22);
+    const big = small + diff;
+    const leftBig = Math.random() < 0.5;
+    return [leftBig ? big : small, leftBig ? small : big, rand(0, BANYAK_EMOJI.length - 1), rand(1, 2 ** 30)] as const;
+  });
+}
+
+// ─── Arah Terbalik ───────────────────────────────────
+
+export const ARAH_SECONDS = 30;
+
+/** [arah: 0 atas, 1 kanan, 2 bawah, 3 kiri; 1 = aturan "balik arah"]. */
+export type ArahItem = readonly [number, number];
+
+export function buildArahSequence(count = 120): ArahItem[] {
+  return Array.from({ length: count }, (_, i) => {
+    const flip = i < 4 ? 0 : Math.random() < Math.min(0.6, 0.2 + i * 0.015) ? 1 : 0;
+    return [rand(0, 3), flip] as const;
+  });
 }
 
 // ─── Cari Beda ───────────────────────────────────────

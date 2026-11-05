@@ -7,6 +7,7 @@
 // semua klien menghitung skor dari data yang sama supaya hasilnya seragam.
 // =====================================================
 
+import type { AngkaRound, ArahItem, BanyakItem, JumlahItem } from "@/lib/mp-content";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -59,7 +60,11 @@ export type MpMode =
   | "bom"
   | "dadu"
   | "penyusup"
-  | "cacah";
+  | "cacah"
+  | "jumlah"
+  | "ingat"
+  | "banyak"
+  | "arah";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -462,13 +467,61 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
   },
   angka: {
     group: "umum",
-    label: "Sentuh Angka",
+    label: "Cari Angka",
     emoji: "🔢",
-    tagline: "Tap angka 1-16 berurutan. Papan sama untuk semua, siapa paling cepat?",
+    tagline: "Temukan angka yang diminta di antara tumpukan angka. Perintahnya acak dan makin sulit!",
     rules: [
-      "16 angka teracak (sama untuk semua pemain), batas 45 detik.",
-      "Tap berurutan mulai dari 1. Tiap angka benar +20.",
-      "Selesai semua = bonus sisa waktu (maks +400).",
+      "60 detik, ronde & papan sama untuk semua pemain. Papan makin besar dan angkanya makin panjang.",
+      "Perintah bervariasi: angka tertentu, terbesar, terkecil, kelipatan, sampai jumlah digit. Angka mirip jadi pengecoh!",
+      "Benar +10 sampai +60 (makin tinggi level & makin cepat makin besar). Salah -5 dan papan diacak ulang.",
+    ],
+    minPlayers: 2,
+  },
+  jumlah: {
+    group: "umum",
+    label: "Jumlah Pas",
+    emoji: "➕",
+    tagline: "Pilih dua angka yang jika dijumlahkan tepat sama dengan target. Soal sama untuk semua!",
+    rules: [
+      "45 detik, tiap soal ada target dan beberapa angka di papan.",
+      "Tap dua angka yang jumlahnya pas target. Benar +15, salah -5.",
+      "Makin lama papan makin ramai dan angkanya makin besar.",
+    ],
+    minPlayers: 2,
+  },
+  ingat: {
+    group: "umum",
+    label: "Ingat Angka",
+    emoji: "📟",
+    tagline: "Hafalkan deretan angka yang berkedip lalu ketik ulang. Makin benar, makin panjang!",
+    rules: [
+      "75 detik, deret angka sama untuk semua pemain tapi panjangnya mengikuti levelmu.",
+      "Angka tampil sebentar lalu hilang. Ketik ulang dengan benar: +10 per digit, lalu deret bertambah satu.",
+      "Salah = tanpa poin dan deret berkurang satu (minimal 3).",
+    ],
+    minPlayers: 2,
+  },
+  banyak: {
+    group: "umum",
+    label: "Banyak Mana",
+    emoji: "⚖️",
+    tagline: "Dua kotak berisi emoji, mana yang isinya lebih banyak? Selisihnya makin tipis!",
+    rules: [
+      "30 detik, soal sama untuk semua pemain.",
+      "Tap kotak yang emojinya lebih banyak (keyboard: F kiri, J kanan, atau ← →).",
+      "Benar +10, salah -5. Makin lama selisihnya makin kecil.",
+    ],
+    minPlayers: 2,
+  },
+  arah: {
+    group: "umum",
+    label: "Arah Terbalik",
+    emoji: "🧭",
+    tagline: "Ikuti panah, tapi kalau diminta BALIK ARAH, tap arah sebaliknya!",
+    rules: [
+      "30 detik, panah dan aturan sama untuk semua pemain.",
+      "Aturan IKUTI = tap arah panah. Aturan BALIK = tap arah berlawanan.",
+      "Pakai tombol arah di layar atau keyboard (panah / WASD). Benar +10, salah -5.",
     ],
     minPlayers: 2,
   },
@@ -665,6 +718,10 @@ export const MP_MODE_KEYS: MpMode[] = [
   "dadu",
   "penyusup",
   "cacah",
+  "jumlah",
+  "ingat",
+  "banyak",
+  "arah",
 ];
 
 export const ROUND_MS = 15_000;
@@ -921,8 +978,16 @@ export interface StartPayload {
   pattern?: number[];
   /** Urutan [kata, tinta] Warna Mengecoh. */
   stroop?: Array<readonly [number, number]>;
-  /** Susunan angka 1..16 Sentuh Angka. */
-  grid?: number[];
+  /** Ronde Cari Angka: perintah, isi papan, jawaban. */
+  angka?: AngkaRound[];
+  /** Jumlah Pas: [target, angka di papan]. */
+  jumlah?: JumlahItem[];
+  /** Ingat Angka: deret digit tiap putaran. */
+  ingat?: string[];
+  /** Banyak Mana: [kiri, kanan, emoji, seed]. */
+  banyak?: BanyakItem[];
+  /** Arah Terbalik: [arah, balik?]. */
+  arah?: ArahItem[];
   /** Soal Cari Beda: [pasangan, sisi biasa, posisi si beda]. */
   beda?: Array<readonly [number, number, number]>;
   /** Soal Lebih Besar: [teks kiri, nilai kiri, teks kanan, nilai kanan]. */
