@@ -7,7 +7,7 @@
 // semua klien menghitung skor dari data yang sama supaya hasilnya seragam.
 // =====================================================
 
-import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound } from "@/lib/mp-content";
+import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound, AturanItem } from "@/lib/mp-content";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -75,7 +75,10 @@ export type MpMode =
   | "hilang"
   | "balok"
   | "hindar"
-  | "gelas";
+  | "gelas"
+  | "sentuh"
+  | "harta"
+  | "aturan";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -821,6 +824,42 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     ],
     minPlayers: 2,
   },
+  sentuh: {
+    group: "umum",
+    label: "Sentuh Angka",
+    emoji: "👆",
+    tagline: "Tap angka 1 sampai 25 berurutan secepat mungkin. Susunan papan sama untuk semua!",
+    rules: [
+      "60 detik, tap angka sesuai urutan mulai dari 1.",
+      "Tiap angka benar +10. Tap angka yang salah -3.",
+      "Semua 25 angka selesai = bonus 5 poin per detik tersisa.",
+    ],
+    minPlayers: 2,
+  },
+  harta: {
+    group: "umum",
+    label: "Cari Harta",
+    emoji: "💎",
+    tagline: "Gali kotak mencari permata dan emas, hindari bom! Peta harta sama untuk semua.",
+    rules: [
+      "Papan 6x6, 45 detik. Tap kotak untuk membukanya, tiap kotak cukup sekali.",
+      "Permata 💎 +40, emas 🪙 +100, bom 💣 -40.",
+      "Kotak kosong menampilkan jumlah permata/emas di sekitarnya — gunakan sebagai petunjuk.",
+    ],
+    minPlayers: 2,
+  },
+  aturan: {
+    group: "umum",
+    label: "Aturan Berubah",
+    emoji: "🔀",
+    tagline: "Aturan penggolongan angka berganti tiap beberapa soal. Tetap fokus!",
+    rules: [
+      "40 detik, angka muncul bergantian (urutan sama untuk semua).",
+      "Golongkan sesuai aturan yang tampil: ganjil/genap, kecil/besar, atau kelipatan 3.",
+      "Benar +10, salah -5. Aturan berganti tiap 6 angka!",
+    ],
+    minPlayers: 2,
+  },
 };
 
 export const MP_MODE_KEYS: MpMode[] = [
@@ -884,6 +923,9 @@ export const MP_MODE_KEYS: MpMode[] = [
   "balok",
   "hindar",
   "gelas",
+  "sentuh",
+  "harta",
+  "aturan",
 ];
 
 export const ROUND_MS = 15_000;
@@ -1206,6 +1248,12 @@ export interface StartPayload {
   hindar?: HindarSpawn[];
   /** Tebak Gelas: [gelas berisi bola, ...pasangan tukar] tiap ronde. */
   gelas?: GelasRound[];
+  /** Sentuh Angka: susunan angka 1..25. */
+  sentuh?: number[];
+  /** Cari Harta: isi papan 6x6 (0 kosong, 1 permata, 2 bom, 3 emas). */
+  harta?: number[];
+  /** Aturan Berubah: [angka, indeks aturan]. */
+  aturan?: AturanItem[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

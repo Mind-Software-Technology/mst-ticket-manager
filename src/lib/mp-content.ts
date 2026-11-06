@@ -1633,3 +1633,82 @@ export function buildGelasRounds(): GelasRound[] {
     return [rand(0, 2), ...swaps];
   });
 }
+
+// ─── Sentuh Angka (bareng) ───────────────────────────
+
+export const SENTUH_SECONDS = 60;
+export const SENTUH_COUNT = 25;
+
+/** Susunan angka 1..25 yang sama untuk semua pemain. */
+export function buildSentuhGrid(): number[] {
+  return shuffle(Array.from({ length: SENTUH_COUNT }, (_, i) => i + 1));
+}
+
+// ─── Cari Harta (bareng) ─────────────────────────────
+
+export const HARTA_SECONDS = 45;
+export const HARTA_SIZE = 6;
+/** 0 kosong, 1 permata (+40), 2 bom (-40), 3 emas (+100). */
+export const HARTA_POINTS = [0, 40, -40, 100] as const;
+
+export function buildHartaGrid(): number[] {
+  const cells = Array<number>(HARTA_SIZE * HARTA_SIZE).fill(0);
+  const place = (kind: number, n: number) => {
+    let left = n;
+    while (left > 0) {
+      const i = rand(0, cells.length - 1);
+      if (cells[i] === 0) {
+        cells[i] = kind;
+        left -= 1;
+      }
+    }
+  };
+  place(3, 2);
+  place(1, 7);
+  place(2, 5);
+  return cells;
+}
+
+/** Jumlah permata/emas di 8 sel sekitar. */
+export function hartaNear(grid: readonly number[], i: number): number {
+  const r = Math.floor(i / HARTA_SIZE);
+  const c = i % HARTA_SIZE;
+  let n = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const rr = r + dr;
+      const cc = c + dc;
+      if (rr < 0 || cc < 0 || rr >= HARTA_SIZE || cc >= HARTA_SIZE) continue;
+      const v = grid[rr * HARTA_SIZE + cc];
+      if (v === 1 || v === 3) n += 1;
+    }
+  }
+  return n;
+}
+
+// ─── Aturan Berubah (bareng) ─────────────────────────
+
+export const ATURAN_SECONDS = 40;
+export const ATURAN_PER_RULE = 6;
+/** Tiap aturan: [label kiri, label kanan, apakah angka masuk kiri]. */
+export const ATURAN_RULES = [
+  { title: "GANJIL atau GENAP?", left: "Ganjil", right: "Genap", test: (n: number) => n % 2 === 1 },
+  { title: "KECIL (<50) atau BESAR (≥50)?", left: "Kecil", right: "Besar", test: (n: number) => n < 50 },
+  { title: "KELIPATAN 3 atau BUKAN?", left: "Kelipatan 3", right: "Bukan", test: (n: number) => n % 3 === 0 },
+] as const;
+
+/** [angka, indeks aturan] — aturan berganti tiap ATURAN_PER_RULE angka. */
+export type AturanItem = readonly [number, number];
+
+export function buildAturanSequence(): AturanItem[] {
+  const out: AturanItem[] = [];
+  let prev = -1;
+  for (let g = 0; g < 20; g++) {
+    let rule = rand(0, ATURAN_RULES.length - 1);
+    if (rule === prev) rule = (rule + 1) % ATURAN_RULES.length;
+    prev = rule;
+    for (let k = 0; k < ATURAN_PER_RULE; k++) out.push([rand(1, 99), rule] as const);
+  }
+  return out;
+}
