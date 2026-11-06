@@ -1593,3 +1593,43 @@ export function buildCacahQuestions(): CacahQuestion[] {
     return [shuffle(cells), target, options, options.indexOf(answer)] as const;
   });
 }
+
+// ─── Hindari Rintangan (bareng) ──────────────────────
+
+export const HINDAR_TICK_MS = 40;
+export const HINDAR_MAX_TICKS = 1800;
+
+/** [tick muncul, jalur, 1 = koin, jalur rintangan kedua atau -1]. */
+export type HindarSpawn = readonly [number, number, number, number];
+
+export function buildHindarSchedule(): HindarSpawn[] {
+  const out: HindarSpawn[] = [];
+  let t = 20;
+  while (t < HINDAR_MAX_TICKS) {
+    const lane = rand(0, 2);
+    const coin = Math.random() < 0.3;
+    let second = -1;
+    if (!coin && t > 400 && Math.random() < 0.35) second = (lane + rand(1, 2)) % 3;
+    out.push([t, lane, coin ? 1 : 0, second] as const);
+    t += Math.max(14, 30 - Math.floor(t / 150));
+  }
+  return out;
+}
+
+// ─── Tebak Gelas (bareng) ────────────────────────────
+
+export const GELAS_ROUNDS = 6;
+
+/** [gelas berisi bola, ...pasangan tukar dikodekan a * 3 + b]. */
+export type GelasRound = readonly number[];
+
+export function buildGelasRounds(): GelasRound[] {
+  return Array.from({ length: GELAS_ROUNDS }, (_, r) => {
+    const swaps = Array.from({ length: 4 + (r + 1) * 2 }, () => {
+      const a = rand(0, 2);
+      const b = (a + rand(1, 2)) % 3;
+      return a * 3 + b;
+    });
+    return [rand(0, 2), ...swaps];
+  });
+}

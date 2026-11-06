@@ -7,7 +7,7 @@
 // semua klien menghitung skor dari data yang sama supaya hasilnya seragam.
 // =====================================================
 
-import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem } from "@/lib/mp-content";
+import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound } from "@/lib/mp-content";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -72,7 +72,10 @@ export type MpMode =
   | "huruf"
   | "lanjut"
   | "selisih"
-  | "hilang";
+  | "hilang"
+  | "balok"
+  | "hindar"
+  | "gelas";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -782,6 +785,42 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     ],
     minPlayers: 2,
   },
+  balok: {
+    group: "umum",
+    label: "Tumpuk Balok",
+    emoji: "🏗️",
+    tagline: "Bangun menara tertinggi! Tiap pemain menumpuk balok sendiri, skor terlihat langsung.",
+    rules: [
+      "60 detik, tap (atau Spasi) untuk menjatuhkan balok yang bergerak.",
+      "Tiap lantai +10, tumpukan hampir pas (perfect) +15.",
+      "Balok meleset total = selesai lebih awal.",
+    ],
+    minPlayers: 2,
+  },
+  hindar: {
+    group: "umum",
+    label: "Hindari Rintangan",
+    emoji: "🏎️",
+    tagline: "Balapan menghindari rintangan. Rintangan dan koinnya sama untuk semua pemain!",
+    rules: [
+      "3 jalur, pindah dengan ← → / A D atau tombol layar.",
+      "Jarak tempuh menambah skor, tiap 🪙 +15.",
+      "Menabrak 🚧 = selesai. Yang bertahan paling jauh menang.",
+    ],
+    minPlayers: 2,
+  },
+  gelas: {
+    group: "umum",
+    label: "Tebak Gelas",
+    emoji: "🥤",
+    tagline: "Ikuti gelas yang menyembunyikan bola. Acakannya sama untuk semua pemain!",
+    rules: [
+      "6 ronde, makin lama gelas makin banyak bertukar tempat.",
+      "Tap gelas yang menyembunyikan bola. Benar = 100 + 25 x ronde.",
+      "Salah = 0 poin ronde itu, lanjut ke ronde berikutnya.",
+    ],
+    minPlayers: 2,
+  },
 };
 
 export const MP_MODE_KEYS: MpMode[] = [
@@ -842,6 +881,9 @@ export const MP_MODE_KEYS: MpMode[] = [
   "lanjut",
   "selisih",
   "hilang",
+  "balok",
+  "hindar",
+  "gelas",
 ];
 
 export const ROUND_MS = 15_000;
@@ -1160,6 +1202,10 @@ export interface StartPayload {
   dadu?: number[][];
   /** Hitung Emoji: [isi papan, emoji target, pilihan angka, indeks benar]. */
   cacah?: Array<readonly [string[], string, number[], number]>;
+  /** Hindari Rintangan: jadwal rintangan/koin. */
+  hindar?: HindarSpawn[];
+  /** Tebak Gelas: [gelas berisi bola, ...pasangan tukar] tiap ronde. */
+  gelas?: GelasRound[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

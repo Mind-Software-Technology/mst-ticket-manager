@@ -71,6 +71,8 @@ import {
   buildSimonPattern,
   buildStroopSequence,
   buildTriviaQuestions,
+  buildHindarSchedule,
+  buildGelasRounds,
 } from "@/lib/mp-content";
 import { ReplayContext } from "./MpParts";
 import { QuizBattle } from "./QuizBattle";
@@ -105,6 +107,9 @@ import { DaduRace } from "./DaduRace";
 import { CacahRace } from "./CacahRace";
 import { TypeRace } from "./TypeRace";
 import { WhackRace } from "./WhackRace";
+import { BalokRace } from "./BalokRace";
+import { HindarRace } from "./HindarRace";
+import { GelasRace } from "./GelasRace";
 
 const TEAM_ROOM = "TIM";
 
@@ -347,6 +352,12 @@ function Room({
           return { ...base, tepat: buildTepatTargets() };
         case "bom":
           return { ...base };
+        case "balok":
+          return { ...base };
+        case "hindar":
+          return { ...base, hindar: buildHindarSchedule() };
+        case "gelas":
+          return { ...base, gelas: buildGelasRounds() };
         case "dadu":
           return { ...base, dadu: buildDaduRolls() };
         case "penyusup":
@@ -448,6 +459,12 @@ function Room({
         return <DaduRace key={key} {...props} />;
       case "cacah":
         return <CacahRace key={key} {...props} />;
+      case "balok":
+        return <BalokRace key={key} {...props} />;
+      case "hindar":
+        return <HindarRace key={key} {...props} />;
+      case "gelas":
+        return <GelasRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }
