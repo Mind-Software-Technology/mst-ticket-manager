@@ -35,6 +35,10 @@ import { BuahGame } from "./BuahGame";
 import { TebakGame } from "./TebakGame";
 import { LampuGame } from "./LampuGame";
 import { GeserGame } from "./GeserGame";
+import { BidikGame } from "./BidikGame";
+import { BalokGame } from "./BalokGame";
+import { HindarGame } from "./HindarGame";
+import { GelasGame } from "./GelasGame";
 
 const GROUP_LABEL = { tiket: "🎫 Seputar Tiket", umum: "🎉 Seru-seruan Umum" } as const;
 
@@ -129,6 +133,10 @@ export function MinigameHub({ userId, userName }: { userId?: string; userName?: 
             {game === "tebak" && <TebakGame key="tebak" userId={userId} />}
             {game === "lampu" && <LampuGame key="lampu" userId={userId} />}
             {game === "geser" && <GeserGame key="geser" userId={userId} />}
+            {game === "bidik" && <BidikGame key="bidik" userId={userId} />}
+            {game === "balok" && <BalokGame key="balok" userId={userId} />}
+            {game === "hindar" && <HindarGame key="hindar" userId={userId} />}
+            {game === "gelas" && <GelasGame key="gelas" userId={userId} />}
             {(game === "jumlah" || game === "ingat" || game === "banyak" || game === "arah" || game === "kali" || game === "cek" || game === "kembar" || game === "urut" || game === "huruf" || game === "lanjut" || game === "selisih" || game === "hilang") && (
               <SoloQuick key={game} game={game} userId={userId} />
             )}

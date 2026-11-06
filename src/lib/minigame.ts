@@ -36,6 +36,10 @@ export type GameKey =
   | "tebak"
   | "lampu"
   | "geser"
+  | "bidik"
+  | "balok"
+  | "hindar"
+  | "gelas"
   | "jumlah"
   | "ingat"
   | "banyak"
@@ -532,6 +536,54 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  bidik: {
+    group: "umum",
+    label: "Bidik Target",
+    emoji: "🎯",
+    tagline: "Target muncul sekejap di posisi acak. Tap sebelum kabur — jangan asal tap!",
+    rules: [
+      "30 detik, satu target muncul bergantian dan makin cepat hilang.",
+      "Kena +10, plus bonus kalau cepat dan bonus tiap 5 kombo.",
+      "Tap area kosong -2 dan kombo hangus.",
+    ],
+    needs: "",
+  },
+  balok: {
+    group: "umum",
+    label: "Tumpuk Balok",
+    emoji: "🏗️",
+    tagline: "Jatuhkan balok pas di atas tumpukan. Yang menjorok akan terpotong!",
+    rules: [
+      "Balok bergerak kiri-kanan, tap (atau Spasi) untuk menjatuhkannya.",
+      "Tiap lantai +10, tumpukan hampir pas (perfect) +15 dan lebar tidak berkurang.",
+      "Balok meleset total = selesai. Makin tinggi makin cepat.",
+    ],
+    needs: "",
+  },
+  hindar: {
+    group: "umum",
+    label: "Hindari Rintangan",
+    emoji: "🏎️",
+    tagline: "Geser antar 3 jalur, hindari rintangan dan kumpulkan koin sejauh mungkin!",
+    rules: [
+      "Pindah jalur dengan ← → / A D atau tombol di layar.",
+      "Jarak tempuh menambah skor, tiap 🪙 +15.",
+      "Menabrak 🚧 = selesai. Makin jauh makin cepat dan ramai.",
+    ],
+    needs: "",
+  },
+  gelas: {
+    group: "umum",
+    label: "Tebak Gelas",
+    emoji: "🥤",
+    tagline: "Awasi gelas yang menyembunyikan bola saat diacak, lalu tebak posisinya!",
+    rules: [
+      "Bola ditunjukkan sebentar, lalu 3 gelas saling bertukar tempat.",
+      "Tap gelas yang menyembunyikan bola. Benar = 100 + 25 x ronde.",
+      "3 nyawa. Makin tinggi ronde, acakan makin banyak dan cepat.",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -562,6 +614,10 @@ export const GAME_KEYS: GameKey[] = [
   "tebak",
   "lampu",
   "geser",
+  "bidik",
+  "balok",
+  "hindar",
+  "gelas",
   "jumlah",
   "ingat",
   "banyak",
@@ -1001,6 +1057,30 @@ export function resultMessage(game: GameKey, score: number): string {
       [650, "Geseranmu rapi, mantap. 🧩"],
       [350, "Lumayan, tinggal diasah lagi. ✏️"],
       [0, "Kotaknya bandel ya. Coba lagi! 🌀"],
+    ],
+    bidik: [
+      [450, "Sniper kantoran! Tak ada target yang lolos. 🎯"],
+      [300, "Bidikanmu tajam, mantap. 👁️"],
+      [150, "Lumayan, tinggal diasah lagi. ✏️"],
+      [0, "Targetnya lincah sekali. Coba lagi! 💨"],
+    ],
+    balok: [
+      [600, "Arsitek menara! Tumpukanmu menjulang. 🏙️"],
+      [350, "Tangan stabil, balok pun patuh. 🏗️"],
+      [150, "Lumayan, tinggal atur timing-nya. ⏱️"],
+      [0, "Baloknya meleset… coba lagi! 🧱"],
+    ],
+    hindar: [
+      [400, "Pembalap handal! Rintangan apa pun terhindar. 🏁"],
+      [250, "Kemudimu lincah, mantap. 🏎️"],
+      [100, "Lumayan, jalanan mulai ramai ya. 🚧"],
+      [0, "Tabrakan dini… coba lagi! 💥"],
+    ],
+    gelas: [
+      [1200, "Mata elang! Gelas apa pun tak bisa mengecoh. 🦅"],
+      [700, "Fokusmu tajam, mantap. 🥤"],
+      [300, "Lumayan, gelasnya mulai licin ya. 🌀"],
+      [0, "Bolanya pandai bersembunyi! ⚽"],
     ],
   };
   return (tiers[game].find(([min]) => score >= min) ?? tiers[game][3])[1];
