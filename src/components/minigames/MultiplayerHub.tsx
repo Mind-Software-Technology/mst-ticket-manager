@@ -76,6 +76,8 @@ import {
   buildSentuhGrid,
   buildHartaGrid,
   buildAturanSequence,
+  buildCocokRounds,
+  buildMundurRounds,
 } from "@/lib/mp-content";
 import { ReplayContext } from "./MpParts";
 import { QuizBattle } from "./QuizBattle";
@@ -116,6 +118,8 @@ import { GelasRace } from "./GelasRace";
 import { SentuhRace } from "./SentuhRace";
 import { HartaRace } from "./HartaRace";
 import { AturanRace } from "./AturanRace";
+import { CocokRace } from "./CocokRace";
+import { MundurRace } from "./MundurRace";
 
 const TEAM_ROOM = "TIM";
 
@@ -370,6 +374,10 @@ function Room({
           return { ...base, harta: buildHartaGrid() };
         case "aturan":
           return { ...base, aturan: buildAturanSequence() };
+        case "cocok":
+          return { ...base, cocok: buildCocokRounds() };
+        case "mundur":
+          return { ...base, mundur: buildMundurRounds() };
         case "dadu":
           return { ...base, dadu: buildDaduRolls() };
         case "penyusup":
@@ -483,6 +491,10 @@ function Room({
         return <HartaRace key={key} {...props} />;
       case "aturan":
         return <AturanRace key={key} {...props} />;
+      case "cocok":
+        return <CocokRace key={key} {...props} />;
+      case "mundur":
+        return <MundurRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

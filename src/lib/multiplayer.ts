@@ -7,7 +7,7 @@
 // semua klien menghitung skor dari data yang sama supaya hasilnya seragam.
 // =====================================================
 
-import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound, AturanItem } from "@/lib/mp-content";
+import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound, AturanItem, CocokRound, MundurRound } from "@/lib/mp-content";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -78,7 +78,9 @@ export type MpMode =
   | "gelas"
   | "sentuh"
   | "harta"
-  | "aturan";
+  | "aturan"
+  | "cocok"
+  | "mundur";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -860,6 +862,30 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     ],
     minPlayers: 2,
   },
+  cocok: {
+    group: "umum",
+    label: "Cocok Warna",
+    emoji: "🎨",
+    tagline: "Tap semua kotak berwarna sama dengan target. Papannya sama untuk semua pemain!",
+    rules: [
+      "45 detik, tiap ronde ada satu warna target dan papan kotak berwarna.",
+      "Tap SEMUA kotak berwarna target. Tiap benar +5, ronde beres +10.",
+      "Salah tap -5. Makin lama papan makin besar dan warna makin banyak.",
+    ],
+    minPlayers: 2,
+  },
+  mundur: {
+    group: "umum",
+    label: "Urutan Mundur",
+    emoji: "⏪",
+    tagline: "Hafalkan urutan hewan lalu tap dari yang TERAKHIR ke yang pertama!",
+    rules: [
+      "8 ronde, urutan makin panjang (3 sampai 6 hewan), sama untuk semua pemain.",
+      "Setelah urutan hilang, tap hewannya secara terbalik.",
+      "Tiap benar +10, ronde beres +20. Salah tap = ronde itu berakhir.",
+    ],
+    minPlayers: 2,
+  },
 };
 
 export const MP_MODE_KEYS: MpMode[] = [
@@ -926,6 +952,8 @@ export const MP_MODE_KEYS: MpMode[] = [
   "sentuh",
   "harta",
   "aturan",
+  "cocok",
+  "mundur",
 ];
 
 export const ROUND_MS = 15_000;
@@ -1254,6 +1282,10 @@ export interface StartPayload {
   harta?: number[];
   /** Aturan Berubah: [angka, indeks aturan]. */
   aturan?: AturanItem[];
+  /** Cocok Warna: [warna target, warna kotak]. */
+  cocok?: CocokRound[];
+  /** Urutan Mundur: [urutan, pilihan tombol]. */
+  mundur?: MundurRound[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

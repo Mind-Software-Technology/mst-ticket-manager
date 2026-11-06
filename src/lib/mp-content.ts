@@ -1712,3 +1712,51 @@ export function buildAturanSequence(): AturanItem[] {
   }
   return out;
 }
+
+// ─── Cocok Warna (solo & bareng) ─────────────────────
+
+export const COCOK_SECONDS = 45;
+export const COCOK_ROUNDS = 25;
+export const COCOK_COLORS = [
+  { name: "Merah", cls: "bg-red-500" },
+  { name: "Hijau", cls: "bg-emerald-500" },
+  { name: "Biru", cls: "bg-sky-500" },
+  { name: "Kuning", cls: "bg-yellow-400" },
+  { name: "Ungu", cls: "bg-purple-500" },
+] as const;
+
+/** [warna target, warna tiap kotak] — jumlah kotak 9, 12, atau 16. */
+export type CocokRound = readonly [number, number[]];
+
+export function buildCocokRounds(): CocokRound[] {
+  return Array.from({ length: COCOK_ROUNDS }, (_, r) => {
+    const size = r < 6 ? 9 : r < 14 ? 12 : 16;
+    const colors = r < 4 ? 3 : r < 10 ? 4 : 5;
+    const target = rand(0, colors - 1);
+    const hits = rand(2, Math.min(5, 2 + Math.floor(r / 5)));
+    const cells = [
+      ...Array<number>(hits).fill(target),
+      ...Array.from({ length: size - hits }, () => {
+        let c = rand(0, colors - 1);
+        if (c === target) c = (c + 1) % colors;
+        return c;
+      }),
+    ];
+    return [target, shuffle(cells)] as const;
+  });
+}
+
+// ─── Urutan Mundur (solo & bareng) ───────────────────
+
+export const MUNDUR_EMOJI = ["🐶", "🐱", "🐸", "🦊", "🐼", "🐵", "🦁", "🐰", "🐯", "🐨"];
+export const MUNDUR_LENGTHS = [3, 3, 4, 4, 5, 5, 6, 6];
+
+/** [urutan yang ditampilkan, pilihan tombol (teracak)]. */
+export type MundurRound = readonly [string[], string[]];
+
+export function buildMundurRounds(): MundurRound[] {
+  return MUNDUR_LENGTHS.map((len) => {
+    const pool = shuffle(MUNDUR_EMOJI).slice(0, 6);
+    return [shuffle(pool).slice(0, len), shuffle(pool)] as const;
+  });
+}

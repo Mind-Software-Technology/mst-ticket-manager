@@ -40,6 +40,11 @@ export type GameKey =
   | "balok"
   | "hindar"
   | "gelas"
+  | "sentuh"
+  | "harta"
+  | "aturan"
+  | "cocok"
+  | "mundur"
   | "jumlah"
   | "ingat"
   | "banyak"
@@ -584,6 +589,66 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  sentuh: {
+    group: "umum",
+    label: "Sentuh Angka",
+    emoji: "👆",
+    tagline: "Tap angka 1 sampai 25 berurutan secepat mungkin!",
+    rules: [
+      "60 detik, tap angka sesuai urutan mulai dari 1.",
+      "Tiap angka benar +10. Tap angka yang salah -3.",
+      "Semua 25 angka selesai = bonus 5 poin per detik tersisa.",
+    ],
+    needs: "",
+  },
+  harta: {
+    group: "umum",
+    label: "Cari Harta",
+    emoji: "💎",
+    tagline: "Gali kotak mencari permata dan emas, hindari bom!",
+    rules: [
+      "Papan 6x6, 45 detik. Tap kotak untuk membukanya.",
+      "Permata 💎 +40, emas 🪙 +100, bom 💣 -40.",
+      "Kotak kosong menampilkan jumlah permata/emas di sekitarnya.",
+    ],
+    needs: "",
+  },
+  aturan: {
+    group: "umum",
+    label: "Aturan Berubah",
+    emoji: "🔀",
+    tagline: "Aturan penggolongan angka berganti tiap beberapa soal. Tetap fokus!",
+    rules: [
+      "40 detik, golongkan angka: ganjil/genap, kecil/besar, atau kelipatan 3.",
+      "Aturan berganti tiap 6 angka (keyboard: F / ← kiri, J / → kanan).",
+      "Benar +10, salah -5.",
+    ],
+    needs: "",
+  },
+  cocok: {
+    group: "umum",
+    label: "Cocok Warna",
+    emoji: "🎨",
+    tagline: "Tap semua kotak berwarna sama dengan target secepat mungkin!",
+    rules: [
+      "45 detik, tiap ronde ada satu warna target.",
+      "Tap SEMUA kotak berwarna target. Tiap benar +5, ronde beres +10.",
+      "Salah tap -5. Makin lama papan makin besar dan warna makin banyak.",
+    ],
+    needs: "",
+  },
+  mundur: {
+    group: "umum",
+    label: "Urutan Mundur",
+    emoji: "⏪",
+    tagline: "Hafalkan urutan hewan lalu tap dari yang TERAKHIR ke yang pertama!",
+    rules: [
+      "8 ronde, urutan makin panjang (3 sampai 6 hewan).",
+      "Setelah urutan hilang, tap hewannya secara terbalik.",
+      "Tiap benar +10, ronde beres +20. Salah tap = ronde itu berakhir.",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -618,6 +683,11 @@ export const GAME_KEYS: GameKey[] = [
   "balok",
   "hindar",
   "gelas",
+  "sentuh",
+  "harta",
+  "aturan",
+  "cocok",
+  "mundur",
   "jumlah",
   "ingat",
   "banyak",
@@ -979,6 +1049,36 @@ export function resultMessage(game: GameKey, score: number): string {
       [100, "Hitunganmu cepat dan teliti. 🧮"],
       [50, "Lumayan, pilihan mirip memang menipu. 😵"],
       [0, "Selisihnya licin… coba lagi! 🌀"],
+    ],
+    sentuh: [
+      [450, "Jari kilat! Angka berserakan pun rapi. 👆"],
+      [300, "Mata dan jarimu kompak, mantap. 👀"],
+      [150, "Lumayan, tinggal diasah lagi. ✏️"],
+      [0, "Angkanya licin-licin ya… coba lagi! 🙈"],
+    ],
+    harta: [
+      [350, "Pemburu harta sejati! Bom pun terhindar. 🏴‍☠️"],
+      [220, "Penggalimu jeli, mantap. 💎"],
+      [100, "Lumayan, bacalah petunjuk angkanya. 🔎"],
+      [0, "Duar! Bom di mana-mana. 💥"],
+    ],
+    aturan: [
+      [250, "Otak fleksibel! Aturan apa pun beres. 🔀"],
+      [150, "Fokusmu tajam, mantap. 🎯"],
+      [70, "Lumayan, aturannya mulai membingungkan. 🌀"],
+      [0, "Aturannya berganti terus… coba lagi! 😵"],
+    ],
+    cocok: [
+      [350, "Mata pelangi! Warna apa pun tertangkap. 🌈"],
+      [220, "Cepat dan teliti, mantap. 🎨"],
+      [100, "Lumayan, warnanya mulai mirip ya. 😵"],
+      [0, "Warnanya bikin pusing… coba lagi! 🌀"],
+    ],
+    mundur: [
+      [250, "Ingatan terbalik tingkat dewa! ⏪"],
+      [150, "Memorimu tajam, mantap. 🧠"],
+      [60, "Lumayan, urutan mundur memang licin. 🌀"],
+      [0, "Hewannya kabur semua… coba lagi! 🐾"],
     ],
     hilang: [
       [120, "Ingatan fotografis! Tak ada yang lolos. 📸"],
