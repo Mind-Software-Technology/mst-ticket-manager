@@ -7,7 +7,7 @@
 // semua klien menghitung skor dari data yang sama supaya hasilnya seragam.
 // =====================================================
 
-import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound, AturanItem, CocokRound, MundurRound, NolRound, KilatanRound } from "@/lib/mp-content";
+import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound, AturanItem, CocokRound, MundurRound, NolRound, KilatanRound, SudokuRound, HanoiRound, BinerRound } from "@/lib/mp-content";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -82,7 +82,10 @@ export type MpMode =
   | "cocok"
   | "mundur"
   | "nol"
-  | "kilatan";
+  | "kilatan"
+  | "sudoku"
+  | "hanoi"
+  | "biner";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -912,6 +915,42 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     ],
     minPlayers: 2,
   },
+  sudoku: {
+    group: "umum",
+    label: "Sudoku Mini",
+    emoji: "🔢",
+    tagline: "Selesaikan Sudoku mini lebih cepat dari rekan setim. Papannya sama untuk semua!",
+    rules: [
+      "3 papan Sudoku 4x4 yang sama untuk semua pemain.",
+      "Tiap baris, kolom, dan kotak tebal 2x2 harus berisi 1-4 tanpa ulang.",
+      "Papan selesai = 150 + bonus kecepatan (maks +120).",
+    ],
+    minPlayers: 2,
+  },
+  hanoi: {
+    group: "umum",
+    label: "Menara Hanoi",
+    emoji: "🗼",
+    tagline: "Susun ulang menara cakram dengan langkah paling hemat. Soal sama untuk semua!",
+    rules: [
+      "3 ronde dengan 3, 4, dan 5 cakram.",
+      "Pindahkan satu cakram per langkah; cakram besar tidak boleh di atas yang kecil.",
+      "Selesai = 100 + bonus kalau langkahmu mendekati minimum (2^n − 1).",
+    ],
+    minPlayers: 2,
+  },
+  biner: {
+    group: "umum",
+    label: "Kode Biner",
+    emoji: "💾",
+    tagline: "Konversi desimal ke biner lebih cepat dari rekan setim. Soal sama untuk semua!",
+    rules: [
+      "8 ronde, 4 sampai 6 bit, sama untuk semua pemain.",
+      "Nyalakan bit sampai jumlahnya sama dengan angka target.",
+      "Makin cepat makin besar poin. Ronde akhir menyembunyikan jumlah sementara!",
+    ],
+    minPlayers: 2,
+  },
 };
 
 export const MP_MODE_KEYS: MpMode[] = [
@@ -982,6 +1021,9 @@ export const MP_MODE_KEYS: MpMode[] = [
   "mundur",
   "nol",
   "kilatan",
+  "sudoku",
+  "hanoi",
+  "biner",
 ];
 
 export const ROUND_MS = 15_000;
@@ -1318,6 +1360,12 @@ export interface StartPayload {
   nol?: NolRound[];
   /** Kilatan Titik: [jumlah, pilihan, indeks benar, koordinat]. */
   kilatan?: KilatanRound[];
+  /** Sudoku Mini: [puzzle, solusi]. */
+  sudoku?: SudokuRound[];
+  /** Menara Hanoi: [jumlah cakram]. */
+  hanoi?: HanoiRound[];
+  /** Kode Biner: [nilai, jumlah bit]. */
+  biner?: BinerRound[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

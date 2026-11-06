@@ -47,6 +47,9 @@ export type GameKey =
   | "mundur"
   | "nol"
   | "kilatan"
+  | "sudoku"
+  | "hanoi"
+  | "biner"
   | "jumlah"
   | "ingat"
   | "banyak"
@@ -675,6 +678,42 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  sudoku: {
+    group: "umum",
+    label: "Sudoku Mini",
+    emoji: "🔢",
+    tagline: "Isi kotak kosong 4x4 dengan angka 1-4 tanpa pengulangan. Makin cepat makin besar bonus!",
+    rules: [
+      "3 papan Sudoku 4x4 yang makin sedikit petunjuknya.",
+      "Tiap baris, kolom, dan kotak tebal 2x2 harus berisi 1-4 tanpa ulang.",
+      "Papan selesai = 150 + bonus kecepatan (maks +120).",
+    ],
+    needs: "",
+  },
+  hanoi: {
+    group: "umum",
+    label: "Menara Hanoi",
+    emoji: "🗼",
+    tagline: "Pindahkan tumpukan cakram ke tiang kanan dengan langkah sesedikit mungkin.",
+    rules: [
+      "3 ronde dengan 3, 4, dan 5 cakram.",
+      "Pindahkan satu cakram per langkah; cakram besar tidak boleh di atas yang kecil.",
+      "Selesai = 100 + bonus kalau langkahmu mendekati minimum (2^n − 1).",
+    ],
+    needs: "",
+  },
+  biner: {
+    group: "umum",
+    label: "Kode Biner",
+    emoji: "💾",
+    tagline: "Ubah angka desimal ke biner dengan menyalakan bit yang tepat. Pasti bikin geek senang!",
+    rules: [
+      "8 ronde, 4 sampai 6 bit. Tiap bit punya bobot 1, 2, 4, 8, …",
+      "Nyalakan bit sampai jumlahnya sama dengan angka target.",
+      "Makin cepat makin besar poin. Ronde akhir menyembunyikan jumlah sementara!",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -716,6 +755,9 @@ export const GAME_KEYS: GameKey[] = [
   "mundur",
   "nol",
   "kilatan",
+  "sudoku",
+  "hanoi",
+  "biner",
   "jumlah",
   "ingat",
   "banyak",
@@ -1119,6 +1161,24 @@ export function resultMessage(game: GameKey, score: number): string {
       [140, "Matamu cepat dan teliti, mantap. ✨"],
       [70, "Lumayan, titiknya mulai licin. 🌀"],
       [0, "Titiknya lewat terlalu cepat… coba lagi! 💨"],
+    ],
+    sudoku: [
+      [650, "Otak logika kelas dewa! Sudoku pun menyerah. 🧠"],
+      [450, "Deduksimu rapi dan cepat, mantap. 🔢"],
+      [250, "Lumayan, tinggal diasah lagi. ✏️"],
+      [0, "Angkanya bentrok terus ya… coba lagi! 🌀"],
+    ],
+    hanoi: [
+      [520, "Ahli rekursi! Langkahmu hampir sempurna. 🗼"],
+      [380, "Strategi menaramu rapi, mantap. 🧩"],
+      [250, "Lumayan, cari polanya ya. 🔎"],
+      [0, "Cakramnya bertumpuk-tumpuk… coba lagi! 😵"],
+    ],
+    biner: [
+      [800, "Komputer berjalan! Biner pun fasih. 💾"],
+      [600, "Cepat dan teliti, mantap. 🧮"],
+      [350, "Lumayan, hafalkan pangkat dua ya. ✏️"],
+      [0, "Bit-nya nyala semua… coba lagi! 😵"],
     ],
     hilang: [
       [120, "Ingatan fotografis! Tak ada yang lolos. 📸"],

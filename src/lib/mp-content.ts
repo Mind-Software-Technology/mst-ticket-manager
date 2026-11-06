@@ -1811,3 +1811,45 @@ export function buildKilatanRounds(): KilatanRound[] {
     return [count, options, options.indexOf(count), coords] as const;
   });
 }
+
+// ─── Tantangan: Sudoku Mini, Menara Hanoi, Kode Biner ─
+
+/** [puzzle 4x4 (0 = kosong), solusi]. */
+export type SudokuRound = readonly [number[], number[]];
+
+export const SUDOKU_BLANKS = [6, 8, 10];
+
+export function buildSudokuRounds(): SudokuRound[] {
+  return SUDOKU_BLANKS.map((blanks) => {
+    const bands = shuffle([0, 1]);
+    const stacks = shuffle([0, 1]);
+    const rows = bands.flatMap((b) => shuffle([0, 1]).map((x) => b * 2 + x));
+    const cols = stacks.flatMap((b) => shuffle([0, 1]).map((x) => b * 2 + x));
+    const digits = shuffle([1, 2, 3, 4]);
+    const solution: number[] = [];
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 4; c++) {
+        solution.push(digits[(2 * (rows[r] % 2) + Math.floor(rows[r] / 2) + cols[c]) % 4]);
+      }
+    }
+    const puzzle = [...solution];
+    for (const i of shuffle(Array.from({ length: 16 }, (_, k) => k)).slice(0, blanks)) puzzle[i] = 0;
+    return [puzzle, solution] as const;
+  });
+}
+
+/** [jumlah cakram]. */
+export type HanoiRound = readonly [number];
+export const HANOI_DISKS = [3, 4, 5];
+
+export function buildHanoiRounds(): HanoiRound[] {
+  return HANOI_DISKS.map((n) => [n] as const);
+}
+
+/** [nilai desimal, jumlah bit]. */
+export type BinerRound = readonly [number, number];
+export const BINER_BITS = [4, 4, 5, 5, 5, 6, 6, 6];
+
+export function buildBinerRounds(): BinerRound[] {
+  return BINER_BITS.map((bits) => [rand(2 ** (bits - 1), 2 ** bits - 1), bits] as const);
+}

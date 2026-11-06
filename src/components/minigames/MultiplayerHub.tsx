@@ -80,6 +80,9 @@ import {
   buildMundurRounds,
   buildNolRounds,
   buildKilatanRounds,
+  buildSudokuRounds,
+  buildHanoiRounds,
+  buildBinerRounds,
 } from "@/lib/mp-content";
 import { ReplayContext } from "./MpParts";
 import { QuizBattle } from "./QuizBattle";
@@ -124,6 +127,9 @@ import { CocokRace } from "./CocokRace";
 import { MundurRace } from "./MundurRace";
 import { NolRace } from "./NolRace";
 import { KilatanRace } from "./KilatanRace";
+import { SudokuRace } from "./SudokuRace";
+import { HanoiRace } from "./HanoiRace";
+import { BinerRace } from "./BinerRace";
 
 const TEAM_ROOM = "TIM";
 
@@ -386,6 +392,12 @@ function Room({
           return { ...base, nol: buildNolRounds() };
         case "kilatan":
           return { ...base, kilatan: buildKilatanRounds() };
+        case "sudoku":
+          return { ...base, sudoku: buildSudokuRounds() };
+        case "hanoi":
+          return { ...base, hanoi: buildHanoiRounds() };
+        case "biner":
+          return { ...base, biner: buildBinerRounds() };
         case "dadu":
           return { ...base, dadu: buildDaduRolls() };
         case "penyusup":
@@ -507,6 +519,12 @@ function Room({
         return <NolRace key={key} {...props} />;
       case "kilatan":
         return <KilatanRace key={key} {...props} />;
+      case "sudoku":
+        return <SudokuRace key={key} {...props} />;
+      case "hanoi":
+        return <HanoiRace key={key} {...props} />;
+      case "biner":
+        return <BinerRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }
