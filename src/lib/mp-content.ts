@@ -1760,3 +1760,54 @@ export function buildMundurRounds(): MundurRound[] {
     return [shuffle(pool).slice(0, len), shuffle(pool)] as const;
   });
 }
+
+// ─── Kurang Sampai Nol (solo & bareng) ───────────────
+
+export const NOL_ROUNDS = 8;
+
+/** [angka awal, pengurang yang tersedia, jumlah langkah minimum]. */
+export type NolRound = readonly [number, number[], number];
+
+/** Langkah minimum mencapai 0 persis (Infinity kalau mustahil). */
+function nolOptimal(start: number, ops: number[]): number {
+  const best = Array<number>(start + 1).fill(Infinity);
+  best[0] = 0;
+  for (let v = 1; v <= start; v++) {
+    for (const o of ops) if (v - o >= 0) best[v] = Math.min(best[v], best[v - o] + 1);
+  }
+  return best[start];
+}
+
+export function buildNolRounds(): NolRound[] {
+  const out: NolRound[] = [];
+  while (out.length < NOL_ROUNDS) {
+    const r = out.length;
+    const ops = shuffle([2, 3, 4, 5, 6, 7, 8, 9]).slice(0, 3).sort((a, b) => a - b);
+    const start = rand(18 + r * 3, 30 + r * 5);
+    const opt = nolOptimal(start, ops);
+    if (Number.isFinite(opt) && opt >= 3) out.push([start, ops, opt] as const);
+  }
+  return out;
+}
+
+// ─── Kilatan Titik (solo & bareng) ───────────────────
+
+export const KILATAN_ROUNDS = 12;
+
+/** [jumlah titik, pilihan jawaban, indeks benar, koordinat titik x,y (persen) berselang-seling]. */
+export type KilatanRound = readonly [number, number[], number, number[]];
+
+export function buildKilatanRounds(): KilatanRound[] {
+  return Array.from({ length: KILATAN_ROUNDS }, (_, r) => {
+    const count = Math.min(14, 3 + r);
+    const spots = shuffle(Array.from({ length: 25 }, (_, i) => i)).slice(0, count);
+    const coords = spots.flatMap((s) => [(s % 5) * 20 + 10 + rand(-4, 4), Math.floor(s / 5) * 20 + 10 + rand(-4, 4)]);
+    const wrong = new Set<number>();
+    while (wrong.size < 3) {
+      const v = count + rand(1, 3) * (Math.random() < 0.5 ? -1 : 1);
+      if (v > 0 && v !== count) wrong.add(v);
+    }
+    const options = shuffle([count, ...wrong]);
+    return [count, options, options.indexOf(count), coords] as const;
+  });
+}

@@ -7,7 +7,7 @@
 // semua klien menghitung skor dari data yang sama supaya hasilnya seragam.
 // =====================================================
 
-import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound, AturanItem, CocokRound, MundurRound } from "@/lib/mp-content";
+import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound, AturanItem, CocokRound, MundurRound, NolRound, KilatanRound } from "@/lib/mp-content";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -80,7 +80,9 @@ export type MpMode =
   | "harta"
   | "aturan"
   | "cocok"
-  | "mundur";
+  | "mundur"
+  | "nol"
+  | "kilatan";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -886,6 +888,30 @@ export const MP_MODES: Record<MpMode, MpModeConfig> = {
     ],
     minPlayers: 2,
   },
+  nol: {
+    group: "umum",
+    label: "Kurang Sampai Nol",
+    emoji: "0️⃣",
+    tagline: "Kurangi angka dengan tombol yang ada sampai TEPAT nol. Soalnya sama untuk semua!",
+    rules: [
+      "8 ronde, tiap ronde ada angka awal dan 3 tombol pengurang.",
+      "Capai tepat 0 dengan langkah sesedikit mungkin. Kelewat dari 0 = angka kembali ke awal.",
+      "Selesai = 50 + bonus kalau langkahmu mendekati minimum.",
+    ],
+    minPlayers: 2,
+  },
+  kilatan: {
+    group: "umum",
+    label: "Kilatan Titik",
+    emoji: "✨",
+    tagline: "Titik-titik muncul sekilas, tebak jumlahnya! Papan sama untuk semua pemain.",
+    rules: [
+      "12 ronde, jumlah titik makin banyak dan waktu tayang makin singkat.",
+      "Pilih jumlah yang benar dari 4 pilihan.",
+      "Benar +10 plus bonus kecepatan (maks +10). Salah -5.",
+    ],
+    minPlayers: 2,
+  },
 };
 
 export const MP_MODE_KEYS: MpMode[] = [
@@ -954,6 +980,8 @@ export const MP_MODE_KEYS: MpMode[] = [
   "aturan",
   "cocok",
   "mundur",
+  "nol",
+  "kilatan",
 ];
 
 export const ROUND_MS = 15_000;
@@ -1286,6 +1314,10 @@ export interface StartPayload {
   cocok?: CocokRound[];
   /** Urutan Mundur: [urutan, pilihan tombol]. */
   mundur?: MundurRound[];
+  /** Kurang Sampai Nol: [awal, pengurang, langkah minimum]. */
+  nol?: NolRound[];
+  /** Kilatan Titik: [jumlah, pilihan, indeks benar, koordinat]. */
+  kilatan?: KilatanRound[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

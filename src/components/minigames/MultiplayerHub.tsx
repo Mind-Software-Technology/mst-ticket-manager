@@ -78,6 +78,8 @@ import {
   buildAturanSequence,
   buildCocokRounds,
   buildMundurRounds,
+  buildNolRounds,
+  buildKilatanRounds,
 } from "@/lib/mp-content";
 import { ReplayContext } from "./MpParts";
 import { QuizBattle } from "./QuizBattle";
@@ -120,6 +122,8 @@ import { HartaRace } from "./HartaRace";
 import { AturanRace } from "./AturanRace";
 import { CocokRace } from "./CocokRace";
 import { MundurRace } from "./MundurRace";
+import { NolRace } from "./NolRace";
+import { KilatanRace } from "./KilatanRace";
 
 const TEAM_ROOM = "TIM";
 
@@ -378,6 +382,10 @@ function Room({
           return { ...base, cocok: buildCocokRounds() };
         case "mundur":
           return { ...base, mundur: buildMundurRounds() };
+        case "nol":
+          return { ...base, nol: buildNolRounds() };
+        case "kilatan":
+          return { ...base, kilatan: buildKilatanRounds() };
         case "dadu":
           return { ...base, dadu: buildDaduRolls() };
         case "penyusup":
@@ -495,6 +503,10 @@ function Room({
         return <CocokRace key={key} {...props} />;
       case "mundur":
         return <MundurRace key={key} {...props} />;
+      case "nol":
+        return <NolRace key={key} {...props} />;
+      case "kilatan":
+        return <KilatanRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

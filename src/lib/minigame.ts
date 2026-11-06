@@ -45,6 +45,8 @@ export type GameKey =
   | "aturan"
   | "cocok"
   | "mundur"
+  | "nol"
+  | "kilatan"
   | "jumlah"
   | "ingat"
   | "banyak"
@@ -649,6 +651,30 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  nol: {
+    group: "umum",
+    label: "Kurang Sampai Nol",
+    emoji: "0️⃣",
+    tagline: "Kurangi angka dengan tombol yang ada sampai TEPAT nol. Pakai langkah sesedikit mungkin!",
+    rules: [
+      "8 ronde, tiap ronde ada angka awal dan 3 tombol pengurang.",
+      "Kelewat dari 0 = angka kembali ke awal (langkah tetap dihitung).",
+      "Selesai = 50 + bonus kalau langkahmu mendekati minimum.",
+    ],
+    needs: "",
+  },
+  kilatan: {
+    group: "umum",
+    label: "Kilatan Titik",
+    emoji: "✨",
+    tagline: "Titik-titik muncul sekilas, tebak jumlahnya!",
+    rules: [
+      "12 ronde, jumlah titik makin banyak dan waktu tayang makin singkat.",
+      "Pilih jumlah yang benar dari 4 pilihan.",
+      "Benar +10 plus bonus kecepatan (maks +10). Salah -5.",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -688,6 +714,8 @@ export const GAME_KEYS: GameKey[] = [
   "aturan",
   "cocok",
   "mundur",
+  "nol",
+  "kilatan",
   "jumlah",
   "ingat",
   "banyak",
@@ -1079,6 +1107,18 @@ export function resultMessage(game: GameKey, score: number): string {
       [150, "Memorimu tajam, mantap. 🧠"],
       [60, "Lumayan, urutan mundur memang licin. 🌀"],
       [0, "Hewannya kabur semua… coba lagi! 🐾"],
+    ],
+    nol: [
+      [500, "Ahli strategi angka! Langkahmu hemat sekali. 0️⃣"],
+      [380, "Hitunganmu rapi, mantap. 🧮"],
+      [250, "Lumayan, coba cari kombinasi yang lebih hemat. 🔎"],
+      [0, "Angkanya kelewat nol terus ya… coba lagi! 😵"],
+    ],
+    kilatan: [
+      [200, "Mata kamera! Sekilas langsung hitung. 📸"],
+      [140, "Matamu cepat dan teliti, mantap. ✨"],
+      [70, "Lumayan, titiknya mulai licin. 🌀"],
+      [0, "Titiknya lewat terlalu cepat… coba lagi! 💨"],
     ],
     hilang: [
       [120, "Ingatan fotografis! Tak ada yang lolos. 📸"],

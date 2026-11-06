@@ -44,6 +44,8 @@ import { HartaGame } from "./HartaGame";
 import { AturanGame } from "./AturanGame";
 import { CocokGame } from "./CocokGame";
 import { MundurGame } from "./MundurGame";
+import { NolGame } from "./NolGame";
+import { KilatanGame } from "./KilatanGame";
 
 const GROUP_LABEL = { tiket: "🎫 Seputar Tiket", umum: "🎉 Seru-seruan Umum" } as const;
 
@@ -147,6 +149,8 @@ export function MinigameHub({ userId, userName }: { userId?: string; userName?: 
             {game === "aturan" && <AturanGame key="aturan" userId={userId} />}
             {game === "cocok" && <CocokGame key="cocok" userId={userId} />}
             {game === "mundur" && <MundurGame key="mundur" userId={userId} />}
+            {game === "nol" && <NolGame key="nol" userId={userId} />}
+            {game === "kilatan" && <KilatanGame key="kilatan" userId={userId} />}
             {(game === "jumlah" || game === "ingat" || game === "banyak" || game === "arah" || game === "kali" || game === "cek" || game === "kembar" || game === "urut" || game === "huruf" || game === "lanjut" || game === "selisih" || game === "hilang") && (
               <SoloQuick key={game} game={game} userId={userId} />
             )}
