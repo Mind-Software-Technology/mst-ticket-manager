@@ -52,6 +52,7 @@ export type GameKey =
   | "biner"
   | "stop"
   | "dominan"
+  | "typo"
   | "jumlah"
   | "ingat"
   | "banyak"
@@ -269,6 +270,18 @@ export const GAMES: Record<GameKey, GameConfig> = {
       "40 detik, tap warna yang titiknya paling banyak.",
       "Benar +10 (bonus tiap 5 kombo), salah -5 dan kombo hangus.",
       "Makin lama titik makin banyak dan selisihnya makin tipis.",
+    ],
+    needs: "",
+  },
+  typo: {
+    group: "umum",
+    label: "Cari Typo",
+    emoji: "📝",
+    tagline: "Empat kata, satu salah ketik. Temukan typo-nya sebelum waktu habis!",
+    rules: [
+      "40 detik, tap kata yang salah eja dari 4 pilihan.",
+      "Benar +10 (bonus tiap 5 kombo), salah -5 dan kombo hangus.",
+      "Makin lama kata makin panjang dan typo makin halus.",
     ],
     needs: "",
   },
@@ -786,6 +799,7 @@ export const GAME_KEYS: GameKey[] = [
   "biner",
   "stop",
   "dominan",
+  "typo",
   "jumlah",
   "ingat",
   "banyak",
@@ -1219,6 +1233,12 @@ export function resultMessage(game: GameKey, score: number): string {
       [150, "Hitungan sekilasmu tajam, mantap. 👁️"],
       [70, "Lumayan, selisih tipis memang menipu. 🤏"],
       [0, "Semua warna kelihatan sama banyak… coba lagi! 🌀"],
+    ],
+    typo: [
+      [250, "Proofreader andal! Typo sekecil apa pun ketahuan. 📝"],
+      [150, "Mata jeli, ejaanmu mantap. 👀"],
+      [70, "Lumayan, hurufnya masih suka menipu. 🔤"],
+      [0, "Semua kata kelihatan benar… coba lagi! 😵"],
     ],
     hilang: [
       [120, "Ingatan fotografis! Tak ada yang lolos. 📸"],
