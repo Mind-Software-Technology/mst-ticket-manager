@@ -54,6 +54,7 @@ export type GameKey =
   | "dominan"
   | "typo"
   | "lompat"
+  | "ritme"
   | "jumlah"
   | "ingat"
   | "banyak"
@@ -295,6 +296,18 @@ export const GAMES: Record<GameKey, GameConfig> = {
       "60 detik lari otomatis. Tap, Spasi, atau ↑ untuk melompat.",
       "Lompati 🌵 dan ambil ⭐ di udara (+20). Menabrak kaktus = selesai.",
       "Skor bertambah seiring jarak. Bertahan sampai akhir = bonus +100.",
+    ],
+    needs: "",
+  },
+  ritme: {
+    group: "umum",
+    label: "Ritme Tap",
+    emoji: "🎵",
+    tagline: "Nada berjatuhan di 4 jalur. Tap tepat saat menyentuh garis, jaga kombo!",
+    rules: [
+      "48 detik, tap jalur (atau tombol D F J K) saat nada tepat di garis putih.",
+      "Perfect +20, bagus +10, kombo 10+ dapat bonus +5 tiap nada.",
+      "Nada terlewat atau tap meleset memutus kombo.",
     ],
     needs: "",
   },
@@ -814,6 +827,7 @@ export const GAME_KEYS: GameKey[] = [
   "dominan",
   "typo",
   "lompat",
+  "ritme",
   "jumlah",
   "ingat",
   "banyak",
@@ -1259,6 +1273,12 @@ export function resultMessage(game: GameKey, score: number): string {
       [180, "Lompatanmu presisi, mantap. 🌵"],
       [90, "Lumayan, kaktusnya mulai rapat ya. 😅"],
       [0, "Nyangkut di kaktus… coba lagi! 💥"],
+    ],
+    ritme: [
+      [1500, "Raja ritme! Jarimu punya feeling musik. 🎸"],
+      [1000, "Ketukanmu tepat dan stabil, mantap. 🥁"],
+      [500, "Lumayan, tinggal jaga kombonya. 🔥"],
+      [0, "Nadanya lari-lari terus… coba lagi! 🎵"],
     ],
     hilang: [
       [120, "Ingatan fotografis! Tak ada yang lolos. 📸"],

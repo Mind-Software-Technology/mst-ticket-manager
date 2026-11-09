@@ -132,6 +132,8 @@ import { HanoiRace } from "./HanoiRace";
 import { BinerRace } from "./BinerRace";
 import { LompatRace } from "./LompatRace";
 import { buildLompatSchedule } from "@/lib/lompat";
+import { RitmeRace } from "./RitmeRace";
+import { buildRitmeChart } from "@/lib/ritme";
 
 const TEAM_ROOM = "TIM";
 
@@ -402,6 +404,8 @@ function Room({
           return { ...base, biner: buildBinerRounds() };
         case "lompat":
           return { ...base, lompat: buildLompatSchedule() };
+        case "ritme":
+          return { ...base, ritme: buildRitmeChart() };
         case "dadu":
           return { ...base, dadu: buildDaduRolls() };
         case "penyusup":
@@ -531,6 +535,8 @@ function Room({
         return <BinerRace key={key} {...props} />;
       case "lompat":
         return <LompatRace key={key} {...props} />;
+      case "ritme":
+        return <RitmeRace key={key} {...props} />;
       default:
         return <QuizBattle key={key} {...props} />;
     }

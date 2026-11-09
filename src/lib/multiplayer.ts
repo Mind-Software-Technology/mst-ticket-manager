@@ -9,6 +9,7 @@
 
 import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound, AturanItem, CocokRound, MundurRound, NolRound, KilatanRound, SudokuRound, HanoiRound, BinerRound } from "@/lib/mp-content";
 import type { LompatSpawn } from "@/lib/lompat";
+import type { RitmeNote } from "@/lib/ritme";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -87,7 +88,8 @@ export type MpMode =
   | "sudoku"
   | "hanoi"
   | "biner"
-  | "lompat";
+  | "lompat"
+  | "ritme";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -102,6 +104,18 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  ritme: {
+    group: "umum",
+    label: "Ritme Tap",
+    emoji: "🎵",
+    tagline: "Adu ketepatan ketuk! Chart nada sama untuk semua, siapa paling tepat dan kombonya paling panjang?",
+    rules: [
+      "48 detik, nada jatuh di 4 jalur (sama untuk semua pemain). Tap jalur atau tombol D F J K saat nada di garis.",
+      "Perfect +20, bagus +10, kombo 10+ dapat bonus +5 tiap nada.",
+      "Nada terlewat atau tap meleset memutus kombo. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
   lompat: {
     group: "umum",
     label: "Lompat Rintangan",
@@ -1039,6 +1053,7 @@ export const MP_MODE_KEYS: MpMode[] = [
   "hanoi",
   "biner",
   "lompat",
+  "ritme",
 ];
 
 export const ROUND_MS = 15_000;
@@ -1383,6 +1398,8 @@ export interface StartPayload {
   biner?: BinerRound[];
   /** Lompat Rintangan: [tick muncul, 1 = bintang]. */
   lompat?: LompatSpawn[];
+  /** Ritme Tap: [tick muncul, jalur 0-3]. */
+  ritme?: RitmeNote[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }
