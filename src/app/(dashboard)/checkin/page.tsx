@@ -8,7 +8,7 @@
 // Problem, Tickets — sesuai ERP "Gawean" reference.
 // =====================================================
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Kanban, PlusCircle, Search, Trophy, X } from "lucide-react";
 import { useCheckins } from "@/hooks/useCheckins";
@@ -36,6 +36,37 @@ export default function CheckinListPage() {
   const myStreak = myStreakData.streak;
   
   const [restoring, setRestoring] = useState(false);
+  const autoRestoreTried = useRef<string | null>(null);
+
+  // Pulihkan streak otomatis: kalau hari ini sudah check-in tetapi streak
+  // baru "1" dan ada hari kerja yang terlewat, hari itu dipulihkan tanpa
+  // perlu menekan tombol. Dicoba sekali per tanggal terlewat (batas 5x/bulan
+  // tetap ditegakkan server; kalau ditolak, tombol manual tetap tidak muncul
+  // karena streak > 0).
+  useEffect(() => {
+    if (!session || streakLoading || loading) return;
+    const missed = myStreakData.missedDate;
+    if (!missed || myStreakData.streak !== 1) return;
+    const checkedInToday = checkins.some(
+      (c) =>
+        c.employee_id === session.profile.id &&
+        new Date(c.created_at).toDateString() === new Date().toDateString(),
+    );
+    if (!checkedInToday || autoRestoreTried.current === missed) return;
+    autoRestoreTried.current = missed;
+    (async () => {
+      try {
+        const res = await fetch("/api/checkin/restore", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employeeId: session.profile.id, missedDate: missed }),
+        });
+        if (res.ok) refreshStreaks();
+      } catch {
+        /* abaikan; bisa dicoba lagi saat halaman dibuka ulang */
+      }
+    })();
+  }, [session, streakLoading, loading, checkins, myStreakData.missedDate, myStreakData.streak, refreshStreaks]);
 
   // Filter & group by (client-side)
   const [search, setSearch] = useState("");
