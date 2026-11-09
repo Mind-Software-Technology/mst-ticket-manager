@@ -51,6 +51,7 @@ export type GameKey =
   | "hanoi"
   | "biner"
   | "stop"
+  | "dominan"
   | "jumlah"
   | "ingat"
   | "banyak"
@@ -256,6 +257,18 @@ export const GAMES: Record<GameKey, GameConfig> = {
       "60 detik, tiap ronde ada satu perintah dan papan angka acak (bukan berurutan).",
       "Perintah bervariasi: angka tertentu, terbesar, terkecil, kelipatan, sampai jumlah digit. Angka mirip jadi pengecoh!",
       "Benar +10 sampai +60 (makin tinggi level & makin cepat makin besar). Salah -5 dan papan diacak ulang.",
+    ],
+    needs: "",
+  },
+  dominan: {
+    group: "umum",
+    label: "Warna Dominan",
+    emoji: "🔵",
+    tagline: "Sekumpulan titik berwarna muncul. Warna mana yang jumlahnya paling banyak?",
+    rules: [
+      "40 detik, tap warna yang titiknya paling banyak.",
+      "Benar +10 (bonus tiap 5 kombo), salah -5 dan kombo hangus.",
+      "Makin lama titik makin banyak dan selisihnya makin tipis.",
     ],
     needs: "",
   },
@@ -772,6 +785,7 @@ export const GAME_KEYS: GameKey[] = [
   "hanoi",
   "biner",
   "stop",
+  "dominan",
   "jumlah",
   "ingat",
   "banyak",
@@ -1199,6 +1213,12 @@ export function resultMessage(game: GameKey, score: number): string {
       [550, "Timing-mu tajam, mantap. 🎯"],
       [300, "Lumayan, tinggal diasah lagi. ✏️"],
       [0, "Penandanya lari terus… coba lagi! 💨"],
+    ],
+    dominan: [
+      [250, "Mata statistik! Warna dominan langsung ketahuan. 📊"],
+      [150, "Hitungan sekilasmu tajam, mantap. 👁️"],
+      [70, "Lumayan, selisih tipis memang menipu. 🤏"],
+      [0, "Semua warna kelihatan sama banyak… coba lagi! 🌀"],
     ],
     hilang: [
       [120, "Ingatan fotografis! Tak ada yang lolos. 📸"],
