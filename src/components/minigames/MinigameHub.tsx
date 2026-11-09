@@ -49,6 +49,7 @@ import { KilatanGame } from "./KilatanGame";
 import { SudokuGame } from "./SudokuGame";
 import { HanoiGame } from "./HanoiGame";
 import { BinerGame } from "./BinerGame";
+import { StopGame } from "./StopGame";
 
 const GROUP_LABEL = { tiket: "🎫 Seputar Tiket", umum: "🎉 Seru-seruan Umum" } as const;
 
@@ -157,6 +158,7 @@ export function MinigameHub({ userId, userName }: { userId?: string; userName?: 
             {game === "sudoku" && <SudokuGame key="sudoku" userId={userId} />}
             {game === "hanoi" && <HanoiGame key="hanoi" userId={userId} />}
             {game === "biner" && <BinerGame key="biner" userId={userId} />}
+            {game === "stop" && <StopGame key="stop" userId={userId} />}
             {(game === "jumlah" || game === "ingat" || game === "banyak" || game === "arah" || game === "kali" || game === "cek" || game === "kembar" || game === "urut" || game === "huruf" || game === "lanjut" || game === "selisih" || game === "hilang") && (
               <SoloQuick key={game} game={game} userId={userId} />
             )}

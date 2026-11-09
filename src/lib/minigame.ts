@@ -50,6 +50,7 @@ export type GameKey =
   | "sudoku"
   | "hanoi"
   | "biner"
+  | "stop"
   | "jumlah"
   | "ingat"
   | "banyak"
@@ -714,6 +715,18 @@ export const GAMES: Record<GameKey, GameConfig> = {
     ],
     needs: "",
   },
+  stop: {
+    group: "umum",
+    label: "Berhenti Tepat",
+    emoji: "🎚️",
+    tagline: "Penanda bergerak bolak-balik. Tap tepat saat berada di zona hijau!",
+    rules: [
+      "10 ronde. Tap (atau tekan Spasi) untuk menghentikan penanda.",
+      "Makin dekat ke tengah zona hijau, makin besar poinnya (maks 100).",
+      "Tiap ronde penanda makin cepat dan zona makin sempit.",
+    ],
+    needs: "",
+  },
 };
 
 export const GAME_KEYS: GameKey[] = [
@@ -758,6 +771,7 @@ export const GAME_KEYS: GameKey[] = [
   "sudoku",
   "hanoi",
   "biner",
+  "stop",
   "jumlah",
   "ingat",
   "banyak",
@@ -1179,6 +1193,12 @@ export function resultMessage(game: GameKey, score: number): string {
       [600, "Cepat dan teliti, mantap. 🧮"],
       [350, "Lumayan, hafalkan pangkat dua ya. ✏️"],
       [0, "Bit-nya nyala semua… coba lagi! 😵"],
+    ],
+    stop: [
+      [800, "Presisi dewa! Tanganmu sudah seperti jam atom. 🎚️"],
+      [550, "Timing-mu tajam, mantap. 🎯"],
+      [300, "Lumayan, tinggal diasah lagi. ✏️"],
+      [0, "Penandanya lari terus… coba lagi! 💨"],
     ],
     hilang: [
       [120, "Ingatan fotografis! Tak ada yang lolos. 📸"],
