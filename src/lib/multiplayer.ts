@@ -8,6 +8,7 @@
 // =====================================================
 
 import type { AngkaRound, ArahItem, BanyakItem, CekItem, JumlahItem, KaliItem, UrutItem, ChoiceItem, HilangItem, HindarSpawn, GelasRound, AturanItem, CocokRound, MundurRound, NolRound, KilatanRound, SudokuRound, HanoiRound, BinerRound } from "@/lib/mp-content";
+import type { LompatSpawn } from "@/lib/lompat";
 import {
   CATEGORY_LABEL,
   deadlinePool,
@@ -85,7 +86,8 @@ export type MpMode =
   | "kilatan"
   | "sudoku"
   | "hanoi"
-  | "biner";
+  | "biner"
+  | "lompat";
 
 /** tiket = memakai data tiket tim; umum = bisa dimainkan tanpa data apa pun. */
 export type MpModeGroup = "tiket" | "umum";
@@ -100,6 +102,18 @@ export interface MpModeConfig {
 }
 
 export const MP_MODES: Record<MpMode, MpModeConfig> = {
+  lompat: {
+    group: "umum",
+    label: "Lompat Rintangan",
+    emoji: "🦖",
+    tagline: "Semua lari di lintasan yang sama. Lompati kaktus, sambar bintang, bertahan paling lama!",
+    rules: [
+      "60 detik lari otomatis. Tap, Spasi, atau ↑ untuk melompat. Rintangan & bintang sama untuk semua pemain.",
+      "Lompati 🌵 dan ambil ⭐ di udara (+20). Menabrak kaktus = selesai.",
+      "Skor bertambah seiring jarak. Bertahan sampai akhir = bonus +100. Skor semua pemain terlihat langsung.",
+    ],
+    minPlayers: 2,
+  },
   tebak: {
     group: "umum",
     label: "Tebak Angka",
@@ -1024,6 +1038,7 @@ export const MP_MODE_KEYS: MpMode[] = [
   "sudoku",
   "hanoi",
   "biner",
+  "lompat",
 ];
 
 export const ROUND_MS = 15_000;
@@ -1366,6 +1381,8 @@ export interface StartPayload {
   hanoi?: HanoiRound[];
   /** Kode Biner: [nilai, jumlah bit]. */
   biner?: BinerRound[];
+  /** Lompat Rintangan: [tick muncul, 1 = bintang]. */
+  lompat?: LompatSpawn[];
   /** Pembeda antar permainan supaya komponen game selalu bersih. */
   nonce: number;
 }

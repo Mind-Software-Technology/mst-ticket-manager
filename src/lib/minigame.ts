@@ -53,6 +53,7 @@ export type GameKey =
   | "stop"
   | "dominan"
   | "typo"
+  | "lompat"
   | "jumlah"
   | "ingat"
   | "banyak"
@@ -282,6 +283,18 @@ export const GAMES: Record<GameKey, GameConfig> = {
       "40 detik, tap kata yang salah eja dari 4 pilihan.",
       "Benar +10 (bonus tiap 5 kombo), salah -5 dan kombo hangus.",
       "Makin lama kata makin panjang dan typo makin halus.",
+    ],
+    needs: "",
+  },
+  lompat: {
+    group: "umum",
+    label: "Lompat Rintangan",
+    emoji: "🦖",
+    tagline: "Lari otomatis, lompati kaktus, sambar bintang di udara. Seberapa lama kamu bertahan?",
+    rules: [
+      "60 detik lari otomatis. Tap, Spasi, atau ↑ untuk melompat.",
+      "Lompati 🌵 dan ambil ⭐ di udara (+20). Menabrak kaktus = selesai.",
+      "Skor bertambah seiring jarak. Bertahan sampai akhir = bonus +100.",
     ],
     needs: "",
   },
@@ -800,6 +813,7 @@ export const GAME_KEYS: GameKey[] = [
   "stop",
   "dominan",
   "typo",
+  "lompat",
   "jumlah",
   "ingat",
   "banyak",
@@ -1239,6 +1253,12 @@ export function resultMessage(game: GameKey, score: number): string {
       [150, "Mata jeli, ejaanmu mantap. 👀"],
       [70, "Lumayan, hurufnya masih suka menipu. 🔤"],
       [0, "Semua kata kelihatan benar… coba lagi! 😵"],
+    ],
+    lompat: [
+      [260, "Dino legendaris! Kaktus apa pun terlewati. 🦖"],
+      [180, "Lompatanmu presisi, mantap. 🌵"],
+      [90, "Lumayan, kaktusnya mulai rapat ya. 😅"],
+      [0, "Nyangkut di kaktus… coba lagi! 💥"],
     ],
     hilang: [
       [120, "Ingatan fotografis! Tak ada yang lolos. 📸"],
